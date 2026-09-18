@@ -1,7 +1,8 @@
 {
   "name": "@untestutils/cli",
   "version": "0.1.0",
-  "description": "CLI for untestutils: init, convert, ai, doctor, and monorepo commands",
+  "private": true,
+  "description": "CLI for untestutils: init, convert, ai, doctor, and monorepo commands (bundled into the untestutils facade for npm)",
   "license": "MIT",
   "bin": {
     "untestutils": "./dist/run.mjs"
@@ -19,9 +20,6 @@
       "default": "./dist/main.mjs"
     },
     "./package.json": "./package.json"
-  },
-  "publishConfig": {
-    "access": "public"
   },
   "scripts": {
     "build": "vite build",

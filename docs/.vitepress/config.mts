@@ -64,6 +64,7 @@ export default withMermaid(
               { text: 'AI codegen', link: '/guide/ai' },
               { text: 'Extending', link: '/guide/extending' },
               { text: 'Troubleshooting', link: '/guide/troubleshooting' },
+              { text: 'Release', link: '/guide/release' },
             ],
           },
         ],

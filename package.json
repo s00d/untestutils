@@ -1,5 +1,6 @@
 {
   "name": "@untestutils/monorepo",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -29,7 +30,11 @@
     "test:coverage": "vitest run --config vitest.unit.config.ts --coverage",
     "docs:dev": "pnpm --filter @untestutils/docs dev",
     "docs:build": "pnpm --filter @untestutils/docs build",
-    "docs:preview": "pnpm --filter @untestutils/docs preview"
+    "docs:preview": "pnpm --filter @untestutils/docs preview",
+    "changelog": "changelogen",
+    "release:patch": "tsx scripts/release.ts patch",
+    "release:minor": "tsx scripts/release.ts minor",
+    "release:major": "tsx scripts/release.ts major"
   },
   "devDependencies": {
     "@playwright/test": "catalog:",
@@ -40,6 +45,7 @@
     "@untestutils/playwright": "workspace:*",
     "@untestutils/vitest": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
+    "changelogen": "catalog:",
     "citty": "catalog:",
     "consola": "catalog:",
     "nuxt": "catalog:",

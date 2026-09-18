@@ -112,4 +112,5 @@ Artifacts land under **`.untestutils/`** at the repo root (never inside a worksp
 - [Vitest guide](/guide/vitest) — fixtures `page` / `goto` / `request`
 - [Utils](/guide/utils) — cookies, SEO head, poll, domain emulation
 - [Playwright](/guide/playwright) — shared recipes with Playwright Test
+- [Release](/guide/release) — changelog, version bump, npm publish
 - [CLI](/cli/) — `init`, `convert`, `doctor`
