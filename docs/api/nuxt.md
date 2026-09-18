@@ -52,4 +52,4 @@ Expands one Nuxt options object into many recipes. Key `default` keeps `base.id`
 ## Next
 
 - [Drivers guide](/guide/drivers)
-- [Getting started](/guide/getting-started)
+- [Migration from @nuxt/test-utils](/migration/from-nuxt-test-utils)

@@ -70,6 +70,7 @@ Site: https://s00d.github.io/untestutils/
 |-------|------|
 | Getting started | https://s00d.github.io/untestutils/guide/getting-started |
 | Concepts | https://s00d.github.io/untestutils/guide/concepts |
+| Migrate from `@nuxt/test-utils` | https://s00d.github.io/untestutils/migration/from-nuxt-test-utils |
 | CLI | https://s00d.github.io/untestutils/cli/ |
 | API | https://s00d.github.io/untestutils/api/ |
 

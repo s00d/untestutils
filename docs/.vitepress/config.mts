@@ -42,6 +42,7 @@ export default withMermaid(
       },
       nav: [
         { text: 'Guide', link: '/guide/getting-started' },
+        { text: 'Migration', link: '/migration/from-nuxt-test-utils' },
         { text: 'API', link: '/api/' },
         { text: 'CLI', link: '/cli/' },
         { text: 'Examples', link: '/examples' },
@@ -64,6 +65,16 @@ export default withMermaid(
               { text: 'Extending', link: '/guide/extending' },
               { text: 'Troubleshooting', link: '/guide/troubleshooting' },
               { text: 'Release', link: '/guide/release' },
+            ],
+          },
+        ],
+        '/migration/': [
+          {
+            text: 'Migration',
+            items: [
+              { text: 'From @nuxt/test-utils', link: '/migration/from-nuxt-test-utils' },
+              { text: 'From raw Playwright', link: '/migration/from-raw-playwright' },
+              { text: 'Pain points covered', link: '/migration/pain-points' },
             ],
           },
         ],

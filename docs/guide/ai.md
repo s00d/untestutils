@@ -70,3 +70,4 @@ System prompts live under `packages/ai/src/prompts/`: `v1`, `convert-v1`, `fix-v
 
 - [CLI](/cli/)
 - [API: AI](/api/ai)
+- [Migration](/migration/from-nuxt-test-utils)
