@@ -2,7 +2,7 @@
 
 Recipe-based test harness for **Vitest** and **Playwright**: shared prepare, HTTP/static/dev/remote targets, Nuxt factory, extensible drivers, optional AI codegen, and a CLI.
 
-**Documentation:** run `pnpm docs:dev` (VitePress site under [`docs/`](docs/)).
+**Docs:** https://s00d.github.io/untestutils/
 
 ## Install
 
@@ -62,15 +62,17 @@ describe('home', () => {
 
 > Config: `untestutils/vitest/plugin`. Specs: `untestutils/vitest`.
 
-## Docs map
+## Docs
 
-| Topic | Path |
+Site: https://s00d.github.io/untestutils/
+
+| Topic | Link |
 |-------|------|
-| Getting started | [docs/guide/getting-started.md](docs/guide/getting-started.md) |
-| Concepts | [docs/guide/concepts.md](docs/guide/concepts.md) |
-| Migrate from `@nuxt/test-utils` | [docs/migration/from-nuxt-test-utils.md](docs/migration/from-nuxt-test-utils.md) |
-| CLI | [docs/cli/index.md](docs/cli/index.md) |
-| API | [docs/api/index.md](docs/api/index.md) |
+| Getting started | https://s00d.github.io/untestutils/guide/getting-started |
+| Concepts | https://s00d.github.io/untestutils/guide/concepts |
+| Migrate from `@nuxt/test-utils` | https://s00d.github.io/untestutils/migration/from-nuxt-test-utils |
+| CLI | https://s00d.github.io/untestutils/cli/ |
+| API | https://s00d.github.io/untestutils/api/ |
 
 ## Develop
 

@@ -11,6 +11,8 @@
 
 # untestutils
 
+**Docs:** https://s00d.github.io/untestutils/
+
 **Test the product the way it actually runs** — not a mock of a mock of a framework.
 
 Most “test utils” help you write *more* tests. `untestutils` changes *what* you test: the same prepare → start → URL/dir path your users hit, with real cookies, SEO headers, redirects, locale payloads, and browser behavior — shared once across Vitest and Playwright.
