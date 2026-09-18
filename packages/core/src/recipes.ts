@@ -21,6 +21,9 @@ export function defineRecipe(recipe: Recipe): Recipe {
  * re-import the same file — otherwise the caller path is inferred from the stack.
  *
  * Prefer: `export const recipes = defineRecipes({ … }, import.meta.url)`
+ *
+ * Re-imports are idempotent (config + globalSetup/setup-file often load recipes.ts twice
+ * under different module URLs). Duplicates *within* one call still throw.
  */
 export function defineRecipes<T extends Record<string, Recipe>>(
   recipes: T,
@@ -30,10 +33,14 @@ export function defineRecipes<T extends Record<string, Recipe>>(
   const ids = new Set<string>();
   for (const [key, recipe] of Object.entries(recipes)) {
     const id = recipe.id ?? key;
-    if (ids.has(id) || globalRecipes.has(id)) {
+    if (ids.has(id)) {
       throw new Error(`[untestutils] duplicate recipe id "${id}" in defineRecipes`);
     }
     ids.add(id);
+    if (globalRecipes.has(id)) {
+      // Already registered (re-import of the same recipes module) — skip.
+      continue;
+    }
     if (!recipe.id) (recipe as Recipe).id = key;
     if (!recipe.start) {
       throw new Error(`[untestutils] recipe "${id}" requires start()`);

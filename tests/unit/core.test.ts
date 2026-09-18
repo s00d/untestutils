@@ -74,19 +74,21 @@ describe('defineRecipes', () => {
     resetRecipeBindings();
   });
 
-  test('registers ids and rejects duplicates', () => {
+  test('registers ids; same-batch duplicates throw; re-import is idempotent', () => {
+    const start = async () => ({ kind: 'dir' as const, dir: '/tmp' });
     defineRecipes({
-      a: defineRecipe({
-        id: 'a',
-        start: async () => ({ kind: 'dir', dir: '/tmp' }),
-      }),
+      a: defineRecipe({ id: 'a', start }),
     });
+    // Re-import / second defineRecipes with same id — ok (config + globalSetup).
     expect(() =>
       defineRecipes({
-        a: defineRecipe({
-          id: 'a',
-          start: async () => ({ kind: 'dir', dir: '/tmp' }),
-        }),
+        a: defineRecipe({ id: 'a', start }),
+      }),
+    ).not.toThrow();
+    expect(() =>
+      defineRecipes({
+        a: defineRecipe({ id: 'a', start }),
+        b: defineRecipe({ id: 'a', start }),
       }),
     ).toThrow(/duplicate/);
   });
