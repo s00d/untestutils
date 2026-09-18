@@ -1,6 +1,6 @@
 {
   "name": "untestutils",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Recipe-based test harness for Vitest and Playwright — shared prepare, multi-framework factories, optional AI codegen",
   "keywords": [
     "e2e",
