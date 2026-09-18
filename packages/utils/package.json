@@ -1,6 +1,6 @@
 {
   "name": "@untestutils/utils",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
   "description": "Shared e2e/test utilities — cookies, SEO head, poll, browser helpers",
   "files": [
