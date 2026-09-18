@@ -1,4 +1,10 @@
-import type { APIRequestContext, Browser, Page, Response } from 'playwright-core';
+import type {
+  APIRequestContext,
+  Browser,
+  BrowserContext,
+  Page,
+  Response,
+} from 'playwright-core';
 import {
   afterAll,
   afterEach,
@@ -49,6 +55,36 @@ export async function resolveBaseURL(): Promise<string> {
   return normalizeBaseUrl(h.url);
 }
 
+type CookieInput = Parameters<BrowserContext['addCookies']>[0][number];
+
+/** Rewrite cookies so `domain: 'localhost'` applies on 127.0.0.1 harness URLs. */
+export function normalizeHarnessCookies(cookies: CookieInput[], baseURL: string): CookieInput[] {
+  return cookies.map((c) => {
+    if (!('domain' in c) || (c.domain !== 'localhost' && c.domain !== '127.0.0.1')) {
+      return c;
+    }
+    // Playwright: use `url` XOR `domain`+`path` — never mix.
+    const next: CookieInput = {
+      name: c.name,
+      value: c.value,
+      url: baseURL,
+    };
+    if ('expires' in c && typeof c.expires === 'number' && c.expires >= 0) {
+      next.expires = c.expires;
+    }
+    if ('httpOnly' in c && c.httpOnly !== undefined) next.httpOnly = c.httpOnly;
+    if ('secure' in c && c.secure !== undefined) next.secure = c.secure;
+    if ('sameSite' in c && c.sameSite !== undefined) next.sameSite = c.sameSite;
+    return next;
+  });
+}
+
+function patchContextCookies(context: BrowserContext, baseURL: string): void {
+  const orig = context.addCookies.bind(context);
+  context.addCookies = async (cookies) =>
+    orig(normalizeHarnessCookies([...cookies], baseURL));
+}
+
 /** @internal */
 export function createGoto(page: Page, baseURL: string) {
   return async (path: string, options?: Record<string, unknown>) => {
@@ -59,7 +95,12 @@ export function createGoto(page: Page, baseURL: string) {
       await waitForNuxt(page, waitUntil);
       return res;
     }
-    return page.goto(url, options as Parameters<Page['goto']>[1]);
+    const res = await page.goto(url, options as Parameters<Page['goto']>[1]);
+    // Specs often use networkidle/load; Nuxt client plugins (i18n/hashMode) need hydration.
+    if (waitUntil === 'networkidle' || waitUntil === 'load' || waitUntil === undefined) {
+      await waitForNuxt(page, 'hydration').catch(() => {});
+    }
+    return res;
   };
 }
 
@@ -84,6 +125,7 @@ export async function waitForNuxt(page: Page, mode: 'hydration' | 'route'): Prom
 export async function usePageFixture(baseURL: string, use: (page: Page) => Promise<void>) {
   const browser = await getBrowser();
   const context = await browser.newContext({ baseURL });
+  patchContextCookies(context, baseURL);
   const page = await context.newPage();
   await use(page);
   await context.close().catch(() => {});
@@ -137,6 +179,7 @@ export const test: TestAPI<HarnessFixtures> = base
   .extend('page', async ({ baseURL }, { onCleanup }) => {
     const browser = await getBrowser();
     const context = await browser.newContext({ baseURL });
+    patchContextCookies(context, baseURL);
     const page = await context.newPage();
     onCleanup(() => context.close().catch(() => {}));
     return page;
