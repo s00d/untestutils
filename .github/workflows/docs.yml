@@ -31,6 +31,8 @@ jobs:
           node-version: 22
           cache: pnpm
 
+      - run: pnpm install --ignore-scripts
+      - run: pnpm run build
       - run: pnpm install
 
       - name: Build VitePress site

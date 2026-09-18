@@ -25,6 +25,8 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           cache: pnpm
+      - run: pnpm install --ignore-scripts
+      - run: pnpm run build
       - run: pnpm install
       - run: pnpm run lint
       - run: pnpm run format:check
@@ -54,8 +56,9 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install
+      - run: pnpm install --ignore-scripts
       - run: pnpm run build
+      - run: pnpm install
       - run: pnpm exec playwright install chromium
       - run: pnpm run test:playwright
         env:
