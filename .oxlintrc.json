@@ -1,0 +1,67 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["eslint", "typescript", "oxc", "import", "promise"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  "ignorePatterns": [
+    "node_modules/**",
+    "dist/**",
+    "coverage/**",
+    ".untestutils/**",
+    ".nuxt/**",
+    ".output/**",
+    ".git/**",
+    "pnpm-lock.yaml",
+    "playground/.nuxt/**",
+    "playground/.output/**",
+    "**/vendor/**",
+    "packages/cli/src/templates/**",
+    "packages/untestutils/templates/**",
+    "docs/.vitepress/dist/**",
+    "docs/.vitepress/cache/**"
+  ],
+  "rules": {
+    "no-unused-vars": "error",
+    "no-undef": "off",
+    "no-console": "off",
+    "no-shadow": "off",
+    "no-underscore-dangle": "off",
+    "eqeqeq": "error",
+    "no-duplicate-imports": "error",
+    "no-var": "error",
+    "prefer-const": "error",
+    "no-useless-catch": "error",
+    "no-useless-rename": "error",
+    "no-throw-literal": "error",
+    "preserve-caught-error": "off",
+    "import/no-cycle": "error",
+    "import/no-self-import": "error",
+    "import/no-duplicates": "error",
+    "promise/always-return": "off",
+    "promise/no-return-wrap": "error",
+    "promise/prefer-catch": "error",
+    "promise/valid-params": "error",
+    "typescript/consistent-type-imports": "off",
+    "typescript/no-explicit-any": "off",
+    "typescript/no-non-null-assertion": "off"
+  },
+  "overrides": [
+    {
+      "files": ["scripts/**", "packages/cli/src/commands/**"],
+      "rules": {
+        "no-console": "off"
+      }
+    },
+    {
+      "files": ["**/*.test.ts", "**/*.spec.ts", "tests/**"],
+      "rules": {
+        "no-unused-vars": "off",
+        "no-duplicate-imports": "off",
+        "import/no-duplicates": "off",
+        "import/no-namespace": "off"
+      }
+    }
+  ]
+}

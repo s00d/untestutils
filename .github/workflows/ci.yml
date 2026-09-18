@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      remote_url:
+        description: Optional UNTESTUTILS_REMOTE_URL for post-deploy smoke
+        required: false
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+      - run: pnpm install
+      - run: pnpm run lint
+      - run: pnpm run format:check
+      - run: pnpm run typecheck
+      - run: pnpm run test:unit
+      - run: pnpm run test:types
+      - run: pnpm run test:integration
+      - run: pnpm run test:ai
+      - run: pnpm run build
+      - run: pnpm run publint
+      - run: pnpm run test:dist
+      - run: pnpm run api:surface
+      - run: pnpm run test:playground
+      - run: pnpm run test:pack
+      - run: pnpm exec playwright install chromium
+        if: matrix.os == 'ubuntu-latest'
+      - run: pnpm run test:playwright
+        if: matrix.os == 'ubuntu-latest'
+
+  remote:
+    if: github.event_name == 'workflow_dispatch' && inputs.remote_url != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install
+      - run: pnpm run build
+      - run: pnpm exec playwright install chromium
+      - run: pnpm run test:playwright
+        env:
+          UNTESTUTILS_REMOTE_URL: ${{ inputs.remote_url }}

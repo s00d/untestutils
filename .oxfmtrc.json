@@ -1,0 +1,34 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 100,
+  "tabWidth": 2,
+  "useTabs": false,
+  "endOfLine": "lf",
+  "singleQuote": true,
+  "semi": true,
+  "trailingComma": "all",
+  "arrowParens": "always",
+  "bracketSpacing": true,
+  "ignorePatterns": [
+    "node_modules/**",
+    "dist/**",
+    "coverage/**",
+    ".untestutils/**",
+    ".nuxt/**",
+    ".output/**",
+    ".git/**",
+    "pnpm-lock.yaml",
+    "**/*.md",
+    "**/vendor/**",
+    "docs/.vitepress/dist/**",
+    "docs/.vitepress/cache/**"
+  ],
+  "overrides": [
+    {
+      "files": ["**/*.json", "**/*.jsonc"],
+      "options": {
+        "trailingComma": "none"
+      }
+    }
+  ]
+}

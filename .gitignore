@@ -1,0 +1,17 @@
+node_modules
+dist
+.untestutils
+.nuxt
+.output
+coverage
+test-results
+*.log
+.DS_Store
+.pnpm-store
+playground/test-results
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+docs/.vitepress/cache
+docs/.vitepress/dist

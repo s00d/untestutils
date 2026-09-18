@@ -1,0 +1,235 @@
+{
+  "name": "untestutils",
+  "version": "0.1.0",
+  "description": "Recipe-based test harness for Vitest and Playwright — shared prepare, multi-framework factories, optional AI codegen",
+  "keywords": [
+    "e2e",
+    "harness",
+    "nuxt",
+    "playwright",
+    "test-utils",
+    "vitest"
+  ],
+  "license": "MIT",
+  "author": "s00d",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/s00d/untestutils.git"
+  },
+  "bin": {
+    "untestutils": "./dist/cli-run.mjs"
+  },
+  "files": [
+    "dist",
+    "templates",
+    "LICENSE",
+    "README.md"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
+    },
+    "./vitest": {
+      "types": "./dist/vitest.d.ts",
+      "import": "./dist/vitest.mjs",
+      "default": "./dist/vitest.mjs"
+    },
+    "./vitest/plugin": {
+      "types": "./dist/vitest-plugin.d.ts",
+      "import": "./dist/vitest-plugin.mjs",
+      "default": "./dist/vitest-plugin.mjs"
+    },
+    "./vitest/global-setup": {
+      "types": "./dist/vitest-global-setup.d.ts",
+      "import": "./dist/vitest-global-setup.mjs",
+      "default": "./dist/vitest-global-setup.mjs"
+    },
+    "./vitest/setup-file": {
+      "types": "./dist/vitest-setup-file.d.ts",
+      "import": "./dist/vitest-setup-file.mjs",
+      "default": "./dist/vitest-setup-file.mjs"
+    },
+    "./playwright": {
+      "types": "./dist/playwright.d.ts",
+      "import": "./dist/playwright.mjs",
+      "default": "./dist/playwright.mjs"
+    },
+    "./playwright/pw-global-setup": {
+      "types": "./dist/playwright-pw-global-setup.d.ts",
+      "import": "./dist/playwright-pw-global-setup.mjs",
+      "default": "./dist/playwright-pw-global-setup.mjs"
+    },
+    "./playwright/pw-global-teardown": {
+      "types": "./dist/playwright-pw-global-teardown.d.ts",
+      "import": "./dist/playwright-pw-global-teardown.mjs",
+      "default": "./dist/playwright-pw-global-teardown.mjs"
+    },
+    "./nuxt": {
+      "types": "./dist/nuxt.d.ts",
+      "import": "./dist/nuxt.mjs",
+      "default": "./dist/nuxt.mjs"
+    },
+    "./perf": {
+      "types": "./dist/perf.d.ts",
+      "import": "./dist/perf.mjs",
+      "default": "./dist/perf.mjs"
+    },
+    "./utils": {
+      "types": "./dist/utils.d.ts",
+      "import": "./dist/utils.mjs",
+      "default": "./dist/utils.mjs"
+    },
+    "./vite": {
+      "types": "./dist/vite.d.ts",
+      "import": "./dist/vite.mjs",
+      "default": "./dist/vite.mjs"
+    },
+    "./next": {
+      "types": "./dist/next.d.ts",
+      "import": "./dist/next.mjs",
+      "default": "./dist/next.mjs"
+    },
+    "./astro": {
+      "types": "./dist/astro.d.ts",
+      "import": "./dist/astro.mjs",
+      "default": "./dist/astro.mjs"
+    },
+    "./sveltekit": {
+      "types": "./dist/sveltekit.d.ts",
+      "import": "./dist/sveltekit.mjs",
+      "default": "./dist/sveltekit.mjs"
+    },
+    "./command": {
+      "types": "./dist/command.d.ts",
+      "import": "./dist/command.mjs",
+      "default": "./dist/command.mjs"
+    },
+    "./runtime": {
+      "types": "./dist/runtime.d.ts",
+      "import": "./dist/runtime.mjs",
+      "default": "./dist/runtime.mjs"
+    },
+    "./module": {
+      "types": "./dist/module.d.ts",
+      "import": "./dist/module.mjs",
+      "default": "./dist/module.mjs"
+    },
+    "./config": {
+      "types": "./dist/config.d.ts",
+      "import": "./dist/config.mjs",
+      "default": "./dist/config.mjs"
+    },
+    "./ai": {
+      "types": "./dist/ai.d.ts",
+      "import": "./dist/ai.mjs",
+      "default": "./dist/ai.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "vite build && node ../../scripts/facade-dts.mjs && node ../../scripts/copy-cli-templates.mjs",
+    "publint": "publint --strict"
+  },
+  "dependencies": {
+    "citty": "^0.2.2",
+    "consola": "^3.4.2",
+    "defu": "^6.1.7",
+    "destr": "^2.0.5",
+    "nypm": "^0.6.10",
+    "ofetch": "^1.5.1",
+    "pathe": "^2.0.3",
+    "std-env": "^4.2.0",
+    "tinyglobby": "^0.2.17",
+    "ufo": "^1.6.4"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@untestutils/ai": "workspace:*",
+    "@untestutils/astro": "workspace:*",
+    "@untestutils/config": "workspace:*",
+    "@untestutils/core": "workspace:*",
+    "@untestutils/drivers": "workspace:*",
+    "@untestutils/module": "workspace:*",
+    "@untestutils/next": "workspace:*",
+    "@untestutils/nuxt": "workspace:*",
+    "@untestutils/perf": "workspace:*",
+    "@untestutils/playwright": "workspace:*",
+    "@untestutils/runtime": "workspace:*",
+    "@untestutils/sveltekit": "workspace:*",
+    "@untestutils/utils": "workspace:*",
+    "@untestutils/vite": "workspace:*",
+    "@untestutils/vitest": "workspace:*",
+    "publint": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plugin-dts": "catalog:"
+  },
+  "peerDependencies": {
+    "@ai-sdk/anthropic": "^4.0.57",
+    "@ai-sdk/google": "^4.0.75",
+    "@ai-sdk/openai": "^4.0.70",
+    "@ai-sdk/xai": "^5.0.3",
+    "@nuxt/kit": "^4.5.2",
+    "@playwright/test": "^1.63.0",
+    "@vue/test-utils": "^2.5.1",
+    "ai": "^7.0.106",
+    "happy-dom": "^20.14.5",
+    "nuxt": "^4.5.2",
+    "playwright-core": "^1.63.0",
+    "vitest": "^5.0.1",
+    "vue": "^3.5.0"
+  },
+  "peerDependenciesMeta": {
+    "@ai-sdk/anthropic": {
+      "optional": true
+    },
+    "@ai-sdk/google": {
+      "optional": true
+    },
+    "@ai-sdk/openai": {
+      "optional": true
+    },
+    "@ai-sdk/xai": {
+      "optional": true
+    },
+    "@nuxt/kit": {
+      "optional": true
+    },
+    "@playwright/test": {
+      "optional": true
+    },
+    "@vue/test-utils": {
+      "optional": true
+    },
+    "ai": {
+      "optional": true
+    },
+    "happy-dom": {
+      "optional": true
+    },
+    "nuxt": {
+      "optional": true
+    },
+    "playwright-core": {
+      "optional": true
+    },
+    "vitest": {
+      "optional": true
+    },
+    "vue": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

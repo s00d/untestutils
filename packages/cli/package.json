@@ -1,0 +1,52 @@
+{
+  "name": "@untestutils/cli",
+  "version": "0.1.0",
+  "description": "CLI for untestutils: init, convert, ai, doctor, and monorepo commands",
+  "license": "MIT",
+  "bin": {
+    "untestutils": "./dist/run.mjs"
+  },
+  "files": [
+    "dist",
+    "src/templates"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/main.d.ts",
+      "import": "./dist/main.mjs",
+      "default": "./dist/main.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "vite build",
+    "publint": "publint --strict",
+    "cli": "tsx ./src/run.ts"
+  },
+  "dependencies": {
+    "@untestutils/ai": "workspace:*",
+    "@untestutils/core": "workspace:*",
+    "@untestutils/perf": "workspace:*",
+    "citty": "catalog:",
+    "consola": "catalog:",
+    "nypm": "catalog:",
+    "pathe": "catalog:",
+    "tinyglobby": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "publint": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plugin-dts": "catalog:"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

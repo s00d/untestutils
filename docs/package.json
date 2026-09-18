@@ -1,0 +1,16 @@
+{
+  "name": "@untestutils/docs",
+  "private": true,
+  "type": "module",
+  "description": "VitePress documentation for untestutils",
+  "scripts": {
+    "dev": "vitepress dev .",
+    "build": "vitepress build .",
+    "preview": "vitepress preview ."
+  },
+  "devDependencies": {
+    "mermaid": "^11.6.0",
+    "vitepress": "^1.6.4",
+    "vitepress-plugin-mermaid": "^2.0.17"
+  }
+}

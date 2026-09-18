@@ -1,0 +1,17 @@
+{
+  "name": "@untestutils/playground",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run --config vitest.config.ts",
+    "test:playwright": "playwright test --config playwright/playwright.config.ts"
+  },
+  "dependencies": {
+    "untestutils": "workspace:*"
+  },
+  "devDependencies": {
+    "@playwright/test": "catalog:",
+    "playwright-core": "catalog:",
+    "vitest": "catalog:"
+  }
+}

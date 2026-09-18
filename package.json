@@ -1,0 +1,70 @@
+{
+  "name": "@untestutils/monorepo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsx packages/cli/src/run.ts build",
+    "dev": "pnpm run build",
+    "cli": "tsx packages/cli/src/run.ts",
+    "lint": "oxlint .",
+    "lint:fix": "oxlint --fix .",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "typecheck": "tsc --noEmit -p packages/core/tsconfig.json && tsc --noEmit -p packages/utils/tsconfig.json && tsc --noEmit -p packages/perf/tsconfig.json && tsc --noEmit -p packages/drivers/tsconfig.json && tsc --noEmit -p packages/vitest/tsconfig.json && tsc --noEmit -p packages/playwright/tsconfig.json && tsc --noEmit -p packages/ai/tsconfig.json && pnpm --filter @untestutils/ai run build && tsc --noEmit -p packages/cli/tsconfig.json",
+    "test": "pnpm run test:unit && pnpm run test:integration",
+    "test:unit": "vitest run --config vitest.unit.config.ts",
+    "test:unit:watch": "vitest watch --config vitest.unit.config.ts",
+    "test:types": "vitest run --config vitest.types.config.ts",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:playground": "pnpm --filter @untestutils/playground test",
+    "test:playwright": "pnpm --filter @untestutils/playground test:playwright",
+    "test:dist": "pnpm run build && vitest run --config vitest.dist.config.ts",
+    "test:ai": "vitest run --config vitest.ai.config.ts",
+    "test:pack": "tsx packages/cli/src/run.ts pack-test",
+    "publint": "pnpm --filter @untestutils/core --filter @untestutils/drivers --filter @untestutils/vitest --filter @untestutils/playwright --filter @untestutils/nuxt --filter @untestutils/ai --filter @untestutils/cli --filter untestutils run publint",
+    "api:surface": "tsx packages/cli/src/run.ts api-surface",
+    "api:surface:update": "tsx packages/cli/src/run.ts api-surface --update",
+    "preflight": "tsx packages/cli/src/run.ts preflight",
+    "clean": "rm -rf packages/*/dist .untestutils test-results",
+    "test:coverage": "vitest run --config vitest.unit.config.ts --coverage",
+    "docs:dev": "pnpm --filter @untestutils/docs dev",
+    "docs:build": "pnpm --filter @untestutils/docs build",
+    "docs:preview": "pnpm --filter @untestutils/docs preview"
+  },
+  "devDependencies": {
+    "@playwright/test": "catalog:",
+    "@types/node": "catalog:",
+    "@untestutils/cli": "workspace:*",
+    "@untestutils/core": "workspace:*",
+    "@untestutils/drivers": "workspace:*",
+    "@untestutils/playwright": "workspace:*",
+    "@untestutils/vitest": "workspace:*",
+    "@vitest/coverage-v8": "catalog:",
+    "citty": "catalog:",
+    "consola": "catalog:",
+    "nuxt": "catalog:",
+    "nypm": "catalog:",
+    "ofetch": "catalog:",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
+    "pathe": "catalog:",
+    "playwright-core": "catalog:",
+    "publint": "catalog:",
+    "tinyglobby": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:",
+    "untestutils": "workspace:*",
+    "vite": "catalog:",
+    "vite-plugin-dts": "catalog:",
+    "vitest": "catalog:"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@10.15.1",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "extends": "./tsconfig.base.json",
+  "include": [
+    "packages/*/src/**/*.ts",
+    "packages/*/vite.config.ts",
+    "tests/**/*.ts",
+    "scripts/**/*.ts",
+    "vitest.*.ts"
+  ],
+  "compilerOptions": {
+    "paths": {
+      "untestutils": ["./packages/untestutils/src/index.ts"],
+      "untestutils/*": ["./packages/untestutils/src/*"],
+      "@untestutils/core": ["./packages/core/src/index.ts"],
+      "@untestutils/drivers": ["./packages/drivers/src/index.ts"],
+      "@untestutils/vitest": ["./packages/vitest/src/index.ts"],
+      "@untestutils/vitest/*": ["./packages/vitest/src/*"],
+      "@untestutils/playwright": ["./packages/playwright/src/index.ts"],
+      "@untestutils/nuxt": ["./packages/nuxt/src/index.ts"],
+      "@untestutils/ai": ["./packages/ai/src/index.ts"]
+    }
+  }
+}
