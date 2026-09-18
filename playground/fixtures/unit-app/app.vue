@@ -7,6 +7,6 @@
 </template>
 
 <script setup lang="ts">
-const title = useState('title', () => 'Unit App')
-const count = ref(0)
+const title = useState('title', () => 'Unit App');
+const count = ref(0);
 </script>

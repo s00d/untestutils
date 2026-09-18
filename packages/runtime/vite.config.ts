@@ -64,5 +64,8 @@ export default defineConfig({
     },
     minify: false,
   },
-  plugins: [dts({ include: ['src/index.ts'], outDirs: ['dist'], entryRoot: 'src' }), copyRuntimeFiles()],
+  plugins: [
+    dts({ include: ['src/index.ts'], outDirs: ['dist'], entryRoot: 'src' }),
+    copyRuntimeFiles(),
+  ],
 });

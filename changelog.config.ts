@@ -10,4 +10,4 @@ export default {
     ci: { title: '🤖 CI' },
     build: { title: '📦 Build' },
   },
-}
+};

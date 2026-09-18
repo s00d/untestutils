@@ -41,9 +41,7 @@ export async function runLoadPhase(opts: {
   }
 
   const summary = artillery?.aggregate;
-  const durationSec = summary
-    ? (summary.lastMetricAt - summary.firstMetricAt) / 1000
-    : undefined;
+  const durationSec = summary ? (summary.lastMetricAt - summary.firstMetricAt) / 1000 : undefined;
   const rt = summary?.summaries['http.response_time'];
 
   return {

@@ -242,11 +242,7 @@ export const progress = {
           (useFancy() ? `  ·  session ${elapsed}` : `  · ${elapsed}`),
       );
     }
-    emit(
-      useFancy()
-        ? '  prepare once  →  many workers  →  real URLs & data'
-        : '  teardown  stop',
-    );
+    emit(useFancy() ? '  prepare once  →  many workers  →  real URLs & data' : '  teardown  stop');
     emit(`  ${useFancy() ? '■' : '='} teardown`);
   },
 

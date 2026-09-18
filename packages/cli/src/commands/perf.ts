@@ -55,7 +55,10 @@ export const perfCommand = defineCommand({
 
     const { runPerfSuite } = await import('@untestutils/perf');
     const only = args.only
-      ? args.only.split(',').map((s: string) => s.trim()).filter(Boolean)
+      ? args.only
+          .split(',')
+          .map((s: string) => s.trim())
+          .filter(Boolean)
       : undefined;
     const runs = args.runs ? Number(args.runs) : undefined;
     if (runs !== undefined && (!Number.isFinite(runs) || runs < 1)) {

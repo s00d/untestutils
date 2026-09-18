@@ -66,7 +66,9 @@ describe('playwright package', () => {
 
     delete process.env.UNTESTUTILS_ARTIFACTS_DIR;
     process.env.UNTESTUTILS_ARTIFACTS_DIR = base;
-    expect(resolvePlaywrightArtifactsRoot({ session: 'ci-b' })).toBe(join(base, 'sessions', 'ci-b'));
+    expect(resolvePlaywrightArtifactsRoot({ session: 'ci-b' })).toBe(
+      join(base, 'sessions', 'ci-b'),
+    );
     expect(sanitizePlaywrightSession('My Session!')).toBe('My-Session');
     await rm(base, { recursive: true, force: true });
   });

@@ -2,7 +2,13 @@ import { describe, expect, test } from 'vitest';
 import { mkdtemp, writeFile, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'pathe';
-import { assertAppRoot, resolveBin, frameworkRoots, nodeEntry, staticDir } from '@untestutils/drivers';
+import {
+  assertAppRoot,
+  resolveBin,
+  frameworkRoots,
+  nodeEntry,
+  staticDir,
+} from '@untestutils/drivers';
 import { vite } from '@untestutils/vite';
 import { next } from '@untestutils/next';
 import { astro } from '@untestutils/astro';
@@ -38,7 +44,10 @@ describe('framework Recipe factories', () => {
     );
     const fake = join(dir, 'node_modules', 'fake-cli');
     await mkdir(join(fake, 'bin'), { recursive: true });
-    await writeFile(join(fake, 'package.json'), JSON.stringify({ name: 'fake-cli', version: '1.0.0' }));
+    await writeFile(
+      join(fake, 'package.json'),
+      JSON.stringify({ name: 'fake-cli', version: '1.0.0' }),
+    );
     const binPath = join(fake, 'bin', 'cli.js');
     await writeFile(binPath, '#!/usr/bin/env node\n');
     const resolved = resolveBin({

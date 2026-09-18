@@ -80,9 +80,7 @@ describe('TargetRegistry', () => {
       ),
     );
     const map = await reg.read();
-    expect(Object.keys(map).sort()).toEqual(
-      Array.from({ length: 20 }, (_, i) => `t${i}`).sort(),
-    );
+    expect(Object.keys(map).sort()).toEqual(Array.from({ length: 20 }, (_, i) => `t${i}`).sort());
   });
 
   test('drain returns entries and clears file', async () => {

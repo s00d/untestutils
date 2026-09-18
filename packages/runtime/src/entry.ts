@@ -7,5 +7,3 @@ if (typeof globalThis !== 'undefined' && globalThis.window?.__NUXT_VITEST_ENVIRO
     await setupNuxt();
   });
 }
-
-export {};

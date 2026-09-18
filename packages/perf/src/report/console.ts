@@ -25,12 +25,8 @@ export function consoleReporter(): PerfReporter {
     onEnd({ results, runs }) {
       console.log(`\n══════════ summary (mean of ${runs}) ══════════`);
       for (const r of results) {
-        const load = r.load
-          ? ` · ${r.load.requestsPerSecond?.toFixed(0) ?? '—'} RPS`
-          : '';
-        console.log(
-          `  ${r.label.padEnd(20)} build ${formatSec(r.build.buildTimeSec)}${load}`,
-        );
+        const load = r.load ? ` · ${r.load.requestsPerSecond?.toFixed(0) ?? '—'} RPS` : '';
+        console.log(`  ${r.label.padEnd(20)} build ${formatSec(r.build.buildTimeSec)}${load}`);
       }
     },
   };

@@ -31,7 +31,9 @@ function averageBundle(sizes: Array<BundleSize | undefined>): BundleSize | undef
   };
 }
 
-function averageAutocannon(items: Array<AutocannonResult | undefined>): AutocannonResult | undefined {
+function averageAutocannon(
+  items: Array<AutocannonResult | undefined>,
+): AutocannonResult | undefined {
   const present = items.filter((a): a is AutocannonResult => Boolean(a));
   if (!present.length) return undefined;
   return {

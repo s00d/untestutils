@@ -8,10 +8,7 @@ import {
   type CreateCoverageConfigOptions,
   type UntestutilsCoverageConfig,
 } from './coverage';
-import {
-  type HarnessBrowserName,
-  normalizeHarnessBrowsers,
-} from './browsers';
+import { type HarnessBrowserName, normalizeHarnessBrowsers } from './browsers';
 
 export type {
   CreateCoverageConfigOptions,

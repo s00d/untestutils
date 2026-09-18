@@ -7,7 +7,10 @@ export type WaitForUrlOptions = PollUntilOptions & {
 };
 
 /** Poll until `url` responds OK (or custom status). */
-export async function waitForUrlOk(url: string, options: WaitForUrlOptions = {}): Promise<Response> {
+export async function waitForUrlOk(
+  url: string,
+  options: WaitForUrlOptions = {},
+): Promise<Response> {
   let last: Response | undefined;
   await pollUntil(
     async () => {

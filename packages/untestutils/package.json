@@ -10,12 +10,12 @@
     "test-utils",
     "vitest"
   ],
-  "license": "MIT",
-  "author": "s00d",
   "homepage": "https://s00d.github.io/untestutils/",
   "bugs": {
     "url": "https://github.com/s00d/untestutils/issues"
   },
+  "license": "MIT",
+  "author": "s00d",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/s00d/untestutils.git"

@@ -55,13 +55,12 @@ export function registerEndpoint(
   url: string,
   options: RegisterEndpointOptions | ((event: any) => any),
 ): () => void {
-  const app = typeof globalThis !== 'undefined' && 'window' in globalThis
-    ? (globalThis as any).window?.__app
-    : undefined;
+  const app =
+    typeof globalThis !== 'undefined' && 'window' in globalThis
+      ? (globalThis as any).window?.__app
+      : undefined;
   if (!app) {
-    throw new Error(
-      'registerEndpoint() can only be used in an `untestutils` runtime environment',
-    );
+    throw new Error('registerEndpoint() can only be used in an `untestutils` runtime environment');
   }
   const config: any =
     typeof options === 'function'
@@ -225,9 +224,9 @@ export async function renderSuspended(component: any, options: any = {}): Promis
   const wrapperId = 'test-wrapper';
   const suspendedHelperName = 'RenderHelper';
   const clonedComponentName = 'RenderSuspendedComponent';
-  const { render: wrapperFn } = (await import(
-    '@testing-library/vue'
-  )) as { render: (...args: any[]) => any };
+  const { render: wrapperFn } = (await import('@testing-library/vue')) as {
+    render: (...args: any[]) => any;
+  };
   cleanupAll();
   document.getElementById(wrapperId)?.remove();
   const { wrapper, setProps } = await wrapperSuspended(component, options, {

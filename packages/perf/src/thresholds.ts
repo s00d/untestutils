@@ -8,7 +8,11 @@ export function checkThresholds(
 ): ThresholdFailure[] {
   const failures: ThresholdFailure[] = [];
   for (const r of results) {
-    if (thresholds.buildTimeSec != null && r.build.buildTimeSec > thresholds.buildTimeSec) {
+    if (
+      thresholds.buildTimeSec !== null &&
+      thresholds.buildTimeSec !== undefined &&
+      r.build.buildTimeSec > thresholds.buildTimeSec
+    ) {
       failures.push({
         id: r.id,
         rule: 'buildTimeSec',
@@ -16,7 +20,11 @@ export function checkThresholds(
         limit: thresholds.buildTimeSec,
       });
     }
-    if (thresholds.maxMemoryMb != null && r.build.maxMemoryMb > thresholds.maxMemoryMb) {
+    if (
+      thresholds.maxMemoryMb !== null &&
+      thresholds.maxMemoryMb !== undefined &&
+      r.build.maxMemoryMb > thresholds.maxMemoryMb
+    ) {
       failures.push({
         id: r.id,
         rule: 'maxMemoryMb',
@@ -26,7 +34,8 @@ export function checkThresholds(
     }
     if (r.load) {
       if (
-        thresholds.requestsPerSecond != null &&
+        thresholds.requestsPerSecond !== null &&
+        thresholds.requestsPerSecond !== undefined &&
         (r.load.requestsPerSecond ?? 0) < thresholds.requestsPerSecond
       ) {
         failures.push({
@@ -37,7 +46,8 @@ export function checkThresholds(
         });
       }
       if (
-        thresholds.responseTimeP95 != null &&
+        thresholds.responseTimeP95 !== null &&
+        thresholds.responseTimeP95 !== undefined &&
         (r.load.responseTimeP95 ?? 0) > thresholds.responseTimeP95
       ) {
         failures.push({
@@ -47,7 +57,11 @@ export function checkThresholds(
           limit: thresholds.responseTimeP95,
         });
       }
-      if (thresholds.errorRate != null && (r.load.errorRate ?? 0) > thresholds.errorRate) {
+      if (
+        thresholds.errorRate !== null &&
+        thresholds.errorRate !== undefined &&
+        (r.load.errorRate ?? 0) > thresholds.errorRate
+      ) {
         failures.push({
           id: r.id,
           rule: 'errorRate',

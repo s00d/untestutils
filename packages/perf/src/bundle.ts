@@ -19,10 +19,7 @@ function walk(
   }
 }
 
-export function measureBundle(
-  root: string,
-  opts: PerfTargetBundle,
-): BundleSize {
+export function measureBundle(root: string, opts: PerfTargetBundle): BundleSize {
   const classify = opts.classify ?? (() => 'code' as BundleClass);
   const byDir: Record<string, number> = {};
   let code = 0;

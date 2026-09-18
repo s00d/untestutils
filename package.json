@@ -2,7 +2,6 @@
   "name": "@untestutils/monorepo",
   "version": "0.4.2",
   "private": true,
-  "type": "module",
   "homepage": "https://s00d.github.io/untestutils/",
   "bugs": {
     "url": "https://github.com/s00d/untestutils/issues"
@@ -11,6 +10,7 @@
     "type": "git",
     "url": "git+https://github.com/s00d/untestutils.git"
   },
+  "type": "module",
   "scripts": {
     "build": "tsx packages/cli/src/run.ts build",
     "dev": "pnpm run build",

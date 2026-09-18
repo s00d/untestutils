@@ -60,8 +60,8 @@ describe('utils/seo', () => {
     expect(extractSitemapLocs('<urlset><url><loc>https://x/</loc></url></urlset>')).toEqual([
       'https://x/',
     ]);
-    expect(extractJsonLd('<script type="application/ld+json">{"@type":"WebSite"}</script>')).toEqual([
-      { '@type': 'WebSite' },
-    ]);
+    expect(
+      extractJsonLd('<script type="application/ld+json">{"@type":"WebSite"}</script>'),
+    ).toEqual([{ '@type': 'WebSite' }]);
   });
 });

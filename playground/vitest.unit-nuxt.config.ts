@@ -1,5 +1,5 @@
-import { fileURLToPath } from 'node:url'
-import { defineVitestProject } from 'untestutils/config'
+import { fileURLToPath } from 'node:url';
+import { defineVitestProject } from 'untestutils/config';
 
 export default defineVitestProject({
   test: {
@@ -12,4 +12,4 @@ export default defineVitestProject({
       },
     },
   },
-})
+});

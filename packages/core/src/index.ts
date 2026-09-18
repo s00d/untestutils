@@ -51,5 +51,12 @@ export {
 } from './process';
 export { createRunHelper } from './run-helper';
 export { debug, isDebug, log, envFlag } from './debug';
-export { progress, isQuiet, isCi, isProgressEnabled, progressIo, withQuietLogger } from './progress';
+export {
+  progress,
+  isQuiet,
+  isCi,
+  isProgressEnabled,
+  progressIo,
+  withQuietLogger,
+} from './progress';
 export { computeIdentity, assertUniqueRecipeBinding, resetRecipeBindings } from './identity';

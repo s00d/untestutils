@@ -1,8 +1,8 @@
 {
   "name": "@untestutils/docs",
   "private": true,
-  "type": "module",
   "description": "VitePress documentation for untestutils",
+  "type": "module",
   "scripts": {
     "dev": "vitepress dev .",
     "build": "vitepress build .",

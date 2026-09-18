@@ -12,12 +12,7 @@
  */
 import { extname, dirname, join, relative } from 'pathe';
 import { readFileSync } from 'node:fs';
-import {
-  addVitePlugin,
-  defineNuxtModule,
-  resolveIgnorePatterns,
-  resolvePath,
-} from '@nuxt/kit';
+import { addVitePlugin, defineNuxtModule, resolveIgnorePatterns, resolvePath } from '@nuxt/kit';
 import type { NuxtModule } from '@nuxt/schema';
 import { walk } from 'estree-walker';
 import MagicString from 'magic-string';
@@ -147,13 +142,16 @@ const createMockPlugin = (ctx: MockPluginContext) =>
                 const componentName = node.arguments[0];
                 if (!isLiteral(componentName) || typeof componentName.value !== 'string')
                   return this.error(
-                    new Error(`The first argument of ${HELPER_MOCK_COMPONENT}() must be a string literal`),
+                    new Error(
+                      `The first argument of ${HELPER_MOCK_COMPONENT}() must be a string literal`,
+                    ),
                     startOf(componentName),
                   );
                 const pathOrName = componentName.value;
                 const path =
-                  ctx.components.find((_) => _.pascalName === pathOrName || _.kebabName === pathOrName)
-                    ?.filePath || pathOrName;
+                  ctx.components.find(
+                    (_) => _.pascalName === pathOrName || _.kebabName === pathOrName,
+                  )?.filePath || pathOrName;
                 removeCallExpression(node.arguments[1]);
                 mocksComponent.push({
                   path,

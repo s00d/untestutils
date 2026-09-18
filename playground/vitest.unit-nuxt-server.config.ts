@@ -1,5 +1,5 @@
-import { fileURLToPath } from 'node:url'
-import { defineVitestProject } from 'untestutils/config'
+import { fileURLToPath } from 'node:url';
+import { defineVitestProject } from 'untestutils/config';
 
 /**
  * Server-side unit project — enables nitroEnvironment so handlers can be
@@ -17,4 +17,4 @@ export default defineVitestProject({
       },
     },
   },
-})
+});

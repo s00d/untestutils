@@ -77,9 +77,7 @@ export function next(opts: NextOptions): Recipe {
           timeoutMs: opts.readyTimeoutMs ?? 300_000,
         });
         if (result.exitCode !== 0) {
-          throw new Error(
-            `[untestutils/next] static build failed:\n${result.stderr.slice(-2000)}`,
-          );
+          throw new Error(`[untestutils/next] static build failed:\n${result.stderr.slice(-2000)}`);
         }
         const out = join(root, 'out');
         if (!existsSync(out)) {

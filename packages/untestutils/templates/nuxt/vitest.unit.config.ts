@@ -1,5 +1,5 @@
-import { fileURLToPath } from 'node:url'
-import { defineVitestProject } from 'untestutils/config'
+import { fileURLToPath } from 'node:url';
+import { defineVitestProject } from 'untestutils/config';
 
 /** In-process Nuxt unit project — separate from e2e harness config. */
 export default defineVitestProject({
@@ -13,4 +13,4 @@ export default defineVitestProject({
       },
     },
   },
-})
+});

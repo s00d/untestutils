@@ -79,7 +79,16 @@ function viaNpx(opts: {
   return new Promise((resolve, reject) => {
     const child = spawn(
       'npx',
-      ['--yes', 'autocannon', '-c', String(opts.connections), '-d', String(opts.duration), '-j', opts.url],
+      [
+        '--yes',
+        'autocannon',
+        '-c',
+        String(opts.connections),
+        '-d',
+        String(opts.duration),
+        '-j',
+        opts.url,
+      ],
       { stdio: ['ignore', 'pipe', 'pipe'] },
     );
     let stdout = '';

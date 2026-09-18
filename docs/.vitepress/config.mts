@@ -1,7 +1,7 @@
-import { defineConfig } from 'vitepress'
-import { withMermaid } from 'vitepress-plugin-mermaid'
+import { defineConfig } from 'vitepress';
+import { withMermaid } from 'vitepress-plugin-mermaid';
 
-const docsBase = process.env.NODE_ENV === 'production' ? '/untestutils/' : '/'
+const docsBase = process.env.NODE_ENV === 'production' ? '/untestutils/' : '/';
 
 export default withMermaid(
   defineConfig({
@@ -107,4 +107,4 @@ export default withMermaid(
 
     mermaid: {},
   }),
-)
+);

@@ -3,6 +3,6 @@
 </template>
 
 <script setup lang="ts">
-const props = defineProps<{ label?: string }>()
-const label = computed(() => props.label ?? 'hello')
+const props = defineProps<{ label?: string }>();
+const label = computed(() => props.label ?? 'hello');
 </script>

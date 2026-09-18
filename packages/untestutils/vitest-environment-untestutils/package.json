@@ -2,14 +2,14 @@
   "name": "vitest-environment-untestutils",
   "version": "0.2.0",
   "description": "Vitest environment shim for untestutils unit tests",
+  "files": [
+    "index.mjs"
+  ],
   "type": "module",
   "exports": {
     ".": "./index.mjs",
     "./package.json": "./package.json"
   },
-  "files": [
-    "index.mjs"
-  ],
   "engines": {
     "node": ">=20"
   }

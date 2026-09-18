@@ -224,7 +224,7 @@ async function tryReuseRegistry(
   if (!warmOk) return undefined;
 
   // Stale registry after a crashed worker: pid gone → must not reuse the URL.
-  if (existing.pid != null && !isPidAlive(existing.pid)) {
+  if (existing.pid !== null && existing.pid !== undefined && !isPidAlive(existing.pid)) {
     debug('registry', `stale pid ${existing.pid} for ${id}`);
     return undefined;
   }
@@ -241,7 +241,7 @@ async function tryReuseRegistry(
   progress.start(id, existing.url);
   // Adopt pid so any process that remembered this target can tear it down.
   const stop =
-    existing.pid != null
+    existing.pid !== null && existing.pid !== undefined
       ? async () => {
           await killPidTree(existing.pid!);
         }

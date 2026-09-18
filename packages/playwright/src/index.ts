@@ -61,11 +61,13 @@ export function sanitizePlaywrightSession(session: string): string {
  * Explicit `artifactsRoot` wins; otherwise `session` / `UNTESTUTILS_SESSION`
  * nests under the default `.untestutils` root.
  */
-export function resolvePlaywrightArtifactsRoot(opts: {
-  artifactsRoot?: string;
-  session?: string;
-  cwd?: string;
-} = {}): string {
+export function resolvePlaywrightArtifactsRoot(
+  opts: {
+    artifactsRoot?: string;
+    session?: string;
+    cwd?: string;
+  } = {},
+): string {
   const cwd = opts.cwd ?? process.cwd();
   if (opts.artifactsRoot) return resolve(cwd, opts.artifactsRoot);
   const base = resolveArtifactsRoot(cwd);

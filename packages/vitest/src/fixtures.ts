@@ -1,10 +1,4 @@
-import type {
-  APIRequestContext,
-  Browser,
-  BrowserContext,
-  Page,
-  Response,
-} from 'playwright-core';
+import type { APIRequestContext, Browser, BrowserContext, Page, Response } from 'playwright-core';
 import {
   afterAll,
   afterEach,
@@ -15,10 +9,7 @@ import {
   type TestAPI,
 } from 'vitest';
 import { getCurrentHarness, normalizeBaseUrl, useHarness, type Recipe } from '@untestutils/core';
-import {
-  type HarnessBrowserName,
-  resolveHarnessBrowserName,
-} from './browsers';
+import { type HarnessBrowserName, resolveHarnessBrowserName } from './browsers';
 
 export { afterAll, afterEach, beforeAll, beforeEach, describe };
 export type { HarnessBrowserName } from './browsers';
@@ -103,8 +94,7 @@ export function normalizeHarnessCookies(cookies: CookieInput[], baseURL: string)
 
 function patchContextCookies(context: BrowserContext, baseURL: string): void {
   const orig = context.addCookies.bind(context);
-  context.addCookies = async (cookies) =>
-    orig(normalizeHarnessCookies([...cookies], baseURL));
+  context.addCookies = async (cookies) => orig(normalizeHarnessCookies([...cookies], baseURL));
 }
 
 /** @internal */

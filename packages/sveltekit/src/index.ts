@@ -109,15 +109,7 @@ export function sveltekit(opts: SvelteKitOptions) {
     }),
     start: ({ port }) => ({
       command: process.execPath,
-      args: [
-        bin(),
-        'preview',
-        '--host',
-        '127.0.0.1',
-        '--port',
-        String(port),
-        '--strictPort',
-      ],
+      args: [bin(), 'preview', '--host', '127.0.0.1', '--port', String(port), '--strictPort'],
       cwd: root,
     }),
   });

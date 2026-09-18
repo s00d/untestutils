@@ -1,21 +1,21 @@
-import { createRequire } from 'node:module'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { defineCommand } from 'citty'
-import { commands } from './commands'
+import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { defineCommand } from 'citty';
+import { commands } from './commands';
 
 function readOwnVersion(): string {
   try {
-    const req = createRequire(import.meta.url)
+    const req = createRequire(import.meta.url);
     // published: dist/cli-run.mjs → ../package.json ; monorepo facade/cli package.json
     for (const cand of [
       join(dirname(fileURLToPath(import.meta.url)), '../package.json'),
       join(dirname(fileURLToPath(import.meta.url)), '../../package.json'),
     ]) {
       try {
-        const pkg = req(cand) as { name?: string; version?: string }
+        const pkg = req(cand) as { name?: string; version?: string };
         if (pkg.version && (pkg.name === 'untestutils' || pkg.name === '@untestutils/cli')) {
-          return pkg.version
+          return pkg.version;
         }
       } catch {
         /* try next */
@@ -24,7 +24,7 @@ function readOwnVersion(): string {
   } catch {
     /* fall through */
   }
-  return '0.0.0'
+  return '0.0.0';
 }
 
 export const main = defineCommand({
@@ -43,4 +43,4 @@ export const main = defineCommand({
     ].join('\n'),
   },
   subCommands: commands,
-})
+});

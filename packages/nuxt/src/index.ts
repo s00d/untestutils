@@ -54,8 +54,8 @@ function resolveKit(rootDir: string): string {
  * Walks fixture → cwd → workspace root so bare fixture package.json still works.
  */
 function resolveNuxiEntry(rootDir: string): string {
-  const roots = [rootDir, process.cwd(), findWorkspaceRoot(rootDir)].filter(
-    (d): d is string => Boolean(d),
+  const roots = [rootDir, process.cwd(), findWorkspaceRoot(rootDir)].filter((d): d is string =>
+    Boolean(d),
   );
   const seen = new Set<string>();
   for (const dir of roots) {

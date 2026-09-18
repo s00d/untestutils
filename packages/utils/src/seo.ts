@@ -14,7 +14,7 @@ function attr(tag: string, name: string): string | null {
 /** Parse common SEO tags from an HTML document string (SSR `$fetch` / `request.get().text()`). */
 export function parseSeoHead(html: string): SeoHead {
   const canonical =
-    html.match(/<link[^>]*rel=["']canonical["'][^>]*>/i)?.[0] != null
+    html.match(/<link[^>]*rel=["']canonical["'][^>]*>/i)?.[0] !== undefined
       ? attr(html.match(/<link[^>]*rel=["']canonical["'][^>]*>/i)![0]!, 'href')
       : null;
 

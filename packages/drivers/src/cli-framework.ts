@@ -58,9 +58,7 @@ export function resolveBin(opts: ResolveBinOptions): string {
       }
     }
   }
-  throw new Error(
-    `[untestutils/${opts.label}] cannot resolve CLI from ${opts.roots.join(', ')}`,
-  );
+  throw new Error(`[untestutils/${opts.label}] cannot resolve CLI from ${opts.roots.join(', ')}`);
 }
 
 export type SpawnSpec = {

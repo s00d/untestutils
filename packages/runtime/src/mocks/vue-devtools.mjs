@@ -9,4 +9,14 @@ function onDevToolsConnected() {}
 function removeCustomCommand() {}
 function setupDevToolsPlugin() {}
 //#endregion
-export { addCustomCommand, addCustomTab, createRpcServer, devtools, functions, onDevToolsClientConnected, onDevToolsConnected, removeCustomCommand, setupDevToolsPlugin };
+export {
+  addCustomCommand,
+  addCustomTab,
+  createRpcServer,
+  devtools,
+  functions,
+  onDevToolsClientConnected,
+  onDevToolsConnected,
+  removeCustomCommand,
+  setupDevToolsPlugin,
+};

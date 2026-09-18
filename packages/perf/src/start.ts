@@ -87,16 +87,15 @@ export async function startTarget(target: PerfTarget): Promise<StartedTarget> {
       waitForHttpReady(url, {
         path: target.start.readyPath ?? '/',
         timeoutMs: target.start.readyTimeoutMs ?? 60_000,
-      }).then(
-        () => {
+      })
+        .then(() => {
           child.off('exit', onExit);
           resolveReady();
-        },
-        (err: unknown) => {
+        })
+        .catch((err: unknown) => {
           child.off('exit', onExit);
           reject(err);
-        },
-      );
+        });
     });
   } catch (err) {
     stopMonitor?.();
