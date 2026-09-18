@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@nuxt/kit": "catalog:",
+    "@nuxt/schema": "catalog:",
     "estree-walker": "^3.0.3",
     "exsolve": "^1.1.1",
     "magic-string": "^0.30.0",

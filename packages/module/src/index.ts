@@ -18,6 +18,7 @@ import {
   resolveIgnorePatterns,
   resolvePath,
 } from '@nuxt/kit';
+import type { NuxtModule } from '@nuxt/schema';
 import { walk } from 'estree-walker';
 import MagicString from 'magic-string';
 import { createUnplugin } from 'unplugin';
@@ -357,7 +358,7 @@ function resolveRuntimeFile(subpath: string): string {
 }
 
 //#region module
-export default defineNuxtModule({
+const untestutilsModule: NuxtModule = defineNuxtModule({
   meta: {
     name: 'untestutils',
     configKey: 'testUtils',
@@ -418,4 +419,6 @@ export default defineNuxtModule({
     });
   },
 });
+
+export default untestutilsModule;
 //#endregion

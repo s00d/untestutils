@@ -12,7 +12,6 @@ import { mount } from '@vue/test-utils';
 // The suspended helper is loaded lazily so that its Nuxt virtual imports
 // (`#imports`, `#build/root-component.mjs`) are only resolved inside the test
 // environment. It is shipped as a raw `.mjs` file alongside the built bundle.
-// @ts-expect-error - resolved at runtime inside the untestutils environment
 const loadSuspended = () => import('./suspended.mjs');
 
 interface NuxtTestWindow extends Window {
@@ -226,8 +225,9 @@ export async function renderSuspended(component: any, options: any = {}): Promis
   const wrapperId = 'test-wrapper';
   const suspendedHelperName = 'RenderHelper';
   const clonedComponentName = 'RenderSuspendedComponent';
-  // @ts-expect-error - optional peer dependency, resolved at runtime
-  const { render: wrapperFn } = await import('@testing-library/vue');
+  const { render: wrapperFn } = (await import(
+    '@testing-library/vue'
+  )) as { render: (...args: any[]) => any };
   cleanupAll();
   document.getElementById(wrapperId)?.remove();
   const { wrapper, setProps } = await wrapperSuspended(component, options, {

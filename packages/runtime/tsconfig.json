@@ -4,6 +4,7 @@
     "src"
   ],
   "compilerOptions": {
+    "lib": ["ES2022", "DOM"],
     "allowJs": true,
     "checkJs": false,
     "skipLibCheck": true,
