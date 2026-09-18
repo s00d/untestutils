@@ -3,12 +3,17 @@ dist
 .untestutils
 .nuxt
 .output
+.astro
+.next
+.svelte-kit
 coverage
 test-results
 *.log
 .DS_Store
 .pnpm-store
 playground/test-results
+playground/fixtures/**/out
+playground/fixtures/**/build
 *.tsbuildinfo
 .env
 .env.*
