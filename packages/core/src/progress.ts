@@ -1,7 +1,6 @@
 import { envFlag, isDebug } from './debug';
 
-const PHASE_WIDTH = 8;
-const ID_WIDTH = 24;
+const ID_WIDTH = 22;
 
 /** Common CI / non-interactive runners (GitHub, GitLab, Jenkins, …). */
 export function isCi(): boolean {
@@ -22,7 +21,7 @@ export function isCi(): boolean {
 }
 
 /**
- * Compact harness progress (prepare/start banner).
+ * Compact harness progress (prepare wave + mass-run banner).
  * Off when: `UNTESTUTILS_QUIET=1`, `UNTESTUTILS_PROGRESS=0`, or CI (unless `UNTESTUTILS_PROGRESS=1`).
  */
 export function isProgressEnabled(): boolean {
@@ -45,11 +44,22 @@ function useFancy(): boolean {
   return process.stdout.isTTY === true;
 }
 
+type WaveState = {
+  total: number;
+  ready: number;
+  building: Set<string>;
+  /** Suppress per-id `→ start` noise while the prepare wave is active. */
+  active: boolean;
+  startedAt: number;
+  massRunShown: boolean;
+};
+
 /** @internal mutable seam for unit tests */
 export const progressIo = {
   lines: [] as string[],
   capture: false,
   bannerShown: false,
+  wave: null as WaveState | null,
   write(line: string) {
     process.stdout.write(`${line}\n`);
   },
@@ -60,16 +70,13 @@ export const progressIo = {
     this.lines = [];
     this.capture = false;
     this.bannerShown = false;
+    this.wave = null;
   },
 };
 
-function pad(s: string, width: number): string {
-  if (s.length > width) return `${s.slice(0, width - 1)}…`;
-  return s.padEnd(width);
-}
-
-function formatLine(symbol: string, phase: string, id: string, detail: string): string {
-  return `${symbol} ${pad(phase, PHASE_WIDTH)}  ${pad(id, ID_WIDTH)}  ${detail}`;
+function padId(s: string): string {
+  if (s.length > ID_WIDTH) return `${s.slice(0, ID_WIDTH - 1)}…`;
+  return s.padEnd(ID_WIDTH);
 }
 
 function emit(line: string): void {
@@ -84,12 +91,17 @@ function emit(line: string): void {
 function ensureBanner(): void {
   if (progressIo.bannerShown || !isProgressEnabled()) return;
   progressIo.bannerShown = true;
-  emit(useFancy() ? '◆ untestutils' : '[untestutils]');
+  emit(
+    useFancy()
+      ? '◆ untestutils  ·  mass e2e on live targets'
+      : '[untestutils] mass e2e on live targets',
+  );
 }
 
 function formatDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`;
-  return `${(ms / 1000).toFixed(1)}s`;
+  if (ms < 10_000) return `${(ms / 1000).toFixed(1)}s`;
+  return `${Math.round(ms / 1000)}s`;
 }
 
 function errMessage(err: unknown): string {
@@ -97,40 +109,150 @@ function errMessage(err: unknown): string {
   return String(err);
 }
 
+function check(ok = true): string {
+  if (!useFancy()) return ok ? '+' : 'x';
+  return ok ? '✔' : '✖';
+}
+
+function arrow(): string {
+  return useFancy() ? '▸' : '>';
+}
+
+/**
+ * Harness console UX — mirrors the README demo:
+ * prepare once → shared hosts → mass run on live URLs.
+ */
 export const progress = {
-  prewarm(ids: string[]): void {
+  /**
+   * Start a prepare wave (typically `prewarm` in globalSetup).
+   * Groups many recipe prepares under one banner.
+   */
+  waveStart(ids: string[]): void {
     ensureBanner();
-    emit(formatLine('◇', 'prewarm', ids.length ? ids.join(',') : '—', 'starting'));
+    const total = ids.length;
+    progressIo.wave = {
+      total,
+      ready: 0,
+      building: new Set(),
+      active: true,
+      startedAt: Date.now(),
+      massRunShown: false,
+    };
+    emit('');
+    emit(
+      `${arrow()} prepare once` +
+        (useFancy()
+          ? '  — every worker reuses the same builds'
+          : `  (${total} recipes, shared across workers)`),
+    );
+    if (total) {
+      emit(`  ${total} recipes in the wave`);
+    }
+  },
+
+  /** @deprecated use waveStart — kept for older call sites */
+  prewarm(ids: string[]): void {
+    progress.waveStart(ids);
   },
 
   prepareStart(id: string): void {
     ensureBanner();
-    emit(formatLine(useFancy() ? '●' : '*', 'prepare', id, 'building…'));
+    if (progressIo.wave?.active) {
+      progressIo.wave.building.add(id);
+      emit(`  ${padId(id)}  building…`);
+      return;
+    }
+    emit(`  ${useFancy() ? '●' : '*'} ${padId(id)}  building…`);
   },
 
   prepareDone(id: string, ms: number): void {
     ensureBanner();
-    emit(formatLine(useFancy() ? '✔' : '+', 'prepare', id, formatDuration(ms)));
+    if (progressIo.wave?.active) {
+      progressIo.wave.building.delete(id);
+      progressIo.wave.ready += 1;
+      emit(`  ${check()} ${padId(id)}  built · ${formatDuration(ms)}`);
+      return;
+    }
+    emit(`  ${check()} ${padId(id)}  built · ${formatDuration(ms)}`);
   },
 
   prepareCache(id: string): void {
     ensureBanner();
-    emit(formatLine(useFancy() ? '✔' : '+', 'prepare', id, 'cache'));
+    if (progressIo.wave?.active) {
+      progressIo.wave.building.delete(id);
+      progressIo.wave.ready += 1;
+      emit(`  ${check()} ${padId(id)}  cached`);
+      return;
+    }
+    emit(`  ${check()} ${padId(id)}  cached`);
+  },
+
+  /**
+   * Close the prepare wave and announce shared hosts are warm.
+   * Call after all prewarm `ensurePrepared` calls finish.
+   */
+  waveReady(): void {
+    const wave = progressIo.wave;
+    if (!wave?.active) return;
+    wave.active = false;
+    const ready = wave.ready || wave.total;
+    const total = wave.total || ready;
+    emit(
+      `  ${check()} ${ready}/${total} warm` +
+        (useFancy() ? '  ·  shared host registry' : '  · shared hosts'),
+    );
+  },
+
+  /**
+   * Banner before specs hit live URLs (after prepare wave).
+   * Safe to call multiple times — only prints once per process.
+   */
+  massRun(): void {
+    ensureBanner();
+    if (progressIo.wave?.massRunShown) return;
+    if (progressIo.wave) progressIo.wave.massRunShown = true;
+    emit('');
+    emit(
+      `${arrow()} mass run` +
+        (useFancy()
+          ? '  live URLs · real cookies/SEO/$fetch · no per-file rebuild'
+          : '  live URLs · shared prepare'),
+    );
   },
 
   start(id: string, url: string): void {
     ensureBanner();
-    emit(formatLine(useFancy() ? '→' : '>', 'start', id, url));
+    // During the wave, URLs are implied by warm hosts — keep the wave compact.
+    if (progressIo.wave?.active) return;
+    // After waveReady, first start triggers mass-run banner if not shown.
+    if (progressIo.wave && !progressIo.wave.massRunShown) {
+      progress.massRun();
+    }
+    emit(`  ${useFancy() ? '→' : '>'} ${padId(id)}  ${url}`);
   },
 
   teardown(): void {
     ensureBanner();
-    emit(formatLine(useFancy() ? '■' : '=', 'teardown', '—', 'stop'));
+    const wave = progressIo.wave;
+    emit('');
+    if (wave && wave.total > 0) {
+      const elapsed = formatDuration(Date.now() - wave.startedAt);
+      emit(
+        `  ${wave.ready || wave.total} recipes prepared once` +
+          (useFancy() ? `  ·  session ${elapsed}` : `  · ${elapsed}`),
+      );
+    }
+    emit(
+      useFancy()
+        ? '  prepare once  →  many workers  →  real URLs & data'
+        : '  teardown  stop',
+    );
+    emit(`  ${useFancy() ? '■' : '='} teardown`);
   },
 
   /** Always surfaces failures — never swallowed by quiet/CI. */
   fail(id: string, err: unknown): void {
-    const line = formatLine(useFancy() ? '✖' : 'x', 'fail', id, errMessage(err));
+    const line = `  ${check(false)} ${padId(id)}  ${errMessage(err)}`;
     if (progressIo.capture) {
       progressIo.lines.push(line);
       return;
@@ -151,7 +273,6 @@ export async function withQuietLogger<T>(fn: () => Promise<T>): Promise<T> {
   if (isDebug() || !isProgressEnabled()) return fn();
   const { consola, LogLevels } = await import('consola');
   const prev = consola.level;
-  // Keep fatal+error; hide warn/info/success/build spam
   consola.level = LogLevels.error;
   try {
     return await fn();

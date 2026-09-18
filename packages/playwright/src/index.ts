@@ -5,6 +5,7 @@ import {
   ensurePrepared,
   stopAllTargets,
   resolveArtifactsRoot,
+  progress,
   type Recipe,
   type RecipeRegistry,
 } from '@untestutils/core';
@@ -96,18 +97,24 @@ export async function playwrightGlobalSetup(): Promise<void> {
     recipesFromModule = loaded.recipes;
   }
   const prewarm: string[] = JSON.parse(process.env.UNTESTUTILS_PREWARM || '[]') as string[];
-  for (const id of prewarm) {
-    const recipe = recipesFromModule?.[id] ?? getRegisteredRecipe(id);
-    if (!recipe) {
-      throw new Error(
-        `[untestutils/playwright] prewarm "${id}" missing — import recipes via defineRecipes(..., import.meta.url)`,
-      );
+  if (prewarm.length) {
+    progress.waveStart(prewarm);
+    for (const id of prewarm) {
+      const recipe = recipesFromModule?.[id] ?? getRegisteredRecipe(id);
+      if (!recipe) {
+        throw new Error(
+          `[untestutils/playwright] prewarm "${id}" missing — import recipes via defineRecipes(..., import.meta.url)`,
+        );
+      }
+      await ensurePrepared(recipe, { artifactsRoot: resolveArtifactsRoot() });
     }
-    await ensurePrepared(recipe, { artifactsRoot: resolveArtifactsRoot() });
+    progress.waveReady();
+    progress.massRun();
   }
 }
 
 export async function playwrightGlobalTeardown(): Promise<void> {
+  progress.teardown();
   await stopAllTargets();
 }
 

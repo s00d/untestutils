@@ -112,16 +112,24 @@ describe('ui', () => {
 
 ## Progress output
 
-Harness prepare/start prints compact status lines (not Vitest `[error]`):
+With `prewarm`, the harness prints a **prepare once** wave, then a **mass run** banner — same story as the README demo GIF:
 
 ```
-◆ untestutils
-● prepare  async-components  building…
-✔ prepare  async-components  6.5s
-→ start    async-components  http://127.0.0.1:61239
-✔ prepare  redirect          cache
-→ start    redirect          http://127.0.0.1:61240
-■ teardown
+◆ untestutils  ·  mass e2e on live targets
+
+▸ prepare once  — every worker reuses the same builds
+  2 recipes in the wave
+  async-components       building…
+  ✔ async-components       built · 6.5s
+  ✔ redirect               cached
+  ✔ 2/2 warm  ·  shared host registry
+
+▸ mass run  live URLs · real cookies/SEO/$fetch · no per-file rebuild
+  → redirect               http://127.0.0.1:61240
+
+  2 recipes prepared once  ·  session 8.1s
+  prepare once  →  many workers  →  real URLs & data
+  ■ teardown
 ```
 
 | Env | Effect |

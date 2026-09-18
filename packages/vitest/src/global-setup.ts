@@ -32,7 +32,7 @@ export default async function globalSetup(_project: TestProject): Promise<() => 
   }
 
   if (prewarm.length) {
-    progress.prewarm(prewarm);
+    progress.waveStart(prewarm);
     for (const id of prewarm) {
       const recipe = recipesMap?.[id] ?? getRegisteredRecipe(id);
       if (!recipe) {
@@ -42,6 +42,8 @@ export default async function globalSetup(_project: TestProject): Promise<() => 
       }
       await ensurePrepared(recipe, { artifactsRoot });
     }
+    progress.waveReady();
+    progress.massRun();
   } else {
     const registry = new TargetRegistry(artifactsRoot);
     const map = await registry.read();

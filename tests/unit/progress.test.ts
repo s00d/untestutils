@@ -27,20 +27,41 @@ describe('progress', () => {
     delete process.env.UNTESTUTILS_DEBUG;
   });
 
-  test('formats prepare / cache / start / teardown lines', () => {
+  test('prepare wave → built/cached → mass run → teardown', () => {
+    progress.waveStart(['async-components', 'redirect']);
     progress.prepareStart('async-components');
     progress.prepareDone('async-components', 6500);
     progress.prepareCache('redirect');
+    progress.waveReady();
+    progress.massRun();
     progress.start('redirect', 'http://127.0.0.1:61240');
     progress.teardown();
 
     const text = progressIo.lines.join('\n');
     expect(text).toMatch(/untestutils/);
-    expect(text).toMatch(/prepare\s+async-components\s+building/);
-    expect(text).toMatch(/prepare\s+async-components\s+6\.5s/);
-    expect(text).toMatch(/prepare\s+redirect\s+cache/);
-    expect(text).toMatch(/start\s+redirect\s+http:\/\/127\.0\.0\.1:61240/);
+    expect(text).toMatch(/mass e2e on live targets/);
+    expect(text).toMatch(/prepare once/);
+    expect(text).toMatch(/async-components\s+building/);
+    expect(text).toMatch(/async-components\s+built · 6\.5s/);
+    expect(text).toMatch(/redirect\s+cached/);
+    expect(text).toMatch(/2\/2 warm/);
+    expect(text).toMatch(/mass run/);
+    expect(text).toMatch(/live URLs/);
+    expect(text).toMatch(/redirect\s+http:\/\/127\.0\.0\.1:61240/);
+    expect(text).toMatch(/prepared once/);
     expect(text).toMatch(/teardown/);
+  });
+
+  test('prewarm aliases waveStart', () => {
+    progress.prewarm(['a', 'b']);
+    expect(progressIo.lines.join('\n')).toMatch(/prepare once/);
+    expect(progressIo.wave?.total).toBe(2);
+  });
+
+  test('start during active wave is suppressed', () => {
+    progress.waveStart(['a']);
+    progress.start('a', 'http://127.0.0.1:1');
+    expect(progressIo.lines.some((l) => l.includes('http://127.0.0.1:1'))).toBe(false);
   });
 
   test('quiet / PROGRESS=0 suppress status but fail still records', () => {
@@ -52,7 +73,7 @@ describe('progress', () => {
     expect(progressIo.lines).toEqual([]);
 
     progress.fail('x', new Error('boom'));
-    expect(progressIo.lines.some((l) => l.includes('fail') && l.includes('boom'))).toBe(true);
+    expect(progressIo.lines.some((l) => l.includes('boom'))).toBe(true);
   });
 
   test('CI disables progress unless UNTESTUTILS_PROGRESS=1', () => {
@@ -65,7 +86,7 @@ describe('progress', () => {
     process.env.UNTESTUTILS_PROGRESS = '1';
     expect(isProgressEnabled()).toBe(true);
     progress.prepareCache('ci');
-    expect(progressIo.lines.some((l) => l.includes('cache'))).toBe(true);
+    expect(progressIo.lines.some((l) => l.includes('cached'))).toBe(true);
   });
 
   test('GITHUB_ACTIONS counts as CI', () => {
@@ -76,7 +97,7 @@ describe('progress', () => {
 
   test('fail always records message', () => {
     progress.fail('broken', new Error('boom'));
-    expect(progressIo.lines.some((l) => l.includes('fail') && l.includes('boom'))).toBe(true);
+    expect(progressIo.lines.some((l) => l.includes('boom'))).toBe(true);
   });
 
   test('withQuietLogger no-ops when progress disabled (CI)', async () => {
