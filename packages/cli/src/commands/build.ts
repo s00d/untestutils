@@ -16,6 +16,8 @@ const BUILD_ORDER = [
   '@untestutils/next',
   '@untestutils/astro',
   '@untestutils/sveltekit',
+  '@untestutils/remix',
+  '@untestutils/solidstart',
   '@untestutils/runtime',
   '@untestutils/module',
   '@untestutils/config',

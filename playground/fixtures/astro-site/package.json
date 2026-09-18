@@ -1,0 +1,13 @@
+{
+  "name": "@untestutils/fixture-astro-site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "astro build",
+    "preview": "astro preview",
+    "dev": "astro dev"
+  },
+  "dependencies": {
+    "astro": "^5.13.0"
+  }
+}

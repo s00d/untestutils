@@ -8,3 +8,15 @@ export { nodeEntry } from './node-entry';
 export type { NodeEntryOptions } from './node-entry';
 export { host } from './host';
 export type { HostOptions } from './host';
+export {
+  resolveBin,
+  cliFrameworkRecipe,
+  frameworkRoots,
+  _cliInternals,
+} from './cli-framework';
+export type {
+  ResolveBinOptions,
+  SpawnSpec,
+  CliFrameworkRecipeOptions,
+  FrameworkBaseOptions,
+} from './cli-framework';

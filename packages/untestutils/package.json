@@ -111,6 +111,16 @@
       "import": "./dist/sveltekit.mjs",
       "default": "./dist/sveltekit.mjs"
     },
+    "./remix": {
+      "types": "./dist/remix.d.ts",
+      "import": "./dist/remix.mjs",
+      "default": "./dist/remix.mjs"
+    },
+    "./solidstart": {
+      "types": "./dist/solidstart.d.ts",
+      "import": "./dist/solidstart.mjs",
+      "default": "./dist/solidstart.mjs"
+    },
     "./command": {
       "types": "./dist/command.d.ts",
       "import": "./dist/command.mjs",
@@ -197,7 +207,9 @@
     "@untestutils/nuxt": "workspace:*",
     "@untestutils/perf": "workspace:*",
     "@untestutils/playwright": "workspace:*",
+    "@untestutils/remix": "workspace:*",
     "@untestutils/runtime": "workspace:*",
+    "@untestutils/solidstart": "workspace:*",
     "@untestutils/sveltekit": "workspace:*",
     "@untestutils/utils": "workspace:*",
     "@untestutils/vite": "workspace:*",

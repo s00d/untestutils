@@ -23,7 +23,7 @@ Public npm package: **`untestutils`**. Private workspace packages (`@untestutils
 | `untestutils/nuxt` | `nuxt({ run })` |
 | `untestutils/command` | `command` driver only |
 | `untestutils/ai` | Codegen |
-| `untestutils/vite` \| `next` \| `astro` \| `sveltekit` | Stubs |
+| `untestutils/vite` \| `next` \| `astro` \| `sveltekit` \| `remix` \| `solidstart` | Framework Recipe factories |
 | `untestutils/config` | `defineVitestConfig` / `defineVitestProject` / `getVitestConfigFromNuxt` |
 | `untestutils/runtime` | `mountSuspended`, `renderSuspended`, `mockNuxtImport`, `registerEndpoint`, … |
 | `untestutils/module` | Nuxt module — macros + root stub for unit env |

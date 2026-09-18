@@ -1,0 +1,13 @@
+{
+  "name": "@untestutils/fixture-vite-spa",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "preview": "vite preview",
+    "dev": "vite"
+  },
+  "devDependencies": {
+    "vite": "catalog:"
+  }
+}

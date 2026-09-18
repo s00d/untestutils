@@ -10,7 +10,10 @@ describe('framework factories', () => {
     expect(typeof r.start).toBe('function');
   });
 
-  test('vite stub throws', () => {
-    expect(() => vite({ root: '.' })).toThrow(/not implemented/);
+  test('vite() returns preview recipe', () => {
+    const r = vite({ id: 'v', root: '/tmp/app', run: 'preview' });
+    expect(r.id).toBe('v');
+    expect(r.share).toBe('always');
+    expect(typeof r.start).toBe('function');
   });
 });

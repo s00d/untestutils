@@ -48,6 +48,14 @@ import {
 | `url` | Absolute remote URL |
 | `skipReady?` | Skip HTTP readiness |
 
+## Framework factories
+
+Import from `untestutils/vite`, `untestutils/next`, `untestutils/astro`, `untestutils/sveltekit`, `untestutils/remix`, `untestutils/solidstart`.
+
+Common options: `id?`, `root`, `run?`, `env?`, `hashInputs?`, `readyPath?`, `readyTimeoutMs?`.
+
+See [Drivers guide](/guide/drivers) for run-mode tables.
+
 ## defineDriver(factory)
 
 Helper to name and type a `(opts) => Recipe` factory. See [Extending](/guide/extending).

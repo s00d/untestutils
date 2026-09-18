@@ -1,6 +1,6 @@
 ---
 title: Drivers and recipes
-description: Built-in drivers — staticDir, command, nodeEntry, host, nuxt — and stub status for other frameworks.
+description: Built-in drivers — staticDir, command, nodeEntry, host, nuxt, vite, next, astro, sveltekit, remix, solidstart.
 outline: deep
 ---
 
@@ -111,14 +111,35 @@ export const recipes = defineRecipes({
 
 Variant key `default` keeps `base.id`; other keys become `${id}__${key}`. Merges `env`, `nuxtConfig`, `preset`, `hashInputs`. See playground `examples/matrix-recipes.ts`.
 
-## Stubs (not implemented yet)
+## Framework CLIs (e2e Recipes)
 
-| Import | Status |
-|--------|--------|
-| `untestutils/vite` | throws `notImplemented` |
-| `untestutils/next` | throws |
-| `untestutils/astro` | throws |
-| `untestutils/sveltekit` | throws |
+Shared options: `id?`, `root`, `run?`, `env?`, `hashInputs?`, `readyPath?`, `readyTimeoutMs?`.
+Install the framework in the app under test (optional peers on the published package).
+
+| Import | Default `run` | Modes |
+|--------|---------------|--------|
+| `untestutils/vite` | `preview` | `preview`, `dev` |
+| `untestutils/next` | `server` | `server`, `dev`, `static` (`output: 'export'` → `out/`) |
+| `untestutils/astro` | `preview` | `preview`, `server` (Node adapter entry), `dev` |
+| `untestutils/sveltekit` | `preview` | `preview`, `server` (adapter-node), `dev` |
+| `untestutils/remix` | `server` | `server` (remix-serve), `dev` |
+| `untestutils/solidstart` | `preview` | `preview` / `server` (Vinxi), `dev` |
+
+```ts
+import { vite } from 'untestutils/vite'
+import { next } from 'untestutils/next'
+import { astro } from 'untestutils/astro'
+import { sveltekit } from 'untestutils/sveltekit'
+import { remix } from 'untestutils/remix'
+import { solidstart } from 'untestutils/solidstart'
+
+vite({ id: 'spa', root: resolve('./apps/spa'), run: 'preview' })
+next({ id: 'web', root: resolve('./apps/web'), run: 'server' })
+```
+
+`dev` uses `share: 'never'`. Build modes share prepare cache via TargetRegistry like Nuxt.
+
+Playground dogfood: `fixtures/vite-spa`, `next-app`, `astro-site`, `sveltekit-app`. Remix/SolidStart examples: `playground/examples/remix-solid-recipes.ts`.
 
 ## In-process unit (Nuxt)
 

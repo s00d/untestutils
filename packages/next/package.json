@@ -2,9 +2,7 @@
   "name": "@untestutils/next",
   "version": "0.3.0",
   "private": true,
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -19,13 +17,27 @@
     "build": "vite build",
     "publint": "publint --strict"
   },
+  "dependencies": {
+    "@untestutils/core": "workspace:*",
+    "@untestutils/drivers": "workspace:*",
+    "pathe": "catalog:"
+  },
   "devDependencies": {
+    "@types/node": "catalog:",
     "publint": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plugin-dts": "catalog:"
   },
-  "engines": {
-    "node": ">=20"
-  }
+  "peerDependencies": {
+    "next": "*",
+    "react": "*",
+    "react-dom": "*"
+  },
+  "peerDependenciesMeta": {
+    "next": { "optional": true },
+    "react": { "optional": true },
+    "react-dom": { "optional": true }
+  },
+  "engines": { "node": ">=20" }
 }

@@ -24,6 +24,8 @@ describe('untestutils facade', () => {
       import('../../packages/untestutils/src/next'),
       import('../../packages/untestutils/src/astro'),
       import('../../packages/untestutils/src/sveltekit'),
+      import('../../packages/untestutils/src/remix'),
+      import('../../packages/untestutils/src/solidstart'),
       import('../../packages/untestutils/src/ai'),
       import('../../packages/untestutils/src/runtime'),
       import('../../packages/untestutils/src/module'),

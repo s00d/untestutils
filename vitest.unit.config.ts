@@ -34,6 +34,11 @@ export default defineConfig({
         find: '@untestutils/sveltekit',
         replacement: resolve(root, 'packages/sveltekit/src/index.ts'),
       },
+      { find: '@untestutils/remix', replacement: resolve(root, 'packages/remix/src/index.ts') },
+      {
+        find: '@untestutils/solidstart',
+        replacement: resolve(root, 'packages/solidstart/src/index.ts'),
+      },
       { find: '@untestutils/runtime', replacement: resolve(root, 'packages/runtime/src/index.ts') },
       { find: '@untestutils/module', replacement: resolve(root, 'packages/module/src/index.ts') },
       { find: '@untestutils/config', replacement: resolve(root, 'packages/config/src/index.ts') },

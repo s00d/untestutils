@@ -44,7 +44,7 @@ export const myFw = defineDriver((opts: { id: string; root: string }) =>
 |--------|---------|------|
 | `command` / `staticDir` / `nodeEntry` / `host` | `@untestutils/drivers` | generic |
 | `nuxt({ run })` | `@untestutils/nuxt` | Nuxt Recipe factory |
-| `vite` / `next` / `astro` / `sveltekit` | stubs | not implemented yet |
+| `vite` / `next` / `astro` / `sveltekit` / `remix` / `solidstart` | matching packages | CLI Recipe factories — see [Drivers](/guide/drivers) |
 
 ## Forbidden
 
