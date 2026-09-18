@@ -243,6 +243,7 @@ async function main() {
   let version = String(rootPkg.version)
   if (version !== expectedVersion) {
     log(`changelogen produced ${version}; forcing semver ${bump} → ${expectedVersion}`)
+    const changelogenVersion = version
     rootPkg.version = expectedVersion
     writeJson(join(ROOT, 'package.json'), rootPkg)
     version = expectedVersion
@@ -255,7 +256,7 @@ async function main() {
         md
           .replace(/^## v\d+\.\d+\.\d+/m, `## v${expectedVersion}`)
           .replace(
-            new RegExp(`\\.\\.\\.v${version.replace(/\./g, '\\.')}`),
+            new RegExp(`\\.\\.\\.v${changelogenVersion.replace(/\./g, '\\.')}`),
             `...v${expectedVersion}`,
           ),
       )
