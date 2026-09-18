@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'pathe';
 import {
+  assertAppRoot,
   cliFrameworkRecipe,
   frameworkRoots,
   resolveBin,
@@ -57,6 +58,7 @@ export function next(opts: NextOptions): Recipe {
   }
 
   if (runMode === 'static') {
+    const ensureRoot = () => assertAppRoot(root, 'next');
     const recipe = defineRecipe({
       id,
       share: 'always',
@@ -67,6 +69,7 @@ export function next(opts: NextOptions): Recipe {
       ],
       ready: async () => {},
       prepare: async () => {
+        ensureRoot();
         const nextBin = bin();
         const result = await runCommand(process.execPath, [nextBin, 'build'], {
           cwd: root,
@@ -86,6 +89,7 @@ export function next(opts: NextOptions): Recipe {
         }
       },
       start: async (ctx) => {
+        ensureRoot();
         const publicDir = join(root, 'out');
         const serving = staticDir({ id: `${id}-static-serve`, root: publicDir });
         return serving.start(ctx);

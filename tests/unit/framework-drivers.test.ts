@@ -2,13 +2,14 @@ import { describe, expect, test } from 'vitest';
 import { mkdtemp, writeFile, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'pathe';
-import { resolveBin, frameworkRoots } from '@untestutils/drivers';
+import { assertAppRoot, resolveBin, frameworkRoots, nodeEntry, staticDir } from '@untestutils/drivers';
 import { vite } from '@untestutils/vite';
 import { next } from '@untestutils/next';
 import { astro } from '@untestutils/astro';
 import { sveltekit } from '@untestutils/sveltekit';
 import { remix } from '@untestutils/remix';
 import { solidstart } from '@untestutils/solidstart';
+import { nuxt } from '@untestutils/nuxt';
 
 describe('framework Recipe factories', () => {
   test.each([
@@ -60,5 +61,45 @@ describe('framework Recipe factories', () => {
       artifactsRoot: '',
     });
     expect(a).not.toEqual(b);
+  });
+
+  test('assertAppRoot explains missing fixture', () => {
+    expect(() => assertAppRoot('/tmp/untestutils-missing-root-xyz', 'vite')).toThrow(
+      /\[untestutils\/vite\] root not found/,
+    );
+  });
+
+  test('cli / nuxt prepare fails with root not found', async () => {
+    const missing = '/tmp/untestutils-missing-fixture-xyz';
+    await expect(
+      vite({ id: 'bad-vite', root: missing, run: 'dev' }).start!({
+        port: 1,
+        outDir: '/tmp',
+        artifactsRoot: '/tmp',
+      }),
+    ).rejects.toThrow(/\[untestutils\/vite\] root not found/);
+    await expect(
+      nuxt({ id: 'bad-nuxt', root: missing, run: 'server' }).prepare!({
+        outDir: '/tmp',
+        artifactsRoot: '/tmp',
+      } as never),
+    ).rejects.toThrow(/\[untestutils\/nuxt\] root not found/);
+  });
+
+  test('nodeEntry / staticDir explain missing paths', async () => {
+    await expect(
+      nodeEntry({ id: 'ne', entry: '/tmp/untestutils-missing-entry.js' }).start!({
+        port: 1,
+        outDir: '/tmp',
+        artifactsRoot: '/tmp',
+      }),
+    ).rejects.toThrow(/\[untestutils\/nodeEntry\] entry not found/);
+    await expect(
+      staticDir({ id: 'sd', root: '/tmp/untestutils-missing-static' }).start!({
+        port: 1,
+        outDir: '/tmp',
+        artifactsRoot: '/tmp',
+      }),
+    ).rejects.toThrow(/\[untestutils\/staticDir\] root not found/);
   });
 });

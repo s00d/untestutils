@@ -216,10 +216,16 @@ export async function runCommand(
     const timer = opts.timeoutMs
       ? setTimeout(() => {
           void killProcessTree(child);
-          reject(new Error(`command timed out: ${command} ${args.join(' ')}`));
+          reject(
+            new Error(`[untestutils] command timed out: ${command} ${args.join(' ')}`),
+          );
         }, opts.timeoutMs)
       : undefined;
-    child.on('error', reject);
+    child.on('error', (err: Error) => {
+      reject(
+        new Error(`[untestutils] failed to spawn ${command}: ${err.message}`, { cause: err }),
+      );
+    });
     child.on('exit', (code) => {
       if (timer) clearTimeout(timer);
       resolve({ exitCode: code ?? 1, stdout, stderr });

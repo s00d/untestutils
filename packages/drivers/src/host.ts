@@ -16,6 +16,9 @@ export interface HostOptions {
  * Use for post-deploy smoke with Playwright/Vitest.
  */
 export const host = defineDriver((opts: HostOptions): Recipe => {
+  if (!opts.url?.trim()) {
+    throw new Error('[untestutils/host] url is required');
+  }
   const url = normalizeBaseUrl(opts.url);
   return defineRecipe({
     id: opts.id,

@@ -1,4 +1,5 @@
 import { createServer } from 'node:http';
+import { existsSync } from 'node:fs';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize, resolve, sep } from 'pathe';
 import { defineRecipe, loopbackUrl, waitForHttpReady, type Recipe } from '@untestutils/core';
@@ -33,6 +34,9 @@ export function staticDir(opts: StaticDirOptions): Recipe {
     // Internal waitForHttpReady already ran — skip orchestrator defaultReady.
     ready: async () => {},
     start: async ({ port }) => {
+      if (!existsSync(root)) {
+        throw new Error(`[untestutils/staticDir] root not found: ${root}`);
+      }
       const server = createServer(async (req, res) => {
         try {
           const urlPath = decodeURIComponent((req.url ?? '/').split('?')[0] || '/');
@@ -76,7 +80,13 @@ export function staticDir(opts: StaticDirOptions): Recipe {
 
       await new Promise<void>((resolvePromise, reject) => {
         server.listen(port, '127.0.0.1', () => resolvePromise());
-        server.once('error', reject);
+        server.once('error', (err) => {
+          reject(
+            new Error(`[untestutils/staticDir] listen failed on ${port}: ${err.message}`, {
+              cause: err,
+            }),
+          );
+        });
       });
 
       const url = loopbackUrl(port);

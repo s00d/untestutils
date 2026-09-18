@@ -10,6 +10,7 @@ export { host } from './host';
 export type { HostOptions } from './host';
 export {
   resolveBin,
+  assertAppRoot,
   cliFrameworkRecipe,
   frameworkRoots,
   _cliInternals,

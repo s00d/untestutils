@@ -11,7 +11,7 @@ import {
   withQuietLogger,
   type Recipe,
 } from '@untestutils/core';
-import { staticDir } from '@untestutils/drivers';
+import { assertAppRoot, staticDir } from '@untestutils/drivers';
 
 type RecipeWithRoot = Recipe & { root?: string };
 
@@ -36,7 +36,15 @@ export interface NuxtOptions {
 }
 
 function resolveKit(rootDir: string): string {
-  return createRequire(join(rootDir, 'package.json')).resolve('@nuxt/kit');
+  assertAppRoot(rootDir, 'nuxt');
+  try {
+    return createRequire(join(rootDir, 'package.json')).resolve('@nuxt/kit');
+  } catch (e) {
+    throw new Error(
+      `[untestutils/nuxt] cannot resolve @nuxt/kit from ${rootDir} (install nuxt or @nuxt/kit in the fixture/workspace)`,
+      { cause: e },
+    );
+  }
 }
 
 /**
@@ -270,6 +278,7 @@ export function nuxt(opts: NuxtOptions): Recipe {
   const runMode: NuxtRun = opts.run ?? 'server';
   const id = opts.id ?? `nuxt-${runMode}-${root.split('/').pop()}`;
   const startEnv = { ...(opts.env ?? {}) };
+  const ensureRoot = () => assertAppRoot(root, 'nuxt');
 
   if (runMode === 'dev') {
     const recipe = defineRecipe({
@@ -279,6 +288,7 @@ export function nuxt(opts: NuxtOptions): Recipe {
       hashInputs: async () => _internals.resolveHashInputs(opts, root),
       ready: async () => {},
       start: async ({ port }) => {
+        ensureRoot();
         return _internals.withEnv(opts.env, async () => {
           const nuxi = _internals.resolveNuxiEntry(root);
           const managed = spawnManaged(process.execPath, [nuxi, '_dev'], {
@@ -303,7 +313,9 @@ export function nuxt(opts: NuxtOptions): Recipe {
           } catch (e) {
             await managed.stop();
             /* v8 ignore next */
-            throw new Error(`${e}\n--- logs ---\n${managed.logs().slice(-4000)}`);
+            throw new Error(
+              `[untestutils/nuxt] ready failed:\n${e}\n--- logs ---\n${managed.logs().slice(-4000)}`,
+            );
           }
           return { kind: 'url', url, stop: managed.stop, pid: managed.pid };
         });
@@ -320,6 +332,7 @@ export function nuxt(opts: NuxtOptions): Recipe {
       hashInputs: async () => _internals.resolveHashInputs(opts, root),
       ready: async () => {},
       prepare: async ({ outDir }) => {
+        ensureRoot();
         await _internals.withEnv(opts.env, () =>
           _internals.generateNuxtApp(root, outDir, mergeNuxtConfig(opts)),
         );
@@ -340,11 +353,13 @@ export function nuxt(opts: NuxtOptions): Recipe {
     hashInputs: async () => _internals.resolveHashInputs(opts, root),
     ready: async () => {},
     prepare: async ({ outDir }) => {
+      ensureRoot();
       await _internals.withEnv(opts.env, () =>
         _internals.buildNuxtApp(root, outDir, mergeNuxtConfig(opts), true),
       );
     },
     start: async ({ port, outDir }) => {
+      ensureRoot();
       const entry = _internals.findServerEntry(outDir);
       const managed = spawnManaged(process.execPath, [entry], {
         cwd: root,
@@ -362,7 +377,9 @@ export function nuxt(opts: NuxtOptions): Recipe {
         await waitForHttpReady(url, { timeoutMs: opts.readyTimeoutMs ?? 60_000 });
       } catch (e) {
         await managed.stop();
-        throw new Error(`${e}\n--- logs ---\n${managed.logs().slice(-4000)}`);
+        throw new Error(
+          `[untestutils/nuxt] ready failed:\n${e}\n--- logs ---\n${managed.logs().slice(-4000)}`,
+        );
       }
       return { kind: 'url+dir', url, dir: outDir, stop: managed.stop, pid: managed.pid };
     },

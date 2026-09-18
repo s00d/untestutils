@@ -161,6 +161,9 @@ describe('core extras', () => {
     await expect(
       runCommand(process.execPath, ['-e', 'setTimeout(()=>{}, 99999)'], { timeoutMs: 200 }),
     ).rejects.toThrow(/timed out/);
+    await expect(runCommand('/tmp/untestutils-no-such-bin', [], {})).rejects.toThrow(
+      /\[untestutils\] failed to spawn/,
+    );
   });
 
   test('ports waitForPort', async () => {

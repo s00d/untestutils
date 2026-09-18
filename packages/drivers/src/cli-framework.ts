@@ -98,10 +98,33 @@ export function frameworkRoots(root: string): string[] {
 }
 
 /**
+ * Fail early with a clear message when a fixture root (or its package.json) is missing.
+ * Call from prepare/start — not at Recipe factory time (hashInputs may use placeholder roots).
+ */
+export function assertAppRoot(
+  root: string,
+  label: string,
+  opts: { requirePackageJson?: boolean } = {},
+): string {
+  const resolved = resolve(root);
+  if (!existsSync(resolved)) {
+    throw new Error(`[untestutils/${label}] root not found: ${resolved}`);
+  }
+  if (opts.requirePackageJson !== false) {
+    const pkg = join(resolved, 'package.json');
+    if (!existsSync(pkg)) {
+      throw new Error(`[untestutils/${label}] package.json not found in root: ${resolved}`);
+    }
+  }
+  return resolved;
+}
+
+/**
  * Shared Recipe shell for framework CLI drivers (vite/next/astro/…).
  */
 export function cliFrameworkRecipe(opts: CliFrameworkRecipeOptions): Recipe {
   const root = resolve(opts.root);
+  const ensureRoot = () => assertAppRoot(root, opts.label);
   const recipe = defineRecipe({
     id: opts.id,
     share: opts.share ?? (opts.prepare ? 'always' : 'never'),
@@ -115,6 +138,7 @@ export function cliFrameworkRecipe(opts: CliFrameworkRecipeOptions): Recipe {
     ready: async () => {},
     prepare: opts.prepare
       ? async (ctx) => {
+          ensureRoot();
           const enriched = { ...ctx, root };
           const spec = await opts.prepare!(enriched);
           if (spec) {
@@ -133,6 +157,7 @@ export function cliFrameworkRecipe(opts: CliFrameworkRecipeOptions): Recipe {
         }
       : undefined,
     start: async (ctx) => {
+      ensureRoot();
       const spec = await opts.start({ ...ctx, root });
       const managed = spawnManaged(spec.command, spec.args, {
         cwd: spec.cwd ?? root,
@@ -153,7 +178,9 @@ export function cliFrameworkRecipe(opts: CliFrameworkRecipeOptions): Recipe {
         });
       } catch (e) {
         await managed.stop();
-        throw new Error(`${e}\n--- logs ---\n${managed.logs().slice(-4000)}`);
+        throw new Error(
+          `[untestutils/${opts.label}] ready failed:\n${e}\n--- logs ---\n${managed.logs().slice(-4000)}`,
+        );
       }
       return {
         kind: 'url+dir',
@@ -169,4 +196,4 @@ export function cliFrameworkRecipe(opts: CliFrameworkRecipeOptions): Recipe {
 }
 
 /** @internal */
-export const _cliInternals = { resolveBin, runCommand };
+export const _cliInternals = { resolveBin, runCommand, assertAppRoot };

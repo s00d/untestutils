@@ -51,6 +51,10 @@ describe('drivers', () => {
     await rm(artifacts, { recursive: true, force: true });
   });
 
+  test('host requires url', () => {
+    expect(() => host({ id: 'empty', url: '  ' })).toThrow(/\[untestutils\/host\] url is required/);
+  });
+
   test('command prepare-only and prepare failure', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'ut-cmd-'));
     const artifacts = await mkdtemp(join(tmpdir(), 'ut-art-'));

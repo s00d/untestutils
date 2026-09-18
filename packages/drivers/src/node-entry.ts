@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { resolve } from 'pathe';
 import {
   defineRecipe,
@@ -21,6 +22,11 @@ export interface NodeEntryOptions {
 export function nodeEntry(opts: NodeEntryOptions): Recipe {
   const entry = resolve(opts.entry);
   const cwd = opts.cwd ? resolve(opts.cwd) : undefined;
+  const ensureEntry = () => {
+    if (!existsSync(entry)) {
+      throw new Error(`[untestutils/nodeEntry] entry not found: ${entry}`);
+    }
+  };
   return defineRecipe({
     id: opts.id,
     share: 'always',
@@ -29,6 +35,7 @@ export function nodeEntry(opts: NodeEntryOptions): Recipe {
     ready: async () => {},
     prepare: opts.prepare
       ? async ({ run }) => {
+          ensureEntry();
           const result = await run.command(opts.prepare!, { cwd });
           if (result.exitCode !== 0) {
             throw new Error(
@@ -38,6 +45,7 @@ export function nodeEntry(opts: NodeEntryOptions): Recipe {
         }
       : undefined,
     start: async ({ port }) => {
+      ensureEntry();
       const managed = spawnManaged(process.execPath, [entry], {
         cwd,
         env: {
@@ -56,7 +64,9 @@ export function nodeEntry(opts: NodeEntryOptions): Recipe {
         });
       } catch (e) {
         await managed.stop();
-        throw new Error(`${e}\n--- server logs ---\n${managed.logs().slice(-4000)}`);
+        throw new Error(
+          `[untestutils/nodeEntry] ready failed:\n${e}\n--- server logs ---\n${managed.logs().slice(-4000)}`,
+        );
       }
       return { kind: 'url', url, stop: managed.stop, pid: managed.pid };
     },
