@@ -1,6 +1,6 @@
 {
   "name": "@untestutils/perf",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "private": true,
   "description": "Build + load performance harness for recipe/fixture targets",
   "files": [
