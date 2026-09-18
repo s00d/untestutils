@@ -20,6 +20,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      # Facade postinstall (nuxt prepare) needs a built untestutils/module export.
       - run: pnpm install --ignore-scripts
       - run: pnpm run build
       - run: pnpm install
@@ -30,7 +31,6 @@ jobs:
       - run: pnpm run test:types
       - run: pnpm run test:integration
       - run: pnpm run test:ai
-      - run: pnpm run build
       - run: pnpm run publint
       - run: pnpm run test:dist
       - run: pnpm run api:surface

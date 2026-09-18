@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 /**
- * Flatten declaration files for the published facade from private package dists.
+ * Flatten declaration files for the published facade from private package *src*
+ * via `tsc --emitDeclarationOnly` (internals are not built to dist).
  *
  * Critical: vendor .d.ts must NOT retain `@untestutils/*` imports (those packages
  * are private and never published). Also rewrite extension-less relative imports
  * so NodeNext / bundler resolution works for consumers.
  */
+import { execFileSync } from 'node:child_process';
 import {
-  cpSync,
   mkdirSync,
   writeFileSync,
   rmSync,
@@ -16,13 +17,17 @@ import {
   readFileSync,
   statSync,
 } from 'node:fs';
+import { createRequire } from 'node:module';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = dirname(fileURLToPath(import.meta.url));
-const facade = join(root, '../packages/untestutils');
+const repo = join(root, '..');
+const facade = join(repo, 'packages/untestutils');
 const dist = join(facade, 'dist');
 const vendor = join(dist, 'vendor');
+const require = createRequire(import.meta.url);
+const tsc = require.resolve('typescript/bin/tsc');
 
 if (existsSync(vendor)) rmSync(vendor, { recursive: true });
 mkdirSync(vendor, { recursive: true });
@@ -48,15 +53,72 @@ const pkgs = [
 ];
 
 for (const name of pkgs) {
-  const src = join(root, `../packages/${name}/dist`);
-  if (!existsSync(src)) {
+  const pkgRoot = join(repo, 'packages', name);
+  const tsconfig = join(pkgRoot, 'tsconfig.json');
+  const srcDir = join(pkgRoot, 'src');
+  const outDir = join(vendor, name);
+  if (!existsSync(tsconfig) || !existsSync(srcDir)) {
     console.warn('skip missing', name);
     continue;
   }
-  cpSync(src, join(vendor, name), { recursive: true });
+  mkdirSync(outDir, { recursive: true });
+
+  // Some packages ship mostly .mjs; only the TS barrel needs declarations (matches prior vite-plugin-dts include).
+  const indexOnly = name === 'runtime' || name === 'config';
+  const args = indexOnly
+    ? [
+        tsc,
+        '--ignoreConfig',
+        join(srcDir, 'index.ts'),
+        '--declaration',
+        '--emitDeclarationOnly',
+        '--declarationMap',
+        'false',
+        '--esModuleInterop',
+        '--skipLibCheck',
+        '--module',
+        'ESNext',
+        '--moduleResolution',
+        'Bundler',
+        '--target',
+        'ES2022',
+        '--outDir',
+        outDir,
+        '--rootDir',
+        srcDir,
+      ]
+    : [
+        tsc,
+        '-p',
+        tsconfig,
+        '--noEmit',
+        'false',
+        '--emitDeclarationOnly',
+        '--declaration',
+        '--declarationMap',
+        'false',
+        '--rootDir',
+        srcDir,
+        '--outDir',
+        outDir,
+      ];
+
+  try {
+    execFileSync(process.execPath, args, { cwd: repo, stdio: 'pipe' });
+  } catch (err) {
+    const e = err;
+    const stdout = e && typeof e === 'object' && 'stdout' in e ? String(e.stdout) : '';
+    const stderr = e && typeof e === 'object' && 'stderr' in e ? String(e.stderr) : '';
+    const msg = (stdout || stderr || String(e)).slice(0, 800);
+    if (!existsSync(join(outDir, 'index.d.ts'))) {
+      console.error(`dts emit failed for ${name}:`, msg);
+      process.exit(1);
+    }
+    console.warn(`dts emit warnings for ${name} (index.d.ts ok)`);
+  }
 }
 
-// Remove broken nested dts from vite-plugin-dts
+// Remove broken nested dts from vite-plugin-dts (legacy leftover)
 for (const junk of pkgs.concat(['untestutils', 'drivers'])) {
   const p = join(dist, junk);
   if (junk !== 'vendor' && existsSync(p) && junk !== 'chunks') {

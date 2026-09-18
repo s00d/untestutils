@@ -16,6 +16,7 @@ const STEPS = [
   'pnpm run api:surface',
   'pnpm run test:playground',
   'pnpm run test:pack',
+  'pnpm run test:ai',
 ];
 
 export const preflightCommand = defineCommand({

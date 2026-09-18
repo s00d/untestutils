@@ -5,25 +5,24 @@
   "description": "CLI for untestutils: init, convert, ai, doctor, and monorepo commands (bundled into the untestutils facade for npm)",
   "license": "MIT",
   "bin": {
-    "untestutils": "./dist/run.mjs"
+    "untestutils": "./bin.mjs"
   },
   "files": [
-    "dist",
-    "src/templates"
+    "src",
+    "bin.mjs"
   ],
   "type": "module",
   "sideEffects": false,
   "exports": {
     ".": {
-      "types": "./dist/main.d.ts",
-      "import": "./dist/main.mjs",
-      "default": "./dist/main.mjs"
+      "types": "./src/main.ts",
+      "import": "./src/main.ts",
+      "default": "./src/main.ts"
     },
     "./package.json": "./package.json"
   },
   "scripts": {
-    "build": "vite build",
-    "publint": "publint --strict",
+    "build": "node -e \"console.log('[@untestutils/cli] private — use root pnpm run build (facade only)')\"",
     "cli": "tsx ./src/run.ts"
   },
   "dependencies": {

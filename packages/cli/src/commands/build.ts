@@ -3,32 +3,13 @@ import { consola } from 'consola';
 import { execSync } from 'node:child_process';
 import { findMonorepoRoot } from '../utils/workspace';
 
-const BUILD_ORDER = [
-  '@untestutils/core',
-  '@untestutils/utils',
-  '@untestutils/perf',
-  '@untestutils/drivers',
-  '@untestutils/nuxt',
-  '@untestutils/vitest',
-  '@untestutils/playwright',
-  '@untestutils/ai',
-  '@untestutils/vite',
-  '@untestutils/next',
-  '@untestutils/astro',
-  '@untestutils/sveltekit',
-  '@untestutils/remix',
-  '@untestutils/solidstart',
-  '@untestutils/runtime',
-  '@untestutils/module',
-  '@untestutils/config',
-  '@untestutils/cli',
-  'untestutils',
-];
+/** Only the published facade is built. Private workspace packages are consumed from src. */
+const BUILD_ORDER = ['untestutils'] as const;
 
 export const buildCommand = defineCommand({
   meta: {
     name: 'build',
-    description: 'Build monorepo packages in dependency order',
+    description: 'Build the published untestutils facade (private packages stay on src)',
   },
   async run() {
     const root = findMonorepoRoot();
