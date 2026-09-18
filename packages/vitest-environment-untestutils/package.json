@@ -1,6 +1,6 @@
 {
   "name": "vitest-environment-untestutils",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Stub vitest environment package name slot (v0.2 will re-export untestutils-nuxt env)",
   "type": "module",

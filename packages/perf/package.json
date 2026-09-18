@@ -1,9 +1,11 @@
 {
   "name": "@untestutils/perf",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Build + load performance harness for recipe/fixture targets",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -35,8 +37,12 @@
     "artillery": "*"
   },
   "peerDependenciesMeta": {
-    "autocannon": { "optional": true },
-    "artillery": { "optional": true }
+    "autocannon": {
+      "optional": true
+    },
+    "artillery": {
+      "optional": true
+    }
   },
   "engines": {
     "node": ">=20"
