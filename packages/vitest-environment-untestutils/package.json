@@ -1,6 +1,6 @@
 {
   "name": "vitest-environment-untestutils",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "private": true,
   "description": "Vitest environment that boots an in-process Nuxt app for untestutils unit tests",
   "type": "module",
