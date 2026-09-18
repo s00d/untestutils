@@ -29,6 +29,21 @@ flowchart TB
 
 Running targets expose URLs via an on-disk registry / env (`UNTESTUTILS_HOST_<ID>`) so Playwright workers and Vitest setups resolve `baseURL` without re-starting servers unnecessarily.
 
+## Playwright sessions
+
+Give each Playwright config a `session` (or `artifactsRoot`) so its `globalTeardown` only drains that namespace:
+
+```ts
+createPlaywrightConfig({
+  recipes,
+  session: 'ci-pw-a', // → .untestutils/sessions/ci-pw-a
+  prewarm: ['app'],
+  workers: 2,
+})
+```
+
+Parallel CI jobs with different sessions do not share `targets.json` and will not kill each other's servers. Vitest can keep the default `.untestutils` root while Playwright uses `sessions/…`.
+
 ## Share policy
 
 Recipes may set `share` to control reuse. Force isolation:

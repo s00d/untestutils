@@ -4,20 +4,36 @@ import {
   getRegisteredRecipe,
   normalizeBaseUrl,
   resolveArtifactsRoot,
+  envKey,
+  TargetRegistry,
   type Recipe,
 } from '@untestutils/core';
 
+/**
+ * Prepare (or reuse) the harness and ensure `UNTESTUTILS_HOST_*` is set in
+ * *this* worker process. Cross-process reuse only writes `targets.json`;
+ * workers must apply env locally before reading `baseURL`.
+ */
 export async function resolvePlaywrightHarnessId(harness: string | Recipe): Promise<string> {
   const id = typeof harness === 'string' ? harness : harness.id;
   if (!id) throw new Error('[untestutils/playwright] test.use({ harness }) required');
   const recipe = typeof harness === 'string' ? getRegisteredRecipe(harness) : harness;
   if (!recipe) throw new Error(`[untestutils/playwright] unknown harness "${id}"`);
-  await ensurePrepared(recipe, { artifactsRoot: resolveArtifactsRoot() });
+  const artifactsRoot = resolveArtifactsRoot();
+  const prepared = await ensurePrepared(recipe, { artifactsRoot });
+  const runningUrl = 'url' in prepared.running ? prepared.running.url : undefined;
+  if (runningUrl) {
+    process.env[envKey(id)] = normalizeBaseUrl(runningUrl);
+  } else {
+    const registry = new TargetRegistry(artifactsRoot);
+    const entry = await registry.get(id);
+    if (entry) registry.applyEnv(entry);
+  }
   return id;
 }
 
 export function resolvePlaywrightBaseURL(harnessId: string): string {
-  const key = `UNTESTUTILS_HOST_${harnessId.replace(/[^a-zA-Z0-9]+/g, '_').toUpperCase()}`;
+  const key = envKey(harnessId);
   const url = process.env[key];
   if (!url) throw new Error(`[untestutils/playwright] missing ${key}`);
   return normalizeBaseUrl(url);

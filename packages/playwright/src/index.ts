@@ -6,13 +6,14 @@ import {
   stopAllTargets,
   resolveArtifactsRoot,
   progress,
+  TargetRegistry,
   type Recipe,
   type RecipeRegistry,
 } from '@untestutils/core';
 import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'pathe';
+import { dirname, join, resolve } from 'pathe';
 
 export interface PlaywrightHarnessOptions {
   /** Recipe map from `defineRecipes(...)` — import and pass it. */
@@ -20,27 +21,83 @@ export interface PlaywrightHarnessOptions {
   /** Override recipes module path; usually inferred from `defineRecipes`. */
   recipesModule?: string;
   prewarm?: string[];
+  /**
+   * Absolute or cwd-relative artifacts root. When set, takes precedence over
+   * `session` namespacing.
+   */
   artifactsRoot?: string;
+  /**
+   * Isolate TargetRegistry / locks / builds under
+   * `.untestutils/sessions/<session>/` so parallel Playwright runs (or PW +
+   * Vitest) do not tear down each other's servers.
+   */
+  session?: string;
 }
 
 type PWConfig = Record<string, unknown> & {
   use?: Record<string, unknown>;
   globalSetup?: string;
   globalTeardown?: string;
+  workers?: number;
+  fullyParallel?: boolean;
 };
+
+/** Sanitize session segment for filesystem / env use. */
+export function sanitizePlaywrightSession(session: string): string {
+  const s = session.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '');
+  if (!s) {
+    throw new Error('[untestutils/playwright] session must be a non-empty identifier');
+  }
+  return s;
+}
+
+/**
+ * Resolve the artifacts root for a Playwright run.
+ * Explicit `artifactsRoot` wins; otherwise `session` / `UNTESTUTILS_SESSION`
+ * nests under the default `.untestutils` root.
+ */
+export function resolvePlaywrightArtifactsRoot(opts: {
+  artifactsRoot?: string;
+  session?: string;
+  cwd?: string;
+} = {}): string {
+  const cwd = opts.cwd ?? process.cwd();
+  if (opts.artifactsRoot) return resolve(cwd, opts.artifactsRoot);
+  const base = resolveArtifactsRoot(cwd);
+  const session = opts.session ?? process.env.UNTESTUTILS_SESSION;
+  if (session) return join(base, 'sessions', sanitizePlaywrightSession(session));
+  return base;
+}
 
 /**
  * Build a Playwright Test config that shares the same recipes.ts as Vitest.
+ *
+ * Defaults (overridable via rest fields):
+ * - `fullyParallel: true`
+ * - `workers: 2` when `CI` is set (local runs keep Playwright's CPU default)
  */
 export function createPlaywrightConfig(opts: PlaywrightHarnessOptions & PWConfig): PWConfig {
-  const { recipes, recipesModule, prewarm = [], artifactsRoot, ...rest } = opts;
+  const { recipes, recipesModule, prewarm = [], artifactsRoot, session, ...rest } = opts;
   if (recipes) ensureRecipes(recipes as Record<string, Recipe>);
-  if (artifactsRoot) process.env.UNTESTUTILS_ARTIFACTS_DIR = artifactsRoot;
+
+  const resolvedRoot = resolvePlaywrightArtifactsRoot({ artifactsRoot, session });
+  process.env.UNTESTUTILS_ARTIFACTS_DIR = resolvedRoot;
+  if (session) process.env.UNTESTUTILS_SESSION = sanitizePlaywrightSession(session);
+  else if (!artifactsRoot) delete process.env.UNTESTUTILS_SESSION;
+
   process.env.UNTESTUTILS_PREWARM = JSON.stringify(prewarm);
   const mod = recipesModule ?? getRecipesModulePath();
   if (mod) process.env.UNTESTUTILS_RECIPES_MODULE = mod;
 
+  const defaults: PWConfig = {
+    fullyParallel: true,
+  };
+  if (process.env.CI && rest.workers === undefined) {
+    defaults.workers = 2;
+  }
+
   return {
+    ...defaults,
     ...rest,
     use: {
       ...(rest.use ?? {}),
@@ -98,6 +155,7 @@ export async function playwrightGlobalSetup(): Promise<void> {
   }
   const artifactsRoot = resolveArtifactsRoot();
   await stopAllTargets(artifactsRoot);
+  const registry = new TargetRegistry(artifactsRoot);
   const prewarm: string[] = JSON.parse(process.env.UNTESTUTILS_PREWARM || '[]') as string[];
   if (prewarm.length) {
     progress.waveStart(prewarm);
@@ -113,6 +171,8 @@ export async function playwrightGlobalSetup(): Promise<void> {
     progress.waveReady();
     progress.massRun();
   }
+  // Bridge targets.json → process.env for this process; workers re-apply via harness.
+  registry.applyAllToEnv(await registry.read());
 }
 
 export async function playwrightGlobalTeardown(): Promise<void> {

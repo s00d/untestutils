@@ -9,6 +9,8 @@ outline: deep
 ```ts
 import {
   createPlaywrightConfig,
+  resolvePlaywrightArtifactsRoot,
+  sanitizePlaywrightSession,
   test,
   expect,
   defineRecipes,
@@ -26,11 +28,27 @@ createPlaywrightConfig({
   recipesModule?,
   prewarm?,
   artifactsRoot?,
+  session?,
+  workers?,
+  fullyParallel?,
+  projects?,
   ...playwrightConfigFields
 })
 ```
 
+| Option | Description |
+|--------|-------------|
+| `session` | Namespace under `.untestutils/sessions/<session>/` |
+| `artifactsRoot` | Explicit root (wins over `session`) |
+| `prewarm` | Recipe ids to prepare/start in global setup |
+| `workers` / `fullyParallel` | Playwright concurrency; defaults `fullyParallel: true`, and `workers: 2` when `CI` is set |
+
 Sets `globalSetup` / `globalTeardown` companion entry points automatically.
+
+## Helpers
+
+- `resolvePlaywrightArtifactsRoot({ session?, artifactsRoot?, cwd? })`
+- `sanitizePlaywrightSession(session)`
 
 ## test fixtures
 

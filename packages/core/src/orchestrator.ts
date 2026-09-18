@@ -247,6 +247,11 @@ async function tryReuseRegistry(
         }
       : undefined;
   rememberLive(id, running, { identity, hash, outDir }, stop);
+  // Ensure this process sees UNTESTUTILS_HOST_* after cross-worker reuse.
+  registry.applyEnv({
+    ...existing,
+    url: existing.url,
+  });
   return { id, identity, hash, outDir, running };
 }
 
