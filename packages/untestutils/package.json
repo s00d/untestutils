@@ -32,7 +32,9 @@
     "README.md"
   ],
   "type": "module",
-  "sideEffects": false,
+  "sideEffects": [
+    "./dist/vitest-setup-file.mjs"
+  ],
   "main": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "exports": {

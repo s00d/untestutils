@@ -1,4 +1,4 @@
-import defu from 'defu';
+import { defu } from 'defu';
 import { joinURL } from 'ufo';
 import { createFetch } from 'ofetch';
 import { resolveModulePath } from 'exsolve';

@@ -1,4 +1,4 @@
-import destr from 'destr';
+import { destr } from 'destr';
 import { snakeCase } from 'scule';
 import { pathToFileURL } from 'node:url';
 import { resolveModulePath } from 'exsolve';

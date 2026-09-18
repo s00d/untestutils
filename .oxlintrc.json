@@ -62,6 +62,12 @@
         "import/no-duplicates": "off",
         "import/no-namespace": "off"
       }
+    },
+    {
+      "files": ["docs/.vitepress/theme/**"],
+      "rules": {
+        "import/no-unassigned-import": "off"
+      }
     }
   ]
 }

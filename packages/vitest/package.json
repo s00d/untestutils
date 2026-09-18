@@ -6,7 +6,9 @@
     "src"
   ],
   "type": "module",
-  "sideEffects": false,
+  "sideEffects": [
+    "./src/setup-file.ts"
+  ],
   "exports": {
     ".": {
       "types": "./src/index.ts",
