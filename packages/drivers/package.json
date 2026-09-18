@@ -1,6 +1,6 @@
 {
   "name": "@untestutils/drivers",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "private": true,
   "description": "Recipe drivers — host, command, staticDir, nodeEntry",
   "files": [
