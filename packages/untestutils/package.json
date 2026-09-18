@@ -1,7 +1,7 @@
 {
   "name": "untestutils",
-  "version": "0.1.8",
-  "description": "Recipe-based test harness for Vitest and Playwright \u2014 shared prepare, multi-framework factories, optional AI codegen",
+  "version": "0.1.9",
+  "description": "Recipe-based test harness for Vitest and Playwright — shared prepare, multi-framework factories, optional AI codegen",
   "keywords": [
     "e2e",
     "harness",
@@ -120,7 +120,11 @@
       "import": "./dist/runtime.mjs",
       "default": "./dist/runtime.mjs"
     },
-    "./runtime/entry": "./dist/runtime-entry.mjs",
+    "./runtime/entry": {
+      "types": "./dist/runtime-entry.d.ts",
+      "import": "./dist/runtime-entry.mjs",
+      "default": "./dist/runtime-entry.mjs"
+    },
     "./runtime/nuxt-root": "./dist/runtime-nuxt-root.mjs",
     "./runtime/mocks/vue-devtools": "./dist/runtime-mocks-vue-devtools.mjs",
     "./module": {
@@ -143,20 +147,9 @@
       "default": "./dist/ai.mjs"
     },
     "./package.json": "./package.json",
-    "./runtime/entry": {
-      "types": "./dist/runtime-entry.d.ts",
-      "import": "./dist/runtime-entry.mjs",
-      "default": "./dist/runtime-entry.mjs"
-    },
     "./runtime/browser-entry": {
       "import": "./dist/runtime-browser-entry.mjs",
       "default": "./dist/runtime-browser-entry.mjs"
-    },
-    "./runtime/nuxt-root": "./dist/runtime-nuxt-root.mjs",
-    "./runtime/mocks/vue-devtools": "./dist/runtime-mocks-vue-devtools.mjs",
-    "./vitest-environment": {
-      "import": "./dist/vitest-environment.mjs",
-      "default": "./dist/vitest-environment.mjs"
     }
   },
   "publishConfig": {
