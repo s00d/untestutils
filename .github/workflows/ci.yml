@@ -36,7 +36,7 @@ jobs:
       - run: pnpm run api:surface
       - run: pnpm run test:playground
       - run: pnpm run test:pack
-      - run: pnpm exec playwright install chromium
+      - run: pnpm exec playwright install --with-deps chromium firefox
       - run: pnpm run test:playwright
 
   remote:
@@ -52,7 +52,7 @@ jobs:
       - run: pnpm install --ignore-scripts
       - run: pnpm run build
       - run: pnpm install
-      - run: pnpm exec playwright install chromium
+      - run: pnpm exec playwright install --with-deps chromium firefox
       - run: pnpm run test:playwright
         env:
           UNTESTUTILS_REMOTE_URL: ${{ inputs.remote_url }}
