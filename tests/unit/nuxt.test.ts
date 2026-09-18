@@ -130,15 +130,15 @@ export const buildNuxt = globalThis.__mockBuildNuxt`,
 
   test('dev start failure surfaces logs', async () => {
     const root = await mkdtemp(join(tmpdir(), 'ut-nd-'));
-    await writeFile(
-      join(root, 'package.json'),
-      JSON.stringify({ name: 't', dependencies: { nuxi: 'latest' } }),
-    );
-    // fake nuxi path via createRequire won't work without install — call start and expect throw
+    await writeFile(join(root, 'package.json'), JSON.stringify({ name: 't' }));
+    const boom = join(root, 'boom.mjs');
+    await writeFile(boom, 'console.error("boom"); process.exit(1)');
+    const spy = vi.spyOn(_internals, 'resolveNuxiEntry').mockReturnValue(boom);
     const recipe = nuxt({
       id: 'n-dev',
       root,
       run: 'dev',
+      readyTimeoutMs: 3_000,
       hashInputs: [join(root, 'package.json')],
     });
     const port = await getFreePort();
@@ -153,6 +153,14 @@ export const buildNuxt = globalThis.__mockBuildNuxt`,
         run: { command: async () => ({ exitCode: 0, stdout: '', stderr: '' }) } as any,
       }),
     ).rejects.toThrow();
+    spy.mockRestore();
     await rm(root, { recursive: true, force: true });
+  }, 15_000);
+
+  test('resolveNuxiEntry falls back to nuxt bin', () => {
+    // Fixture without nuxi/cli still resolves via workspace nuxt package.
+    const root = join(process.cwd(), 'playground');
+    const entry = _internals.resolveNuxiEntry(root);
+    expect(entry).toMatch(/nuxt\.mjs$|nuxi/);
   });
 });

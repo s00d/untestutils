@@ -34,6 +34,41 @@ function resolveKit(rootDir: string): string {
   return createRequire(join(rootDir, 'package.json')).resolve('@nuxt/kit');
 }
 
+/**
+ * Resolve Nuxt CLI entry for `run: 'dev'`.
+ * Prefers legacy `nuxi/cli`; falls back to `nuxt/bin/nuxt.mjs` (Nuxt 4 / @nuxt/cli).
+ * Walks fixture → cwd → workspace root so bare fixture package.json still works.
+ */
+function resolveNuxiEntry(rootDir: string): string {
+  const roots = [rootDir, process.cwd(), findWorkspaceRoot(rootDir)].filter(
+    (d): d is string => Boolean(d),
+  );
+  const seen = new Set<string>();
+  for (const dir of roots) {
+    const key = resolve(dir);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    try {
+      return createRequire(join(dir, 'package.json')).resolve('nuxi/cli');
+    } catch {
+      /* try next */
+    }
+  }
+  for (const dir of roots) {
+    const key = resolve(dir);
+    try {
+      const nuxtPkg = createRequire(join(key, 'package.json')).resolve('nuxt/package.json');
+      const bin = join(dirname(nuxtPkg), 'bin/nuxt.mjs');
+      if (existsSync(bin)) return bin;
+    } catch {
+      /* try next */
+    }
+  }
+  throw new Error(
+    `[untestutils/nuxt] cannot resolve Nuxt CLI from ${rootDir} (tried nuxi/cli and nuxt/bin/nuxt.mjs)`,
+  );
+}
+
 function findWorkspaceRoot(from: string): string | undefined {
   let dir = resolve(from);
   for (let i = 0; i < 12; i++) {
@@ -193,6 +228,7 @@ function findPublicDir(outDir: string): string {
 /** @internal test seams */
 export const _internals = {
   resolveKit,
+  resolveNuxiEntry,
   buildNuxtApp,
   generateNuxtApp,
   findServerEntry,
@@ -207,7 +243,7 @@ export const _internals = {
  * Nuxt Recipe factory.
  * `run: 'server'` — buildNuxt + node nitro server
  * `run: 'static'` — generate + static file server
- * `run: 'dev'` — nuxi _dev (never shared)
+ * `run: 'dev'` — nuxi `_dev` only (HMR fixtures; never shared). Default path is still build → nitro.
  */
 export function nuxt(opts: NuxtOptions): Recipe {
   const root = resolve(opts.root);
@@ -224,8 +260,7 @@ export function nuxt(opts: NuxtOptions): Recipe {
       ready: async () => {},
       start: async ({ port }) => {
         return _internals.withEnv(opts.env, async () => {
-          const req = createRequire(join(root, 'package.json'));
-          const nuxi = req.resolve('nuxi/cli');
+          const nuxi = _internals.resolveNuxiEntry(root);
           const managed = spawnManaged(process.execPath, [nuxi, '_dev'], {
             cwd: root,
             env: {

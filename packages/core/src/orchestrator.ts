@@ -31,6 +31,18 @@ export interface PreparedTarget {
 
 const liveStops = new Map<string, () => Promise<void>>();
 const liveRunning = new Map<string, Running>();
+const liveMeta = new Map<string, { identity: string; hash: string; outDir: string }>();
+
+function rememberLive(
+  id: string,
+  running: Running,
+  meta: { identity: string; hash: string; outDir: string },
+  stop?: () => Promise<void>,
+): void {
+  liveRunning.set(id, running);
+  liveMeta.set(id, meta);
+  if (stop) liveStops.set(id, stop);
+}
 
 export async function resolveRecipe(input: string | Recipe): Promise<Recipe> {
   if (typeof input === 'string') {
@@ -50,26 +62,32 @@ export async function ensurePrepared(
   const artifactsRoot = opts.artifactsRoot ?? resolveArtifactsRoot(opts.cwd);
   const root = (recipe as Recipe & { root?: string }).root;
   const { identity, hash, id } = await computeIdentity(recipe, artifactsRoot, root);
-  assertUniqueRecipeBinding(id, identity);
+
+  const share: SharePolicy = envFlag('UNTESTUTILS_SHARE', true)
+    ? (recipe.share ?? 'always')
+    : 'never';
+
+  // share:never (dev/HMR) mutates sources → hash drifts; still one live server per id.
+  if (share !== 'never') {
+    assertUniqueRecipeBinding(id, identity);
+  }
 
   if (envFlag('UNTESTUTILS_SHARE', true) === false && recipe.share !== 'never') {
     // force private prepare path by suffixing identity — handled via share never below
   }
 
-  const share: SharePolicy = envFlag('UNTESTUTILS_SHARE', true)
-    ? (recipe.share ?? 'always')
-    : 'never';
   const store = new ArtifactStore(artifactsRoot);
   const registry = new TargetRegistry(artifactsRoot);
 
-  // Reuse live server in this process
+  // Reuse live server in this process (workers still isolated; share:never is per-process).
   const live = liveRunning.get(id);
-  if (live && share !== 'never') {
+  if (live) {
+    const bound = liveMeta.get(id);
     return {
       id,
-      identity,
-      hash,
-      outDir: store.buildDir(identity),
+      identity: bound?.identity ?? identity,
+      hash: bound?.hash ?? hash,
+      outDir: bound?.outDir ?? store.buildDir(identity),
       running: live,
       recipe,
     };
@@ -85,9 +103,9 @@ export async function ensurePrepared(
         url: existing.url,
         dir: existing.dir ?? outDir,
       };
-      liveRunning.set(id, running);
       progress.prepareCache(id);
       progress.start(id, existing.url);
+      rememberLive(id, running, { identity, hash, outDir });
       return { id, identity, hash, outDir, running, recipe };
     }
   }
@@ -128,7 +146,7 @@ export async function ensurePrepared(
     if (share === 'prepare-only') {
       const running: Running = { kind: 'dir', dir: outDir };
       await registry.set({ id, identity, dir: outDir });
-      liveRunning.set(id, running);
+      rememberLive(id, running, { identity, hash, outDir });
       return { id, identity, hash, outDir, running, recipe };
     }
 
@@ -153,8 +171,7 @@ export async function ensurePrepared(
       if (recipe.ready) await recipe.ready(running);
       else await defaultReady(running);
 
-      if (running.stop) liveStops.set(id, running.stop);
-      liveRunning.set(id, running);
+      rememberLive(id, running, { identity, hash, outDir }, running.stop);
 
       await registry.set({
         id,
@@ -218,6 +235,7 @@ export async function stopAllTargets(): Promise<void> {
   const stops = [...liveStops.entries()];
   liveStops.clear();
   liveRunning.clear();
+  liveMeta.clear();
   await Promise.all(
     stops.map(async ([id, stop]) => {
       try {
@@ -234,6 +252,7 @@ export async function stopAllTargets(): Promise<void> {
 export function detachLiveTargetsForTests(): void {
   liveStops.clear();
   liveRunning.clear();
+  liveMeta.clear();
 }
 
 export function createHarnessHandle(prepared: PreparedTarget): import('./types').HarnessHandle {
