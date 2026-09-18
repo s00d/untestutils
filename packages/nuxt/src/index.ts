@@ -36,7 +36,8 @@ export interface NuxtOptions {
 }
 
 function resolveKit(rootDir: string): string {
-  assertAppRoot(rootDir, 'nuxt');
+  // Fixtures often omit package.json; createRequire still resolves from that path.
+  assertAppRoot(rootDir, 'nuxt', { requirePackageJson: false });
   try {
     return createRequire(join(rootDir, 'package.json')).resolve('@nuxt/kit');
   } catch (e) {
@@ -278,7 +279,7 @@ export function nuxt(opts: NuxtOptions): Recipe {
   const runMode: NuxtRun = opts.run ?? 'server';
   const id = opts.id ?? `nuxt-${runMode}-${root.split('/').pop()}`;
   const startEnv = { ...(opts.env ?? {}) };
-  const ensureRoot = () => assertAppRoot(root, 'nuxt');
+  const ensureRoot = () => assertAppRoot(root, 'nuxt', { requirePackageJson: false });
 
   if (runMode === 'dev') {
     const recipe = defineRecipe({

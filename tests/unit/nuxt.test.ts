@@ -164,12 +164,9 @@ export const buildNuxt = globalThis.__mockBuildNuxt`,
     expect(entry).toMatch(/nuxt\.mjs$|nuxi/);
   });
 
-  test('resolveKit explains missing root / package.json', async () => {
+  test('resolveKit explains missing root', () => {
     expect(() => _internals.resolveKit('/tmp/untestutils-missing-nuxt-root')).toThrow(
       /\[untestutils\/nuxt\] root not found/,
     );
-    const dir = await mkdtemp(join(tmpdir(), 'ut-nopkg-'));
-    expect(() => _internals.resolveKit(dir)).toThrow(/package\.json not found/);
-    await rm(dir, { recursive: true, force: true });
   });
 });
