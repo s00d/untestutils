@@ -16,9 +16,6 @@ hero:
       text: Get started
       link: /guide/getting-started
     - theme: alt
-      text: Migrate from @nuxt/test-utils
-      link: /migration/from-nuxt-test-utils
-    - theme: alt
       text: GitHub
       link: https://github.com/s00d/untestutils
 

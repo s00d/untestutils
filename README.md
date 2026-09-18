@@ -128,7 +128,6 @@ Same Recipe id works from Playwright via `createPlaywrightConfig` — one defini
 - [Concepts](https://s00d.github.io/untestutils/guide/concepts)
 - [Vitest](https://s00d.github.io/untestutils/guide/vitest)
 - [Playwright](https://s00d.github.io/untestutils/guide/playwright)
-- [Migration from @nuxt/test-utils](https://s00d.github.io/untestutils/migration/from-nuxt-test-utils)
 - [CLI](https://s00d.github.io/untestutils/cli/)
 - [API](https://s00d.github.io/untestutils/api/)
 

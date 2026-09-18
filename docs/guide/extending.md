@@ -54,4 +54,3 @@ Do **not** import Nuxt, Vite, or other frameworks from `@untestutils/core`. Keep
 
 - [Drivers](/guide/drivers)
 - [API: Drivers](/api/drivers)
-- [Pain points](/migration/pain-points)
