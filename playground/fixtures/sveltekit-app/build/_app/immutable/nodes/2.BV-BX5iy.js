@@ -1,1 +1,0 @@
-import{B as e,H as t,I as n,L as r,d as i,g as a,m as o,u as s,v as c}from"../chunks/2-zpBAky.js";import"../chunks/xihTtKlq.js";e(),u[t]=`src/routes/+page.svelte`;var l=c(a(`<h1>sveltekit-app ok</h1>`),u[t],[[1,0]]);function u(e,t){s(new.target),r(t,!1,u);var a={...i()},c=l();return o(e,c),n(a)}export{u as component};
