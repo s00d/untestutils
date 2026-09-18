@@ -242,11 +242,11 @@ async function main() {
 
   if (!noPublish) {
     for (const name of PUBLISH_PACKAGES) {
-      const dir = assertPublishable(name)
+      assertPublishable(name)
       log(`publishing ${name}…`)
-      run('pnpm', ['publish', '--access', 'public', '--no-git-checks'], {
-        cwd: join(ROOT, 'packages', dir),
-      })
+      // Prefer filter publish from root so workspace metadata is correct.
+      // Do not pass --no-git-checks: current npm rejects the forwarded --git-checks flag.
+      run('pnpm', ['--filter', name, 'publish', '--access', 'public', '--publish-branch', 'master'])
     }
 
     log('pushing commit + tags…')
