@@ -1,5 +1,5 @@
 import { defineRecipe, normalizeBaseUrl, waitForHttpReady, type Recipe } from '@untestutils/core';
-import { defineDriver } from './define-driver';
+import { defineDriver, type Driver } from './define-driver';
 
 export interface HostOptions {
   id: string;
@@ -15,7 +15,7 @@ export interface HostOptions {
  * Attach to an already-running remote/staging/prod URL — no local prepare/start.
  * Use for post-deploy smoke with Playwright/Vitest.
  */
-export const host = defineDriver((opts: HostOptions): Recipe => {
+export const host: Driver<HostOptions> = defineDriver((opts: HostOptions): Recipe => {
   if (!opts.url?.trim()) {
     throw new Error('[untestutils/host] url is required');
   }

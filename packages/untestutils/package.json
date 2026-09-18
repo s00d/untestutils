@@ -166,7 +166,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "vite build && node ../../scripts/facade-dts.mjs && node ../../scripts/copy-cli-templates.mjs",
+    "build": "vite build",
     "publint": "publint --strict"
   },
   "dependencies": {
@@ -212,9 +212,9 @@
     "@untestutils/vite": "workspace:*",
     "@untestutils/vitest": "workspace:*",
     "publint": "catalog:",
+    "rollup-plugin-dts": "^6.5.1",
     "typescript": "catalog:",
-    "vite": "catalog:",
-    "vite-plugin-dts": "catalog:"
+    "vite": "catalog:"
   },
   "peerDependencies": {
     "@ai-sdk/anthropic": "^4.0.57",

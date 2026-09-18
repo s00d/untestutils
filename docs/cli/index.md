@@ -112,13 +112,12 @@ These commands detect the untestutils monorepo root (`pnpm-workspace.yaml` + `pa
 
 | Command | Role |
 |---------|------|
-| `build` | Build packages in dependency order |
 | `api-surface` | Check/update facade export snapshot (`--update`) |
 | `pack-test` | `pnpm pack` + consumer smoke |
 | `preflight` | lint → format → types → tests → build → pack |
 
 ```bash
-pnpm cli build
+pnpm run build
 pnpm cli api-surface --update
 pnpm cli preflight
 ```
