@@ -191,9 +191,7 @@
     "std-env": "^4.2.0",
     "tinyglobby": "^0.2.17",
     "ufo": "^1.6.4",
-    "unplugin": "^3.3.0",
-    "vitest-environment-untestutils": "file:./vitest-environment-untestutils",
-    "vitest-environment-nuxt": "file:./vitest-environment-nuxt"
+    "unplugin": "^3.3.0"
   },
   "devDependencies": {
     "@types/node": "catalog:",
