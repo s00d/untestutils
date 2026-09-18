@@ -93,15 +93,18 @@ export async function ensurePrepared(
     };
   }
 
-  // Reuse registry URL from another worker / prior start — only if still reachable
-  if (share === 'always') {
+  // Reuse registry URL from another worker / prior start — only if still reachable.
+  // share:never also reuses URL (one _dev per fixture; forks must not each spawn).
+  if (share === 'always' || share === 'never') {
     const existing = await registry.get(id);
-    if (existing?.url && (await store.isWarm(identity, hash)) && (await isUrlAlive(existing.url))) {
-      const outDir = store.buildDir(identity);
+    const warmOk =
+      share === 'never' ? true : await store.isWarm(identity, hash);
+    if (existing?.url && warmOk && (await isUrlAlive(existing.url))) {
+      const outDir = existing.dir ?? store.buildDir(identity);
       const running: Running = {
         kind: 'url+dir',
         url: existing.url,
-        dir: existing.dir ?? outDir,
+        dir: outDir,
       };
       progress.prepareCache(id);
       progress.start(id, existing.url);
@@ -110,9 +113,30 @@ export async function ensurePrepared(
     }
   }
 
-  const lock = new FileLock(lockPathFor(artifactsRoot, identity), identity);
+  // Serialize starts by recipe id for never (identity drifts under HMR).
+  const lockKey = share === 'never' ? id : identity;
+  const lock = new FileLock(lockPathFor(artifactsRoot, lockKey), lockKey);
   await lock.acquire();
   try {
+    // Another worker may have registered while we waited for the lock.
+    if (share === 'always' || share === 'never') {
+      const existing = await registry.get(id);
+      const warmOk =
+        share === 'never' ? true : await store.isWarm(identity, hash);
+      if (existing?.url && warmOk && (await isUrlAlive(existing.url))) {
+        const outDir = existing.dir ?? store.buildDir(identity);
+        const running: Running = {
+          kind: 'url+dir',
+          url: existing.url,
+          dir: outDir,
+        };
+        progress.prepareCache(id);
+        progress.start(id, existing.url);
+        rememberLive(id, running, { identity, hash, outDir });
+        return { id, identity, hash, outDir, running, recipe };
+      }
+    }
+
     const outDir = await store.ensureDir(identity);
     const run = createRunHelper({ cwd: root, env: scrubEnv() });
 

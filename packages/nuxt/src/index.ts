@@ -269,6 +269,8 @@ export function nuxt(opts: NuxtOptions): Recipe {
               PORT: String(port),
               HOST: '127.0.0.1',
               NODE_ENV: 'development',
+              // Harness may restart after a hard kill left a Nuxt lock file.
+              NUXT_IGNORE_LOCK: '1',
             },
             captureLogs: true,
           });
