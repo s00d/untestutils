@@ -60,14 +60,17 @@ export async function runArtillery(opts: {
   artifactsDir: string;
   name: string;
   cwd?: string;
+  /** Overrides `config.target` (needed when the suite picks a free port). */
+  targetUrl?: string;
 }): Promise<ArtilleryResult> {
   mkdirSync(opts.artifactsDir, { recursive: true });
   const outputFile = join(opts.artifactsDir, `artillery-${opts.name}.json`);
   const config = resolve(opts.configPath);
   const bin = resolveArtilleryBin();
+  const targetArgs = opts.targetUrl ? ['--target', opts.targetUrl.replace(/\/$/, '')] : [];
   const args = bin
-    ? [process.execPath, bin, 'run', config, '--output', outputFile]
-    : ['npx', '--yes', 'artillery', 'run', config, '--output', outputFile];
+    ? [process.execPath, bin, 'run', ...targetArgs, config, '--output', outputFile]
+    : ['npx', '--yes', 'artillery', 'run', ...targetArgs, config, '--output', outputFile];
 
   return spawnArtillery(args, { cwd: opts.cwd, outputFile });
 }

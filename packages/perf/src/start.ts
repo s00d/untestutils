@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
-import { waitForHttpReady } from '@untestutils/core';
+import net from 'node:net';
+import { getFreePort, LOOPBACK_HOST, waitForHttpReady } from '@untestutils/core';
 import { resolve } from 'pathe';
 import { finalizeSamples, startProcessMonitor, type SampleAccumulator } from './process-sample';
 import type { PerfTarget, ProcessMetrics } from './types';
@@ -12,10 +13,30 @@ export type StartedTarget = {
   takeProcessMetrics: () => ProcessMetrics;
 };
 
+/** True when nothing is listening / bound on host:port. */
+export function isPortFree(port: number, host = LOOPBACK_HOST): Promise<boolean> {
+  return new Promise((resolvePromise) => {
+    const server = net.createServer();
+    server.once('error', () => resolvePromise(false));
+    server.listen(port, host, () => {
+      server.close(() => resolvePromise(true));
+    });
+  });
+}
+
 export async function startTarget(target: PerfTarget): Promise<StartedTarget> {
   const cwd = resolve(target.start.cwd ?? target.root);
-  const port = target.start.port;
-  const host = target.start.host ?? '127.0.0.1';
+  const host = target.start.host ?? LOOPBACK_HOST;
+  let port = target.start.port;
+
+  // Fixed ports (e.g. fixture LOAD_PORT=10000) collide with other local services —
+  // never treat an already-bound listener as "our" server ready.
+  if (!(await isPortFree(port, host))) {
+    const next = await getFreePort(host);
+    console.warn(`[untestutils/perf] ${host}:${port} busy — using ${next}`);
+    port = next;
+  }
+
   const url = `http://${host}:${port}`;
 
   const child = spawn(target.start.command, target.start.args ?? [], {
@@ -58,9 +79,24 @@ export async function startTarget(target: PerfTarget): Promise<StartedTarget> {
   };
 
   try {
-    await waitForHttpReady(url, {
-      path: target.start.readyPath ?? '/',
-      timeoutMs: target.start.readyTimeoutMs ?? 60_000,
+    await new Promise<void>((resolveReady, reject) => {
+      const onExit = (code: number | null) => {
+        reject(new Error(`[untestutils/perf] server exited before ready (code=${code})`));
+      };
+      child.once('exit', onExit);
+      waitForHttpReady(url, {
+        path: target.start.readyPath ?? '/',
+        timeoutMs: target.start.readyTimeoutMs ?? 60_000,
+      }).then(
+        () => {
+          child.off('exit', onExit);
+          resolveReady();
+        },
+        (err: unknown) => {
+          child.off('exit', onExit);
+          reject(err);
+        },
+      );
     });
   } catch (err) {
     stopMonitor?.();

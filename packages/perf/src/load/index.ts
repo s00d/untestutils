@@ -36,6 +36,7 @@ export async function runLoadPhase(opts: {
       artifactsDir,
       name: target.id,
       cwd: target.root,
+      targetUrl: started.url,
     });
   }
 
