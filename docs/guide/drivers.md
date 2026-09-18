@@ -89,8 +89,16 @@ Builds/starts a Nuxt app as a Recipe. Prefer `run: 'server'` for e2e shared buil
 | `untestutils/next` | throws |
 | `untestutils/astro` | throws |
 | `untestutils/sveltekit` | throws |
-| `untestutils/config` | v0.2 — `defineVitestConfig` |
-| `untestutils/runtime` | v0.2 — `mountSuspended` |
+
+## In-process unit (Nuxt)
+
+| Import | Role |
+|--------|------|
+| `untestutils/config` | `defineVitestConfig` / `defineVitestProject` |
+| `untestutils/runtime` | `mountSuspended`, mocks, `registerEndpoint` |
+| `untestutils/module` | Required in `nuxt.config` for macros |
+
+Keep unit env and e2e harness in **separate** Vitest configs.
 
 ## defineRecipes
 

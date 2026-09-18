@@ -23,34 +23,10 @@ export default defineConfig({
         entryFileNames: '[name].mjs',
         chunkFileNames: 'chunks/[name]-[hash].mjs',
       },
-      external: (id) => {
-        if (id.startsWith('node:') || id.startsWith('@untestutils/') || id.startsWith('@ai-sdk/'))
-          return true;
-        if (
-          [
-            'ofetch',
-            'pathe',
-            'vitest',
-            'vitest/node',
-            '@playwright/test',
-            'playwright-core',
-            'ai',
-            'fs',
-            'path',
-            'url',
-            'os',
-            'crypto',
-            'child_process',
-            'http',
-            'module',
-            'async_hooks',
-          ].includes(id)
-        )
-          return true;
-        return false;
-      },
+      // Bundle the relative `.mjs` implementation; externalize every bare specifier.
+      external: (id) => !id.startsWith('.') && !id.startsWith('/') && !id.includes('\0'),
     },
     minify: false,
   },
-  plugins: [dts({ include: ['src'], outDirs: ['dist'], entryRoot: 'src' })],
+  plugins: [dts({ include: ['src/index.ts'], outDirs: ['dist'], entryRoot: 'src' })],
 });

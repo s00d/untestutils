@@ -15,11 +15,11 @@ untestutils is a **clean break**, not a drop-in compatibility layer. You keep Vi
 | `setup({ rootDir, browser })` | `await useHarness(nuxt({ root, run: 'server' }))` |
 | `createPage` / `url` / `$fetch` | harness handle + Vitest fixtures `page` / `goto` / `baseURL` / `$fetch` |
 | Playwright `test.use({ nuxt })` | `test.use({ harness: 'id' })` + shared `recipes.ts` |
-| `defineVitestConfig` (unit env) | **v0.2** `untestutils/config` (stub today) |
-| `mountSuspended` | **v0.2** `untestutils/runtime` (stub today) |
+| `defineVitestConfig` (unit env) | `untestutils/config` — `defineVitestConfig` / `defineVitestProject` |
+| `mountSuspended` / mocks | `untestutils/runtime` + `untestutils/module` |
 | Per-file rebuild | Shared `prepare` via Recipe identity + `.untestutils/builds` |
 
-Put Vitest **e2e** (harness) and Nuxt **unit** environment in **separate** Vitest projects when you need both (unit lands in v0.2).
+Put Vitest **e2e** (harness plugin) and Nuxt **unit** environment in **separate** Vitest projects — do not mix `untestutils/vitest/plugin` with `environment: 'untestutils'` in one config.
 
 ## Before / after — Vitest e2e
 
@@ -78,6 +78,38 @@ export const recipes = defineRecipes({
 })
 ```
 
+## Before / after — unit (in-process)
+
+::: code-group
+
+```ts [Before]
+import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
+```
+
+```ts [After]
+// vitest.unit.config.ts — separate from e2e config
+import { defineVitestProject } from 'untestutils/config'
+
+export default defineVitestProject({
+  test: {
+    include: ['tests/unit/**/*.spec.ts'],
+    environmentOptions: {
+      nuxt: { rootDir: '.', domEnvironment: 'happy-dom' },
+    },
+  },
+})
+```
+
+:::
+
+Add `untestutils/module` to the Nuxt app under test (`nuxt.config`). Then in specs:
+
+```ts
+import { mountSuspended, mockNuxtImport, registerEndpoint } from 'untestutils/runtime'
+```
+
+Server-side unit: set `environmentOptions.nuxt.nitroEnvironment: true` (see playground `vitest.unit-nuxt-server.config.ts`).
+
 ## Before / after — Playwright
 
 ::: code-group
@@ -124,15 +156,9 @@ UNTESTUTILS_AI=1 untestutils convert path/to/old.spec.ts
 
 Review the generated `*.untestutils.test.ts` (or `--in-place`). Convert is best-effort — always verify.
 
-## Still on the roadmap (v0.2+)
-
-- In-process Nuxt environment (`mountSuspended`, macros)
-- `defineVitestConfig` / project helpers
-
-Until then, keep unit tests on your current stack; use untestutils for **e2e harness** flows.
-
 ## Next
 
 - [Getting started](/guide/getting-started)
 - [Pain points covered](/migration/pain-points)
+- [Vitest guide](/guide/vitest)
 - [AI convert](/guide/ai)

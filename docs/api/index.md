@@ -24,7 +24,10 @@ Public npm package: **`untestutils`**. Private workspace packages (`@untestutils
 | `untestutils/command` | `command` driver only |
 | `untestutils/ai` | Codegen |
 | `untestutils/vite` \| `next` \| `astro` \| `sveltekit` | Stubs |
-| `untestutils/config` \| `runtime` \| `module` | v0.2 stubs / placeholders |
+| `untestutils/config` | `defineVitestConfig` / `defineVitestProject` / `getVitestConfigFromNuxt` |
+| `untestutils/runtime` | `mountSuspended`, `renderSuspended`, `mockNuxtImport`, `registerEndpoint`, … |
+| `untestutils/module` | Nuxt module — macros + root stub for unit env |
+| `untestutils/vitest-environment` | In-process Nuxt Vitest environment (`environment: 'untestutils'`) |
 
 CLI binary: `untestutils` → see [CLI](/cli/).
 

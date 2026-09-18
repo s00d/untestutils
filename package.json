@@ -26,6 +26,7 @@
     "test:types": "vitest run --config vitest.types.config.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:playground": "pnpm --filter @untestutils/playground test",
+    "test:playground:unit": "pnpm --filter @untestutils/playground test:unit-nuxt && pnpm --filter @untestutils/playground test:unit-nuxt-server",
     "test:playwright": "pnpm --filter @untestutils/playground test:playwright",
     "test:dist": "pnpm run build && vitest run --config vitest.dist.config.ts",
     "test:ai": "vitest run --config vitest.ai.config.ts",

@@ -19,11 +19,23 @@
     "build": "vite build",
     "publint": "publint --strict"
   },
+  "dependencies": {
+    "@nuxt/kit": "catalog:",
+    "estree-walker": "^3.0.3",
+    "exsolve": "^1.1.1",
+    "magic-string": "^0.30.0",
+    "pathe": "catalog:",
+    "unplugin": "^2.3.0"
+  },
   "devDependencies": {
+    "@untestutils/runtime": "workspace:*",
     "publint": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plugin-dts": "catalog:"
+  },
+  "peerDependencies": {
+    "nuxt": "^3.0.0 || ^4.0.0"
   },
   "engines": {
     "node": ">=20"

@@ -13,6 +13,9 @@
       "import": "./dist/index.mjs",
       "default": "./dist/index.mjs"
     },
+    "./entry": "./dist/entry.mjs",
+    "./nuxt-root": "./dist/nuxt-root.mjs",
+    "./mocks/vue-devtools": "./dist/mocks/vue-devtools.mjs",
     "./package.json": "./package.json"
   },
   "scripts": {
@@ -20,10 +23,23 @@
     "publint": "publint --strict"
   },
   "devDependencies": {
+    "@vue/test-utils": "catalog:",
     "publint": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "vite-plugin-dts": "catalog:"
+    "vite-plugin-dts": "catalog:",
+    "vue": "catalog:"
+  },
+  "peerDependencies": {
+    "@testing-library/vue": "^8.0.0",
+    "@vue/test-utils": "^2.4.0",
+    "vitest": "^4.0.0 || ^5.0.0",
+    "vue": "^3.5.0"
+  },
+  "peerDependenciesMeta": {
+    "@testing-library/vue": {
+      "optional": true
+    }
   },
   "engines": {
     "node": ">=20"

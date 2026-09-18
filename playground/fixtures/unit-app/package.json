@@ -1,0 +1,18 @@
+{
+  "name": "@untestutils/fixture-unit-app",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "nuxt": "catalog:",
+    "vue": "catalog:"
+  },
+  "devDependencies": {
+    "@vue/test-utils": "catalog:",
+    "happy-dom": "catalog:",
+    "untestutils": "workspace:*",
+    "vitest": "catalog:"
+  }
+}

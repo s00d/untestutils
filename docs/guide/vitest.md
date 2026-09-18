@@ -164,6 +164,36 @@ export default defineConfig({
 
 Peer: `@vitest/coverage-v8`. Defaults: 80% lines/functions/statements, 70% branches.
 
+## In-process Nuxt unit
+
+Use a **separate** Vitest config from the e2e harness plugin:
+
+```ts
+// vitest.unit.config.ts
+import { defineVitestProject } from 'untestutils/config'
+
+export default defineVitestProject({
+  test: {
+    include: ['tests/unit/**/*.spec.ts'],
+    environmentOptions: {
+      nuxt: {
+        rootDir: '.', // Nuxt app under test
+        domEnvironment: 'happy-dom',
+        // nitroEnvironment: true, // server-side unit path
+      },
+    },
+  },
+})
+```
+
+In the Nuxt app: `modules: ['untestutils/module']`.
+
+```ts
+import { mountSuspended, mockNuxtImport, registerEndpoint } from 'untestutils/runtime'
+```
+
+Do not add `untestutils()` (e2e plugin) to the same project as `environment: 'untestutils'`.
+
 ## Next
 
 - [Playwright](/guide/playwright)

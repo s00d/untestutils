@@ -31,6 +31,10 @@ export default defineConfig({
         perf: p('../perf/src/index.ts'),
         command: p('../drivers/src/command.ts'),
         runtime: p('../runtime/src/index.ts'),
+        'runtime-entry': p('../runtime/src/entry.mjs'),
+        'runtime-nuxt-root': p('../runtime/src/nuxt-root.mjs'),
+        'runtime-mocks-vue-devtools': p('../runtime/src/mocks/vue-devtools.mjs'),
+        'vitest-environment': p('../vitest-environment-untestutils/index.mjs'),
         module: p('../module/src/index.ts'),
         config: p('../config/src/index.ts'),
         ai: p('../ai/src/index.ts'),
@@ -42,8 +46,9 @@ export default defineConfig({
     rollupOptions: {
       external: (id) => {
         if (id.startsWith('@untestutils/')) return false;
+        if (id.startsWith('#') || id.startsWith('@nuxt/')) return true;
         if (id.startsWith('node:') || id.startsWith('@ai-sdk/')) return true;
-        return [
+        const exact = new Set([
           'ofetch',
           'pathe',
           'defu',
@@ -54,8 +59,25 @@ export default defineConfig({
           'consola',
           'nypm',
           'tinyglobby',
+          'vue',
+          '@vue/test-utils',
+          '@testing-library/vue',
+          'happy-dom',
+          'jsdom',
+          'h3',
+          'h3-next',
+          'c12',
+          'exsolve',
+          'local-pkg',
+          'scule',
+          'unplugin',
+          'estree-walker',
+          'magic-string',
+          'fake-indexeddb',
+          'radix3',
+          'node-mock-http',
+          'node-fetch-native',
           'vitest',
-          'vitest/node',
           '@playwright/test',
           'playwright-core',
           'ai',
@@ -70,7 +92,13 @@ export default defineConfig({
           'http',
           'module',
           'async_hooks',
-        ].includes(id);
+        ]);
+        if (exact.has(id)) return true;
+        // Subpath imports (h3-next/generic, vitest/runtime, node-fetch-native/polyfill, …)
+        for (const pkg of exact) {
+          if (id.startsWith(`${pkg}/`)) return true;
+        }
+        return false;
       },
       output: {
         entryFileNames: '[name].mjs',

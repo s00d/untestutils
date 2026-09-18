@@ -53,6 +53,19 @@ Exports: `untestutils` (plugin re-export), `useHarness`, `defineRecipes`, `defin
 
 `baseURL`, `page`, `goto`, `request` — see [Vitest guide](/guide/vitest).
 
+## Unit — `untestutils/config` + `untestutils/runtime`
+
+| Export | Package | Role |
+|--------|---------|------|
+| `defineVitestConfig` | `untestutils/config` | Vitest config with Nuxt unit env |
+| `defineVitestProject` | `untestutils/config` | Single project helper |
+| `getVitestConfigFromNuxt` | `untestutils/config` | Low-level Nuxt→Vite merge |
+| `mountSuspended` / `renderSuspended` | `untestutils/runtime` | Suspended mount helpers |
+| `mockNuxtImport` / `unmockNuxtImport` / `mockComponent` | `untestutils/runtime` | Compile-time macros (need `untestutils/module`) |
+| `registerEndpoint` | `untestutils/runtime` | In-process h3 mock routes |
+
+Environment package: `vitest-environment-untestutils` (shipped with the facade) — Vitest resolves `environment: 'untestutils'`.
+
 ## Next
 
 - [Vitest guide](/guide/vitest)

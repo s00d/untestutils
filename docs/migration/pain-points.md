@@ -19,8 +19,8 @@ Tracking map against community issues. Status: **addressed** · **document** · 
 | Cookies context | nuxt/test-utils#325 | document | use Playwright context APIs |
 | Nitro azure preset | nuxt/test-utils#908 | later | deploy presets |
 | console.log clobbered | nuxt/test-utils#350 | addressed | default passthrough logs |
-| Server unit environment | nuxt/test-utils#531 | later | v0.2+ |
-| mockNuxtImport | nuxt/test-utils#541 | later | v0.2 |
+| Server unit environment | nuxt/test-utils#531 | addressed | `environmentOptions.nuxt.nitroEnvironment` + `defineVitestProject` |
+| mockNuxtImport | nuxt/test-utils#541 | addressed | `untestutils/module` compile-time macros + `untestutils/runtime` |
 | setupFiles ordering | nuxt/test-utils#577 | document | injected setup file list |
 | Orphan processes on timeout | vitest#3077 | addressed | process tree kill with pid guards |
 | Multiple web servers | playwright#8206 | addressed | multi recipe ids |

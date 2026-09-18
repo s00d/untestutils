@@ -4,6 +4,8 @@
   "type": "module",
   "scripts": {
     "test": "vitest run --config vitest.config.ts",
+    "test:unit-nuxt": "vitest run --config vitest.unit-nuxt.config.ts",
+    "test:unit-nuxt-server": "vitest run --config vitest.unit-nuxt-server.config.ts",
     "test:playwright": "playwright test --config playwright/playwright.config.ts"
   },
   "dependencies": {
@@ -11,7 +13,11 @@
   },
   "devDependencies": {
     "@playwright/test": "catalog:",
+    "@vue/test-utils": "catalog:",
+    "happy-dom": "catalog:",
+    "nuxt": "catalog:",
     "playwright-core": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "vue": "catalog:"
   }
 }
