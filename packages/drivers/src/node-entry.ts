@@ -58,7 +58,7 @@ export function nodeEntry(opts: NodeEntryOptions): Recipe {
         await managed.stop();
         throw new Error(`${e}\n--- server logs ---\n${managed.logs().slice(-4000)}`);
       }
-      return { kind: 'url', url, stop: managed.stop };
+      return { kind: 'url', url, stop: managed.stop, pid: managed.pid };
     },
   });
 }

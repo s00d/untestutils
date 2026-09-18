@@ -53,6 +53,45 @@ describe('TargetRegistry', () => {
     expect(entry?.url).toContain('127.0.0.1');
     expect(process.env.UNTESTUTILS_HOST_BASIC).toContain('127.0.0.1');
   });
+
+  test('get keeps pid from file when env only has url', async () => {
+    const reg = new TargetRegistry(dir);
+    await reg.set({
+      id: 'basic',
+      identity: 'basic-abc',
+      url: 'http://127.0.0.1:3456/',
+      pid: 4242,
+    });
+    process.env.UNTESTUTILS_HOST_BASIC = 'http://127.0.0.1:3456/';
+    const entry = await reg.get('basic');
+    expect(entry?.pid).toBe(4242);
+  });
+
+  test('concurrent set keeps all ids (no lost update)', async () => {
+    const reg = new TargetRegistry(dir);
+    await Promise.all(
+      Array.from({ length: 20 }, (_, i) =>
+        reg.set({
+          id: `t${i}`,
+          identity: `id-${i}`,
+          url: `http://127.0.0.1:${4000 + i}/`,
+          pid: 10_000 + i,
+        }),
+      ),
+    );
+    const map = await reg.read();
+    expect(Object.keys(map).sort()).toEqual(
+      Array.from({ length: 20 }, (_, i) => `t${i}`).sort(),
+    );
+  });
+
+  test('drain returns entries and clears file', async () => {
+    const reg = new TargetRegistry(dir);
+    await reg.set({ id: 'a', identity: 'a', url: 'http://127.0.0.1:1/', pid: 7 });
+    const drained = await reg.drain();
+    expect(drained.a?.pid).toBe(7);
+    expect(await reg.read()).toEqual({});
+  });
 });
 
 describe('ArtifactStore', () => {

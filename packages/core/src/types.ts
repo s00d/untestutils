@@ -5,6 +5,8 @@ export type RunningKind = 'url' | 'dir' | 'url+dir';
 
 export interface RunningBase {
   stop?: () => Promise<void>;
+  /** OS pid of the managed server (for cross-worker teardown via registry). */
+  pid?: number;
 }
 
 export interface RunningUrl extends RunningBase {

@@ -285,7 +285,7 @@ export function nuxt(opts: NuxtOptions): Recipe {
             /* v8 ignore next */
             throw new Error(`${e}\n--- logs ---\n${managed.logs().slice(-4000)}`);
           }
-          return { kind: 'url', url, stop: managed.stop };
+          return { kind: 'url', url, stop: managed.stop, pid: managed.pid };
         });
       },
     }) as RecipeWithRoot;
@@ -344,7 +344,7 @@ export function nuxt(opts: NuxtOptions): Recipe {
         await managed.stop();
         throw new Error(`${e}\n--- logs ---\n${managed.logs().slice(-4000)}`);
       }
-      return { kind: 'url+dir', url, dir: outDir, stop: managed.stop };
+      return { kind: 'url+dir', url, dir: outDir, stop: managed.stop, pid: managed.pid };
     },
   }) as RecipeWithRoot;
   recipe.root = root;

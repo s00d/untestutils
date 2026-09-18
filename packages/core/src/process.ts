@@ -90,8 +90,19 @@ function envFlagCapture(): boolean {
   return process.env.UNTESTUTILS_CAPTURE_LOGS === '1';
 }
 
-export async function killProcessTree(child: ChildProcess): Promise<void> {
-  const pid = child.pid;
+/** True when `pid` refers to a live process (signal 0). */
+export function isPidAlive(pid: number): boolean {
+  if (!pid || pid <= 1) return false;
+  try {
+    processIo.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Kill a process group by pid (detached spawn) without needing the ChildProcess handle. */
+export async function killPidTree(pid: number): Promise<void> {
   // Guard: never touch init/launchd or the current test process.
   if (!pid || pid <= 1 || pid === process.pid) return;
 
@@ -104,6 +115,49 @@ export async function killProcessTree(child: ChildProcess): Promise<void> {
       killer.on('error', () => resolve());
       setTimeout(resolve, 5000).unref();
     });
+    return;
+  }
+
+  await new Promise<void>((resolve) => {
+    try {
+      processIo.kill(-pid, 'SIGTERM');
+    } catch {
+      try {
+        processIo.kill(pid, 'SIGTERM');
+      } catch {
+        /* */
+      }
+    }
+    const t = setTimeout(() => {
+      try {
+        processIo.kill(-pid, 'SIGKILL');
+      } catch {
+        try {
+          processIo.kill(pid, 'SIGKILL');
+        } catch {
+          /* */
+        }
+      }
+      resolve();
+    }, 2000);
+    t.unref();
+    const poll = setInterval(() => {
+      if (!isPidAlive(pid)) {
+        clearInterval(poll);
+        clearTimeout(t);
+        resolve();
+      }
+    }, 50);
+    poll.unref();
+  });
+}
+
+export async function killProcessTree(child: ChildProcess): Promise<void> {
+  const pid = child.pid;
+  if (!pid || pid <= 1 || pid === process.pid) return;
+
+  if (currentPlatform() === 'win32') {
+    await killPidTree(pid);
     return;
   }
 

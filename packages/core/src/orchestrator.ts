@@ -12,6 +12,7 @@ import { createRunHelper } from './run-helper';
 import { TargetRegistry } from './target-registry';
 import type { Recipe, Running, SharePolicy } from './types';
 import { getRegisteredRecipe } from './recipes';
+import { isPidAlive, killPidTree } from './process';
 import { ofetch } from 'ofetch';
 import { constants } from 'node:fs';
 
@@ -96,21 +97,8 @@ export async function ensurePrepared(
   // Reuse registry URL from another worker / prior start — only if still reachable.
   // share:never also reuses URL (one _dev per fixture; forks must not each spawn).
   if (share === 'always' || share === 'never') {
-    const existing = await registry.get(id);
-    const warmOk =
-      share === 'never' ? true : await store.isWarm(identity, hash);
-    if (existing?.url && warmOk && (await isUrlAlive(existing.url))) {
-      const outDir = existing.dir ?? store.buildDir(identity);
-      const running: Running = {
-        kind: 'url+dir',
-        url: existing.url,
-        dir: outDir,
-      };
-      progress.prepareCache(id);
-      progress.start(id, existing.url);
-      rememberLive(id, running, { identity, hash, outDir });
-      return { id, identity, hash, outDir, running, recipe };
-    }
+    const reused = await tryReuseRegistry(registry, store, id, identity, hash, share);
+    if (reused) return { ...reused, recipe };
   }
 
   // Serialize starts by recipe id for never (identity drifts under HMR).
@@ -120,21 +108,8 @@ export async function ensurePrepared(
   try {
     // Another worker may have registered while we waited for the lock.
     if (share === 'always' || share === 'never') {
-      const existing = await registry.get(id);
-      const warmOk =
-        share === 'never' ? true : await store.isWarm(identity, hash);
-      if (existing?.url && warmOk && (await isUrlAlive(existing.url))) {
-        const outDir = existing.dir ?? store.buildDir(identity);
-        const running: Running = {
-          kind: 'url+dir',
-          url: existing.url,
-          dir: outDir,
-        };
-        progress.prepareCache(id);
-        progress.start(id, existing.url);
-        rememberLive(id, running, { identity, hash, outDir });
-        return { id, identity, hash, outDir, running, recipe };
-      }
+      const reused = await tryReuseRegistry(registry, store, id, identity, hash, share);
+      if (reused) return { ...reused, recipe };
     }
 
     const outDir = await store.ensureDir(identity);
@@ -197,11 +172,12 @@ export async function ensurePrepared(
 
       rememberLive(id, running, { identity, hash, outDir }, running.stop);
 
-      await registry.set({
+      await replaceRegistryEntry(registry, {
         id,
         identity,
         url: 'url' in running ? running.url : undefined,
         dir: 'dir' in running ? running.dir : outDir,
+        pid: running.pid,
       });
 
       await writeEnvSnapshot(outDir, { id, identity, port, hash });
@@ -216,10 +192,62 @@ export async function ensurePrepared(
   }
 }
 
+/** Register a live target; kill any previous pid for the same recipe id. */
+async function replaceRegistryEntry(
+  registry: TargetRegistry,
+  entry: import('./target-registry').TargetEntry,
+): Promise<void> {
+  const prev = await registry.set(entry);
+  if (prev?.pid && prev.pid !== entry.pid && isPidAlive(prev.pid)) {
+    debug('teardown', `replacing ${entry.id} — kill old pid ${prev.pid}`);
+    await killPidTree(prev.pid);
+  }
+}
+
 function scrubEnv(): NodeJS.ProcessEnv {
   const env = { ...process.env };
   for (const k of ['VITEST', 'VITEST_WORKER_ID', 'TEST', 'JEST_WORKER_ID', 'JEST']) delete env[k];
   return env;
+}
+
+async function tryReuseRegistry(
+  registry: TargetRegistry,
+  store: ArtifactStore,
+  id: string,
+  identity: string,
+  hash: string,
+  share: SharePolicy,
+): Promise<Omit<PreparedTarget, 'recipe'> | undefined> {
+  const existing = await registry.get(id);
+  if (!existing?.url) return undefined;
+  const warmOk = share === 'never' ? true : await store.isWarm(identity, hash);
+  if (!warmOk) return undefined;
+
+  // Stale registry after a crashed worker: pid gone → must not reuse the URL.
+  if (existing.pid != null && !isPidAlive(existing.pid)) {
+    debug('registry', `stale pid ${existing.pid} for ${id}`);
+    return undefined;
+  }
+  if (!(await isUrlAlive(existing.url))) return undefined;
+
+  const outDir = existing.dir ?? store.buildDir(identity);
+  const running: Running = {
+    kind: 'url+dir',
+    url: existing.url,
+    dir: outDir,
+    pid: existing.pid,
+  };
+  progress.prepareCache(id);
+  progress.start(id, existing.url);
+  // Adopt pid so any process that remembered this target can tear it down.
+  const stop =
+    existing.pid != null
+      ? async () => {
+          await killPidTree(existing.pid!);
+        }
+      : undefined;
+  rememberLive(id, running, { identity, hash, outDir }, stop);
+  return { id, identity, hash, outDir, running };
 }
 
 async function isUrlAlive(url: string): Promise<boolean> {
@@ -255,7 +283,7 @@ async function writeEnvSnapshot(
   }
 }
 
-export async function stopAllTargets(): Promise<void> {
+export async function stopAllTargets(artifactsRoot?: string): Promise<void> {
   const stops = [...liveStops.entries()];
   liveStops.clear();
   liveRunning.clear();
@@ -270,6 +298,30 @@ export async function stopAllTargets(): Promise<void> {
       }
     }),
   );
+
+  // Vitest forks start servers in workers; main-process liveStops is often empty.
+  // Drain targets.json under lock so concurrent set() cannot drop pids mid-teardown.
+  const root = artifactsRoot ?? resolveArtifactsRoot();
+  const registry = new TargetRegistry(root);
+  const map = await registry.drain();
+  const pids = Object.values(map)
+    .map((e) => e.pid)
+    .filter((p): p is number => typeof p === 'number' && p > 1);
+  await Promise.all(
+    pids.map(async (pid) => {
+      try {
+        await killPidTree(pid);
+        debug('teardown', `killed registry pid ${pid}`);
+      } catch (e) {
+        debug('teardown', `failed registry pid ${pid}`, e);
+      }
+    }),
+  );
+}
+
+/** Kill leftover registry servers from a previous crashed run (call at globalSetup start). */
+export async function reclaimStaleTargets(artifactsRoot?: string): Promise<void> {
+  await stopAllTargets(artifactsRoot);
 }
 
 /** @internal clear in-process maps without stopping servers (coverage of registry reuse). */

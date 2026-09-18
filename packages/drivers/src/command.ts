@@ -73,7 +73,7 @@ export function command(opts: CommandOptions): Recipe {
         await managed.stop();
         throw new Error(`${e}\n--- logs ---\n${managed.logs().slice(-4000)}`);
       }
-      return { kind: 'url+dir', url, dir: outDir, stop: managed.stop };
+      return { kind: 'url+dir', url, dir: outDir, stop: managed.stop, pid: managed.pid };
     },
   }) as Recipe & { root?: string };
   if (cwd) recipe.root = cwd;

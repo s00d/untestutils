@@ -24,6 +24,7 @@ export { useHarness, getCurrentHarness, getHarness } from './harness';
 export {
   ensurePrepared,
   stopAllTargets,
+  reclaimStaleTargets,
   resolveRecipe,
   detachLiveTargetsForTests,
 } from './orchestrator';
@@ -40,7 +41,14 @@ export {
   findRepoRoot,
 } from './paths';
 export { waitForHttpReady, defaultReady } from './ready';
-export { scrubTestEnv, spawnManaged, runCommand, killProcessTree } from './process';
+export {
+  scrubTestEnv,
+  spawnManaged,
+  runCommand,
+  killProcessTree,
+  killPidTree,
+  isPidAlive,
+} from './process';
 export { createRunHelper } from './run-helper';
 export { debug, isDebug, log, envFlag } from './debug';
 export { progress, isQuiet, isCi, isProgressEnabled, progressIo, withQuietLogger } from './progress';
