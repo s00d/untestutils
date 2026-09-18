@@ -1,8 +1,10 @@
 {
   "name": "@untestutils/vite",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -33,7 +35,11 @@
     "vite": "*"
   },
   "peerDependenciesMeta": {
-    "vite": { "optional": true }
+    "vite": {
+      "optional": true
+    }
   },
-  "engines": { "node": ">=20" }
+  "engines": {
+    "node": ">=20"
+  }
 }

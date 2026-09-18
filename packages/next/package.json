@@ -1,8 +1,10 @@
 {
   "name": "@untestutils/next",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -35,9 +37,17 @@
     "react-dom": "*"
   },
   "peerDependenciesMeta": {
-    "next": { "optional": true },
-    "react": { "optional": true },
-    "react-dom": { "optional": true }
+    "next": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
   },
-  "engines": { "node": ">=20" }
+  "engines": {
+    "node": ">=20"
+  }
 }

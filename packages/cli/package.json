@@ -1,6 +1,6 @@
 {
   "name": "@untestutils/cli",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "description": "CLI for untestutils: init, convert, ai, doctor, and monorepo commands (bundled into the untestutils facade for npm)",
   "license": "MIT",

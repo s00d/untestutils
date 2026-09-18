@@ -1,6 +1,6 @@
 {
   "name": "@untestutils/remix",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "files": [
     "dist"
@@ -38,10 +38,18 @@
     "vite": "*"
   },
   "peerDependenciesMeta": {
-    "@remix-run/dev": { "optional": true },
-    "@remix-run/node": { "optional": true },
-    "@remix-run/serve": { "optional": true },
-    "vite": { "optional": true }
+    "@remix-run/dev": {
+      "optional": true
+    },
+    "@remix-run/node": {
+      "optional": true
+    },
+    "@remix-run/serve": {
+      "optional": true
+    },
+    "vite": {
+      "optional": true
+    }
   },
   "engines": {
     "node": ">=20"

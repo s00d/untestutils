@@ -1,6 +1,6 @@
 {
   "name": "@untestutils/solidstart",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "files": [
     "dist"
@@ -37,9 +37,15 @@
     "vite": "*"
   },
   "peerDependenciesMeta": {
-    "@solidjs/start": { "optional": true },
-    "vinxi": { "optional": true },
-    "vite": { "optional": true }
+    "@solidjs/start": {
+      "optional": true
+    },
+    "vinxi": {
+      "optional": true
+    },
+    "vite": {
+      "optional": true
+    }
   },
   "engines": {
     "node": ">=20"

@@ -1,8 +1,10 @@
 {
   "name": "@untestutils/astro",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -33,7 +35,11 @@
     "astro": "*"
   },
   "peerDependenciesMeta": {
-    "astro": { "optional": true }
+    "astro": {
+      "optional": true
+    }
   },
-  "engines": { "node": ">=20" }
+  "engines": {
+    "node": ">=20"
+  }
 }
