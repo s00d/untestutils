@@ -5,14 +5,13 @@
  * `untestutils` vitest environment (see `vitest-environment-untestutils`) with
  * the `untestutils/module` Nuxt module enabled so that `mockNuxtImport`,
  * `mockComponent` and friends are transformed at build time.
+ *
+ * `suspended.mjs` is loaded dynamically (same as upstream) because it imports
+ * Nuxt virtual modules (`#imports`, `#build/root-component.mjs`) that only
+ * resolve inside the test environment — not at package load time.
  */
 import { h, nextTick } from 'vue';
 import { mount } from '@vue/test-utils';
-
-// The suspended helper is loaded lazily so that its Nuxt virtual imports
-// (`#imports`, `#build/root-component.mjs`) are only resolved inside the test
-// environment. It is shipped as a raw `.mjs` file alongside the built bundle.
-const loadSuspended = () => import('./suspended.mjs');
 
 interface NuxtTestWindow extends Window {
   __app?: any;
@@ -20,6 +19,11 @@ interface NuxtTestWindow extends Window {
 }
 
 declare const window: NuxtTestWindow;
+
+/** Lazy-load Nuxt-virtual suspended helpers (must not be a static top-level import). */
+function importSuspended() {
+  return import('./suspended.mjs');
+}
 
 //#region registerEndpoint
 function getEndpointRegistry(): Record<string, any[]> {
@@ -161,9 +165,7 @@ export function mockComponent(_path: string, _component: unknown): void {
  * allowing async setup and access to injections from your Nuxt plugins.
  */
 export async function mountSuspended(component: any, options: any = {}): Promise<any> {
-  const { cleanupAll, patchWrapperSetProps, wrapperSuspended } = await loadSuspended().then(
-    (n: any) => n.r,
-  );
+  const { cleanupAll, patchWrapperSetProps, wrapperSuspended } = await importSuspended();
   const suspendedHelperName = 'MountSuspendedHelper';
   const clonedComponentName = 'MountSuspendedComponent';
   cleanupAll();
@@ -220,13 +222,12 @@ function wrappedMountedWrapper(wrapper: any, component: any): any {
  * `@testing-library/vue`'s `render`. Requires `@testing-library/vue`.
  */
 export async function renderSuspended(component: any, options: any = {}): Promise<any> {
-  const { cleanupAll, wrapperSuspended } = await loadSuspended().then((n: any) => n.r);
+  const { cleanupAll, wrapperSuspended } = await importSuspended();
   const wrapperId = 'test-wrapper';
   const suspendedHelperName = 'RenderHelper';
   const clonedComponentName = 'RenderSuspendedComponent';
-  const { render: wrapperFn } = (await import('@testing-library/vue')) as {
-    render: (...args: any[]) => any;
-  };
+  // Optional peer — dynamic import matches upstream `@nuxt/test-utils`.
+  const { render: wrapperFn } = await import('@testing-library/vue');
   cleanupAll();
   document.getElementById(wrapperId)?.remove();
   const { wrapper, setProps } = await wrapperSuspended(component, options, {

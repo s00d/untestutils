@@ -1,11 +1,15 @@
-/** Ambient types for the unbundled Nuxt-virtual helper shipped as .mjs. */
+/** Ambient types for the unbundled Nuxt-virtual helper shipped alongside dist/index.mjs. */
 declare module './suspended.mjs' {
-  export const r: {
-    cleanupAll: () => void;
-    wrapperSuspended: (
-      component: any,
-      options: any,
-      helpers: Record<string, any>,
-    ) => Promise<{ wrapper: any; setProps: (props: any) => void }>;
-  };
+  export function cleanupAll(): void;
+  export function patchWrapperSetProps(wrapper: any, setProps: (props: any) => void): void;
+  export function wrapperSuspended(
+    component: any,
+    options: any,
+    helpers: {
+      wrapperFn: (...args: any[]) => any;
+      wrappedRender?: (render: any) => any;
+      suspendedHelperName: string;
+      clonedComponentName: string;
+    },
+  ): Promise<{ wrapper: any; setProps: (props: any) => void }>;
 }

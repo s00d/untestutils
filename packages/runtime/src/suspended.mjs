@@ -8,21 +8,8 @@ import {
   reactive,
 } from 'vue';
 import { vi } from 'vitest';
-import { defineComponent, h as h$1, tryUseNuxtApp, useNuxtApp, useRouter } from '#imports';
+import { defineComponent, tryUseNuxtApp, useNuxtApp, useRouter } from '#imports';
 import NuxtRoot from '#build/root-component.mjs';
-//#region \0rolldown/runtime.js
-const __defProp = Object.defineProperty;
-const __exportAll = (all, no_symbols) => {
-  const target = {};
-  for (const name in all)
-    __defProp(target, name, {
-      get: all[name],
-      enumerable: true,
-    });
-  if (!no_symbols) __defProp(target, Symbol.toStringTag, { value: 'Module' });
-  return target;
-};
-//#endregion
 //#region src/runtime-utils/components/RouterLink.ts
 function getUseLink(nuxtApp) {
   const linkComponent = nuxtApp.vueApp._context.components.RouterLink;
@@ -56,7 +43,7 @@ const RouterLink = defineComponent({
               navigate,
               route,
             })
-          : h$1(
+          : h(
               'a',
               {
                 href: route.href,
@@ -82,7 +69,7 @@ const RouterLink = defineComponent({
             isActive,
             isExactActive,
           })
-        : h$1(
+        : h(
             'a',
             {
               href,
@@ -98,11 +85,6 @@ const RouterLink = defineComponent({
 });
 //#endregion
 //#region src/runtime-utils/utils/suspended.ts
-const suspended_exports = /* @__PURE__ */ __exportAll({
-  cleanupAll: () => cleanupAll,
-  patchWrapperSetProps: () => patchWrapperSetProps,
-  wrapperSuspended: () => wrapperSuspended,
-});
 function resolveVueApp() {
   return tryUseNuxtApp()?.vueApp || globalThis.__unctx__.get('nuxt-app').tryUse().vueApp;
 }
@@ -328,9 +310,4 @@ function makeAllPropertiesEnumerable(target) {
   };
 }
 //#endregion
-export {
-  wrapperSuspended as i,
-  patchWrapperSetProps as n,
-  suspended_exports as r,
-  cleanupAll as t,
-};
+export { cleanupAll, patchWrapperSetProps, wrapperSuspended };
