@@ -28,6 +28,11 @@ export interface NuxtOptions {
   /** Build/runtime env (e.g. STRATEGY=prefix for fixture variants). */
   env?: Record<string, string>;
   readyTimeoutMs?: number;
+  /**
+   * Nitro deploy preset (`node-server`, `azure`, `cloudflare_module`, …).
+   * Merged into `nuxtConfig.nitro.preset` and included in the prepare hash.
+   */
+  preset?: string;
 }
 
 function resolveKit(rootDir: string): string {
@@ -114,7 +119,20 @@ async function resolveHashInputs(opts: NuxtOptions, root: string): Promise<strin
   if (opts.nuxtConfig) {
     inputs.push(`nuxtConfig:${JSON.stringify(opts.nuxtConfig)}`);
   }
+  if (opts.preset) {
+    inputs.push(`preset:${opts.preset}`);
+  }
   return inputs;
+}
+
+function mergeNuxtConfig(opts: NuxtOptions): Record<string, unknown> {
+  const base = { ...(opts.nuxtConfig ?? {}) };
+  if (!opts.preset) return base;
+  const nitro = {
+    ...((base.nitro as Record<string, unknown> | undefined) ?? {}),
+    preset: opts.preset,
+  };
+  return { ...base, nitro };
 }
 
 async function withEnv<T>(
@@ -160,6 +178,7 @@ async function buildNuxtApp(
         nitro: {
           output: { dir: join(outDir, 'output') },
           minify: false,
+          ...((nuxtConfig?.nitro as Record<string, unknown> | undefined) ?? {}),
         },
       },
     });
@@ -195,6 +214,7 @@ async function generateNuxtApp(
           output: { dir: join(outDir, 'output') },
           static: true,
           prerender: { crawlLinks: true },
+          ...((nuxtConfig?.nitro as Record<string, unknown> | undefined) ?? {}),
         },
       },
     });
@@ -301,7 +321,7 @@ export function nuxt(opts: NuxtOptions): Recipe {
       ready: async () => {},
       prepare: async ({ outDir }) => {
         await _internals.withEnv(opts.env, () =>
-          _internals.generateNuxtApp(root, outDir, opts.nuxtConfig),
+          _internals.generateNuxtApp(root, outDir, mergeNuxtConfig(opts)),
         );
       },
       start: async (ctx) => {
@@ -321,7 +341,7 @@ export function nuxt(opts: NuxtOptions): Recipe {
     ready: async () => {},
     prepare: async ({ outDir }) => {
       await _internals.withEnv(opts.env, () =>
-        _internals.buildNuxtApp(root, outDir, opts.nuxtConfig, true),
+        _internals.buildNuxtApp(root, outDir, mergeNuxtConfig(opts), true),
       );
     },
     start: async ({ port, outDir }) => {
@@ -352,6 +372,54 @@ export function nuxt(opts: NuxtOptions): Recipe {
 }
 
 export { waitForHttpReady };
+
+export type MatrixVariant = Partial<
+  Pick<
+    NuxtOptions,
+    'env' | 'nuxtConfig' | 'hashInputs' | 'run' | 'preset' | 'readyTimeoutMs' | 'workspaceDeps'
+  >
+>;
+
+/**
+ * Expand one Nuxt recipe base into many recipes with distinct ids / identity.
+ * Variant key `default` keeps `base.id`; other keys become `${baseId}__${key}`.
+ */
+export function matrix(
+  base: NuxtOptions,
+  variants: Record<string, MatrixVariant>,
+): Record<string, Recipe> {
+  if (!base.root) {
+    throw new Error('[untestutils/nuxt] matrix() requires base.root');
+  }
+  const baseId = base.id ?? `nuxt-${base.run ?? 'server'}`;
+  const out: Record<string, Recipe> = {};
+  for (const [name, patch] of Object.entries(variants)) {
+    const id = name === 'default' ? baseId : `${baseId}__${name}`;
+    if (out[id]) {
+      throw new Error(`[untestutils/nuxt] matrix() duplicate id "${id}"`);
+    }
+    const baseNitro = (base.nuxtConfig?.nitro as Record<string, unknown> | undefined) ?? {};
+    const patchNitro = (patch.nuxtConfig?.nitro as Record<string, unknown> | undefined) ?? {};
+    const merged: NuxtOptions = {
+      ...base,
+      ...patch,
+      id,
+      env: { ...(base.env ?? {}), ...(patch.env ?? {}) },
+      nuxtConfig: {
+        ...(base.nuxtConfig ?? {}),
+        ...(patch.nuxtConfig ?? {}),
+        nitro: { ...baseNitro, ...patchNitro },
+      },
+      hashInputs: [
+        ...(base.hashInputs ?? [base.root]),
+        ...(patch.hashInputs ?? []),
+        `variant:${name}`,
+      ],
+    };
+    out[id] = nuxt(merged);
+  }
+  return out;
+}
 
 /** Nuxt-aware goto wait helpers are provided by vitest/playwright runners via playwright page. */
 export default nuxt;

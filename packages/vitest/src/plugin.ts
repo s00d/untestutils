@@ -8,6 +8,10 @@ import {
   type CreateCoverageConfigOptions,
   type UntestutilsCoverageConfig,
 } from './coverage';
+import {
+  type HarnessBrowserName,
+  normalizeHarnessBrowsers,
+} from './browsers';
 
 export type {
   CreateCoverageConfigOptions,
@@ -19,6 +23,12 @@ export {
   DEFAULT_COVERAGE_THRESHOLDS,
   UNTESTUTILS_WORKSPACE_PACKAGES,
 } from './coverage';
+export type { HarnessBrowserName } from './browsers';
+export {
+  HARNESS_BROWSER_NAMES,
+  normalizeHarnessBrowsers,
+  resolveHarnessBrowserName,
+} from './browsers';
 
 export interface UntestutilsPluginOptions {
   /**
@@ -35,6 +45,12 @@ export interface UntestutilsPluginOptions {
   prewarm?: string[];
   /** Artifacts directory (sets `UNTESTUTILS_ARTIFACTS_DIR`). */
   artifactsRoot?: string;
+  /**
+   * Playwright engines for the `page` / `goto` fixtures.
+   * Default `['chromium']`. First entry sets `UNTESTUTILS_BROWSER` for workers;
+   * run multiple engines via separate Vitest projects / env overrides.
+   */
+  browsers?: HarnessBrowserName[];
   /**
    * Merge Vitest coverage config (thresholds + include globs).
    * `true` applies app defaults for the src tree; object passes through createCoverageConfig.
@@ -108,6 +124,7 @@ export function untestutils(options: UntestutilsPluginOptions = {}): VitestPlugi
   const artifactsRoot = options.artifactsRoot;
   const prewarm = options.prewarm ?? [];
   const recipesModule = options.recipesModule ?? getRecipesModulePath();
+  const browsers = normalizeHarnessBrowsers(options.browsers);
 
   return {
     name: 'untestutils',
@@ -140,6 +157,10 @@ export function untestutils(options: UntestutilsPluginOptions = {}): VitestPlugi
       }
 
       process.env.UNTESTUTILS_PREWARM = JSON.stringify(prewarm);
+      process.env.UNTESTUTILS_BROWSERS = JSON.stringify(browsers);
+      if (!process.env.UNTESTUTILS_BROWSER) {
+        process.env.UNTESTUTILS_BROWSER = browsers[0];
+      }
       if (artifactsRoot) process.env.UNTESTUTILS_ARTIFACTS_DIR = artifactsRoot;
       if (recipesModule) {
         process.env.UNTESTUTILS_RECIPES_MODULE = recipesModule;

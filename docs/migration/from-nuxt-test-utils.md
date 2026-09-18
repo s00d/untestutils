@@ -66,16 +66,23 @@ Register the Nuxt fixture once:
 ```ts
 // recipes.ts
 import { defineRecipes } from 'untestutils'
-import { nuxt } from 'untestutils/nuxt'
+import { nuxt, matrix } from 'untestutils/nuxt'
 import { resolve } from 'node:path'
 
 export const recipes = defineRecipes({
-  basic: nuxt({
-    id: 'basic',
-    root: resolve('./fixtures/basic'),
-    run: 'server',
-  }),
-})
+  ...matrix(
+    {
+      id: 'basic',
+      root: resolve('./fixtures/basic'),
+      run: 'server',
+      preset: 'node-server',
+    },
+    {
+      default: { env: { STRATEGY: 'prefix' } },
+      noSsr: { nuxtConfig: { ssr: false } },
+    },
+  ),
+}, import.meta.url)
 ```
 
 ## Before / after — unit (in-process)
@@ -108,7 +115,9 @@ Add `untestutils/module` to the Nuxt app under test (`nuxt.config`). Then in spe
 import { mountSuspended, mockNuxtImport, registerEndpoint } from 'untestutils/runtime'
 ```
 
-Server-side unit: set `environmentOptions.nuxt.nitroEnvironment: true` (see playground `vitest.unit-nuxt-server.config.ts`).
+Server-side unit: set `environmentOptions.nuxt.nitroEnvironment: true` (see playground `vitest.unit-nuxt-server.config.ts`). Wire real Nitro handlers into `$fetch` via `registerEndpoint(path, realHandler)`.
+
+Compat: `environment: 'nuxt'` resolves the same environment as `untestutils` (`vitest-environment-nuxt` alias).
 
 ## Before / after — Playwright
 

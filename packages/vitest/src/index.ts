@@ -16,4 +16,9 @@ export {
   beforeEach,
   afterEach,
 } from './fixtures';
-export type { HarnessFixtures } from './fixtures';
+export type { HarnessFixtures, HarnessBrowserName } from './fixtures';
+export {
+  HARNESS_BROWSER_NAMES,
+  normalizeHarnessBrowsers,
+  resolveHarnessBrowserName,
+} from './browsers';

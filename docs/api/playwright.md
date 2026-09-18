@@ -41,6 +41,7 @@ createPlaywrightConfig({
 | `session` | Namespace under `.untestutils/sessions/<session>/` |
 | `artifactsRoot` | Explicit root (wins over `session`) |
 | `prewarm` | Recipe ids to prepare/start in global setup |
+| `browsers` | Expand into Playwright `projects` when `projects` omitted |
 | `workers` / `fullyParallel` | Playwright concurrency; defaults `fullyParallel: true`, and `workers: 2` when `CI` is set |
 
 Sets `globalSetup` / `globalTeardown` companion entry points automatically.

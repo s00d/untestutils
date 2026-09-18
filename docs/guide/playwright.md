@@ -21,6 +21,7 @@ export default defineConfig(
     recipes,
     session: 'app-pw', // isolated artifacts under .untestutils/sessions/app-pw
     prewarm: ['site'],
+    browsers: ['chromium', 'firefox'], // expands into projects when `projects` omitted
     workers: 2,
     fullyParallel: true,
     testDir: './tests/e2e',
@@ -35,6 +36,7 @@ export default defineConfig(
 - `globalTeardown` → `untestutils/playwright/pw-global-teardown`
 - `fullyParallel: true` by default (override with `fullyParallel: false`)
 - `workers: 2` when `CI` is set and you did not pass `workers`
+- `browsers: ['chromium' \| 'firefox' \| 'webkit']` → auto `projects` (skipped if you pass `projects` yourself)
 
 ### Session isolation
 
@@ -74,6 +76,15 @@ createPlaywrightConfig({
 ```
 
 Within one session, workers **share** the live server for a recipe id (prepare once). Browser contexts stay isolated per test. For mutable backends that cannot share state, use a **different** `session` (or recipe id), not more workers on the same session.
+
+Browser matrix example (playground dogfood):
+
+```ts
+projects: [
+  { name: 'static-chromium', testMatch: /static\.spec\.ts/, use: { harness: 'staticSite', browserName: 'chromium' } },
+  { name: 'static-firefox', testMatch: /static\.spec\.ts/, use: { harness: 'staticSite', browserName: 'firefox' } },
+]
+```
 
 ## Specs
 

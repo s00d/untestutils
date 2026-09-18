@@ -15,9 +15,9 @@ Tracking map against community issues. Status: **addressed** · **document** · 
 | Shared server in CI | nuxt/test-utils#925 | addressed | prewarm + global teardown |
 | Vitest workspaces / cwd | nuxt/test-utils#664, vitest#5277 | document | absolute `recipesModule` + `resolveArtifactsRoot` |
 | Playwright fixture timeout | nuxt/test-utils#861 | addressed | HTTP readiness gates |
-| Hydration wait Firefox | nuxt/test-utils#1671 | later | browser matrix |
+| Hydration wait Firefox | nuxt/test-utils#1671 | addressed | `browsers` / `browserName` + shared `goto` hydration wait |
 | Cookies context | nuxt/test-utils#325 | document | use Playwright context APIs |
-| Nitro azure preset | nuxt/test-utils#908 | later | deploy presets |
+| Nitro azure preset | nuxt/test-utils#908 | document | `nuxt({ preset })` + docs table (`node-server` dogfood) |
 | console.log clobbered | nuxt/test-utils#350 | addressed | default passthrough logs |
 | Server unit environment | nuxt/test-utils#531 | addressed | `environmentOptions.nuxt.nitroEnvironment` + `defineVitestProject` |
 | mockNuxtImport | nuxt/test-utils#541 | addressed | `untestutils/module` compile-time macros + `untestutils/runtime` |

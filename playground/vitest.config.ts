@@ -8,6 +8,7 @@ export default defineConfig({
     untestutils({
       recipes,
       prewarm: ['staticSite'],
+      browsers: ['chromium'],
       artifactsRoot: fileURLToPath(new URL('./.untestutils', import.meta.url)),
     }),
   ],

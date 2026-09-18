@@ -71,6 +71,26 @@ describe('playwright package', () => {
     await rm(base, { recursive: true, force: true });
   });
 
+  test('createPlaywrightConfig expands browsers into projects', () => {
+    const cfg = createPlaywrightConfig({
+      recipes: defineRecipes({ s: staticDir({ id: 's', root: process.cwd() }) }),
+      browsers: ['chromium', 'firefox'],
+    });
+    expect(cfg.projects).toEqual([
+      { name: 'chromium', use: { browserName: 'chromium' } },
+      { name: 'firefox', use: { browserName: 'firefox' } },
+    ]);
+  });
+
+  test('createPlaywrightConfig browsers skipped when projects set', () => {
+    const cfg = createPlaywrightConfig({
+      recipes: defineRecipes({ s: staticDir({ id: 's', root: process.cwd() }) }),
+      browsers: ['webkit'],
+      projects: [{ name: 'custom', use: { browserName: 'chromium' } }],
+    });
+    expect(cfg.projects).toEqual([{ name: 'custom', use: { browserName: 'chromium' } }]);
+  });
+
   test('createPlaywrightConfig sets workers:2 under CI when omitted', () => {
     process.env.CI = 'true';
     const cfg = createPlaywrightConfig({

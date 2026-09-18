@@ -32,6 +32,11 @@ export interface PlaywrightHarnessOptions {
    * Vitest) do not tear down each other's servers.
    */
   session?: string;
+  /**
+   * Expand into Playwright `projects` (one per engine) when `projects` is not
+   * already set. Default `['chromium']`.
+   */
+  browsers?: Array<'chromium' | 'firefox' | 'webkit'>;
 }
 
 type PWConfig = Record<string, unknown> & {
@@ -77,7 +82,15 @@ export function resolvePlaywrightArtifactsRoot(opts: {
  * - `workers: 2` when `CI` is set (local runs keep Playwright's CPU default)
  */
 export function createPlaywrightConfig(opts: PlaywrightHarnessOptions & PWConfig): PWConfig {
-  const { recipes, recipesModule, prewarm = [], artifactsRoot, session, ...rest } = opts;
+  const {
+    recipes,
+    recipesModule,
+    prewarm = [],
+    artifactsRoot,
+    session,
+    browsers: browsersOpt,
+    ...rest
+  } = opts;
   if (recipes) ensureRecipes(recipes as Record<string, Recipe>);
 
   const resolvedRoot = resolvePlaywrightArtifactsRoot({ artifactsRoot, session });
@@ -89,11 +102,20 @@ export function createPlaywrightConfig(opts: PlaywrightHarnessOptions & PWConfig
   const mod = recipesModule ?? getRecipesModulePath();
   if (mod) process.env.UNTESTUTILS_RECIPES_MODULE = mod;
 
+  const browsers = browsersOpt?.length ? browsersOpt : undefined;
   const defaults: PWConfig = {
     fullyParallel: true,
   };
   if (process.env.CI && rest.workers === undefined) {
     defaults.workers = 2;
+  }
+
+  // Auto-expand browser projects when caller did not pass `projects`.
+  if (browsers?.length && rest.projects === undefined) {
+    defaults.projects = browsers.map((browserName) => ({
+      name: browserName,
+      use: { browserName },
+    }));
   }
 
   return {

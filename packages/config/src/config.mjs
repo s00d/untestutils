@@ -9,13 +9,17 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "pathe";
 
 function resolveRuntime(sub) {
-	// Prefer the dedicated runtime package export (dist), then the published
-	// facade, before falling back to the monorepo source tree.
-	for (const id of [`@untestutils/runtime/${sub}`, `untestutils/runtime/${sub}`]) {
+	// Prefer published facade exports (single npm package), then workspace runtime.
+	const bare = sub.replace(/^\.\//, "").replace(/\.mjs$/, "");
+	for (const id of [
+		`untestutils/runtime/${bare}`,
+		`@untestutils/runtime/${bare}`,
+		`untestutils/runtime/${bare}.mjs`,
+	]) {
 		const resolved = resolveModulePath(id, { from: import.meta.url, try: true });
 		if (resolved) return resolved;
 	}
-	const local = join(dirname(fileURLToPath(import.meta.url)), "../../runtime/src", sub);
+	const local = join(dirname(fileURLToPath(import.meta.url)), "../../runtime/src", bare);
 	const withExt = [local, `${local}.mjs`, `${local}.ts`, join(local, "index.mjs")];
 	for (const candidate of withExt) {
 		try {
@@ -29,10 +33,14 @@ function resolveRuntime(sub) {
 
 /** Resolve Vitest custom environment to a concrete module path (works without a separate published package). */
 function resolveVitestEnvironment() {
-	const fromPkg = resolveModulePath("vitest-environment-untestutils", { from: import.meta.url, try: true });
-	if (fromPkg) return fromPkg;
-	const fromFacade = resolveModulePath("untestutils/vitest-environment", { from: import.meta.url, try: true });
-	if (fromFacade) return fromFacade;
+	for (const id of [
+		"vitest-environment-untestutils",
+		"vitest-environment-nuxt",
+		"untestutils/vitest-environment",
+	]) {
+		const resolved = resolveModulePath(id, { from: import.meta.url, try: true });
+		if (resolved) return resolved;
+	}
 	try {
 		return fileURLToPath(new URL("../../vitest-environment-untestutils/index.mjs", import.meta.url));
 	} catch {
@@ -40,16 +48,23 @@ function resolveVitestEnvironment() {
 	}
 }
 
+function isUnitEnvironmentName(env) {
+	return (
+		env === "untestutils" ||
+		env === "nuxt" ||
+		(typeof env === "string" &&
+			(env.includes("vitest-environment-untestutils") ||
+				env.includes("vitest-environment-nuxt") ||
+				env.endsWith("vitest-environment.mjs")))
+	);
+}
+
 function warnIfE2ePluginMixed(config) {
 	const plugins = config.plugins || [];
 	// e2e harness vite plugin is named exactly `untestutils` (see packages/vitest/src/plugin.ts)
 	const hasE2e = plugins.some((p) => p && typeof p === "object" && "name" in p && p.name === "untestutils");
 	const env = config.test?.environment;
-	const isUnit =
-		env === "untestutils" ||
-		(typeof env === "string" &&
-			(env.includes("vitest-environment-untestutils") || env.endsWith("vitest-environment.mjs")));
-	if (hasE2e && isUnit) {
+	if (hasE2e && isUnitEnvironmentName(env)) {
 		console.warn(
 			"[untestutils] Do not mix `untestutils/vitest/plugin` (e2e harness) with `environment: 'untestutils'` (unit) in the same Vitest project. Use separate projects.",
 		);
@@ -256,7 +271,7 @@ function defineVitestConfig(config = {}) {
 		if ("workspace" in resolvedConfig.test || "projects" in resolvedConfig.test) throw new Error("The `projects` option is not supported with `defineVitestConfig`. Instead, use `defineVitestProject` to define each workspace project that uses the Nuxt environment.");
 		const unitEnvironment = resolveVitestEnvironment();
 		const defaultEnvironment = resolvedConfig.test.environment || "node";
-		const isUnitEnv = defaultEnvironment === "untestutils" || defaultEnvironment === unitEnvironment || String(defaultEnvironment).includes("vitest-environment-untestutils") || String(defaultEnvironment).includes("vitest-environment");
+		const isUnitEnv = isUnitEnvironmentName(defaultEnvironment) || defaultEnvironment === unitEnvironment;
 		if (!isUnitEnv) {
 			const merge = createDefu((obj, key, value) => {
 				if (Array.isArray(value) && Array.isArray(obj[key])) {

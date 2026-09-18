@@ -27,6 +27,7 @@
     "dist",
     "templates",
     "vitest-environment-untestutils",
+    "vitest-environment-nuxt",
     "LICENSE",
     "README.md"
   ],
@@ -180,7 +181,9 @@
     "std-env": "^4.2.0",
     "tinyglobby": "^0.2.17",
     "ufo": "^1.6.4",
-    "unplugin": "^3.3.0"
+    "unplugin": "^3.3.0",
+    "vitest-environment-untestutils": "file:./vitest-environment-untestutils",
+    "vitest-environment-nuxt": "file:./vitest-environment-nuxt"
   },
   "devDependencies": {
     "@types/node": "catalog:",
@@ -202,8 +205,7 @@
     "publint": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "vite-plugin-dts": "catalog:",
-    "vitest-environment-untestutils": "workspace:*"
+    "vite-plugin-dts": "catalog:"
   },
   "peerDependencies": {
     "@ai-sdk/anthropic": "^4.0.57",

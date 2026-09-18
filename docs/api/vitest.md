@@ -21,6 +21,7 @@ import type { UntestutilsPluginOptions } from 'untestutils/vitest/plugin'
 | `recipesModule` | `string?` | Rare override of recipes file path |
 | `artifactsRoot` | `string?` | Override artifacts directory |
 | `prewarm` | `string[]` | Ids to prepare/start in global setup |
+| `browsers` | `HarnessBrowserName[]?` | Engines for `page`/`goto` (default `['chromium']`) |
 | `coverage` | `boolean \| CreateCoverageConfigOptions` | Merge Vitest coverage (thresholds + include). `true` = app `src/**` defaults |
 
 ### createCoverageConfig(options?)
@@ -51,7 +52,7 @@ Exports: `untestutils` (plugin re-export), `useHarness`, `defineRecipes`, `defin
 
 ### Fixtures on `test`
 
-`baseURL`, `page`, `goto`, `request` — see [Vitest guide](/guide/vitest).
+`baseURL`, `page`, `goto`, `request`, `browserName`, `harness` — see [Vitest guide](/guide/vitest).
 
 ## Unit — `untestutils/config` + `untestutils/runtime`
 
@@ -62,9 +63,11 @@ Exports: `untestutils` (plugin re-export), `useHarness`, `defineRecipes`, `defin
 | `getVitestConfigFromNuxt` | `untestutils/config` | Low-level Nuxt→Vite merge |
 | `mountSuspended` / `renderSuspended` | `untestutils/runtime` | Suspended mount helpers |
 | `mockNuxtImport` / `unmockNuxtImport` / `mockComponent` | `untestutils/runtime` | Compile-time macros (need `untestutils/module`) |
-| `registerEndpoint` | `untestutils/runtime` | In-process h3 mock routes |
+| `registerEndpoint` | `untestutils/runtime` | In-process h3 routes (mock **or** real Nitro handlers) |
 
-Environment package: `vitest-environment-untestutils` (shipped with the facade) — Vitest resolves `environment: 'untestutils'`.
+Environment: `vitest-environment-untestutils` — Vitest resolves `environment: 'untestutils'`. Compat alias: `environment: 'nuxt'` via nested `vitest-environment-nuxt`.
+
+Standalone installs resolve runtime entry / `nuxt-root` / mocks through `untestutils/runtime/*` facade exports (no separate `@untestutils/runtime` package required).
 
 ## Next
 

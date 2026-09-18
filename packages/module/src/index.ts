@@ -22,6 +22,7 @@ import { walk } from 'estree-walker';
 import MagicString from 'magic-string';
 import { createUnplugin } from 'unplugin';
 import { resolveModulePath } from 'exsolve';
+import { fileURLToPath } from 'node:url';
 
 //#region mock transform plugin
 const PLUGIN_NAME = 'untestutils:mock-transform';
@@ -338,11 +339,20 @@ const NuxtRootStubPlugin = (options: { entry: string; rootStubPath: string }) =>
 //#endregion
 
 function resolveRuntimeFile(subpath: string): string {
+  const bare = subpath.replace(/^\.\//, '').replace(/\.mjs$/, '');
+  for (const id of [
+    `untestutils/runtime/${bare}`,
+    `@untestutils/runtime/${bare}`,
+    `untestutils/runtime/${bare === 'nuxt-root' ? 'nuxt-root' : bare}`,
+  ]) {
+    const resolved = resolveModulePath(id, { from: import.meta.url, try: true });
+    if (resolved) return resolved;
+  }
   return (
-    resolveModulePath(`@untestutils/runtime/${subpath}`, {
+    resolveModulePath(`@untestutils/runtime/${bare}`, {
       from: import.meta.url,
       try: true,
-    }) || `@untestutils/runtime/${subpath}`
+    }) || fileURLToPath(new URL(`../runtime/src/${bare}.mjs`, import.meta.url))
   );
 }
 

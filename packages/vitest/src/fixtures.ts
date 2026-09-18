@@ -15,37 +15,59 @@ import {
   type TestAPI,
 } from 'vitest';
 import { getCurrentHarness, normalizeBaseUrl, useHarness, type Recipe } from '@untestutils/core';
+import {
+  type HarnessBrowserName,
+  resolveHarnessBrowserName,
+} from './browsers';
 
 export { afterAll, afterEach, beforeAll, beforeEach, describe };
+export type { HarnessBrowserName } from './browsers';
+export {
+  HARNESS_BROWSER_NAMES,
+  normalizeHarnessBrowsers,
+  resolveHarnessBrowserName,
+} from './browsers';
 
 export interface HarnessFixtures {
   /** Recipe id or Recipe — set via `test.override({ harness: 'site' })`. */
   harness: string | Recipe | undefined;
+  /** Playwright engine — from `UNTESTUTILS_BROWSER` or plugin `browsers`. */
+  browserName: HarnessBrowserName;
   page: Page;
   goto: (path: string, options?: Record<string, unknown>) => Promise<Response | null>;
   baseURL: string;
   request: APIRequestContext;
 }
 
-let browserPromise: Promise<Browser> | undefined;
+const browserPromises = new Map<HarnessBrowserName, Promise<Browser>>();
 
 /** @internal */
 export const browserApi = {
-  /* v8 ignore next 4 — real chromium launch covered in playground e2e */
-  async launch() {
-    const { chromium } = await import('playwright-core');
-    return chromium.launch({ headless: true });
+  /* v8 ignore next 8 — real browser launch covered in playground e2e */
+  async launch(name: HarnessBrowserName = 'chromium') {
+    const pw = await import('playwright-core');
+    const launcher = pw[name];
+    if (!launcher?.launch) {
+      throw new Error(`[untestutils] playwright-core has no launcher for "${name}"`);
+    }
+    return launcher.launch({ headless: true });
   },
 };
 
 /** @internal */
-export function getBrowser() {
-  return browserPromise ?? (browserPromise = browserApi.launch());
+export function getBrowser(name?: HarnessBrowserName) {
+  const browserName = name ?? resolveHarnessBrowserName();
+  let p = browserPromises.get(browserName);
+  if (!p) {
+    p = browserApi.launch(browserName);
+    browserPromises.set(browserName, p);
+  }
+  return p;
 }
 
 /** @internal reset for tests */
 export function resetBrowserPromise() {
-  browserPromise = undefined;
+  browserPromises.clear();
 }
 
 /** @internal */
@@ -172,12 +194,13 @@ export { expect } from '@playwright/test';
  */
 export const test: TestAPI<HarnessFixtures> = base
   .extend('harness', undefined as string | Recipe | undefined)
+  .extend('browserName', () => resolveHarnessBrowserName())
   .extend('baseURL', async ({ harness }) => {
     if (harness) await useHarness(harness);
     return resolveBaseURL();
   })
-  .extend('page', async ({ baseURL }, { onCleanup }) => {
-    const browser = await getBrowser();
+  .extend('page', async ({ baseURL, browserName }, { onCleanup }) => {
+    const browser = await getBrowser(browserName);
     const context = await browser.newContext({ baseURL });
     patchContextCookies(context, baseURL);
     const page = await context.newPage();

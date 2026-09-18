@@ -2,8 +2,8 @@ import { createPlaywrightConfig } from 'untestutils/playwright';
 import { recipes } from '../recipes.ts';
 
 /**
- * Parallel Playwright dogfood with an isolated session root so teardown
- * does not kill Vitest / other PW runs sharing the repo `.untestutils`.
+ * Parallel Playwright dogfood: isolated session + chromium/firefox matrix on
+ * the static harness; remote stays chromium-only / skippable.
  */
 export default createPlaywrightConfig({
   recipes,
@@ -15,9 +15,14 @@ export default createPlaywrightConfig({
   timeout: 60_000,
   projects: [
     {
-      name: 'static',
+      name: 'static-chromium',
       testMatch: /static\.spec\.ts/,
-      use: { harness: 'staticSite' },
+      use: { harness: 'staticSite', browserName: 'chromium' },
+    },
+    {
+      name: 'static-firefox',
+      testMatch: /static\.spec\.ts/,
+      use: { harness: 'staticSite', browserName: 'firefox' },
     },
     {
       name: 'remote',

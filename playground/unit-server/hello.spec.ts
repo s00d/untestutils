@@ -3,11 +3,13 @@ import { registerEndpoint } from 'untestutils/runtime'
 
 /**
  * Server unit path with `nitroEnvironment: true` (see vitest.unit-nuxt-server.config.ts).
- * Boots the in-process env with Nitro kept alive and exercises handler wiring via $fetch.
+ * Real Nitro route modules are importable; wire them into in-process `$fetch`
+ * via `registerEndpoint` (same h3 app the environment owns).
  */
 describe('server unit dogfood', () => {
-  it('serves a handler through in-process $fetch', async () => {
-    registerEndpoint('/api/hello', () => ({ ok: true, from: 'api-hello' }))
+  it('serves the real nitro handler through in-process $fetch', async () => {
+    const { default: handler } = await import('../fixtures/unit-app/server/api/hello.get')
+    registerEndpoint('/api/hello', (event) => handler(event))
     const data = await $fetch<{ ok: boolean; from: string }>('/api/hello')
     expect(data).toMatchObject({ ok: true, from: 'api-hello' })
   })

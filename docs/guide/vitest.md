@@ -32,6 +32,7 @@ import { recipes } from './recipes'
 untestutils({
   recipes, // from defineRecipes(..., import.meta.url)
   prewarm: ['site'],
+  browsers: ['chromium'], // or ['chromium', 'firefox', 'webkit']
   artifactsRoot: undefined, // optional — sets UNTESTUTILS_ARTIFACTS_DIR
 })
 ```
@@ -40,8 +41,11 @@ untestutils({
 |--------|----------|-------|
 | `recipes` | yes | Import the map from your recipes module |
 | `prewarm` | no | Recipe ids to prepare/start in global setup |
+| `browsers` | no | Playwright engines for `page`/`goto` (default `['chromium']`). First entry sets `UNTESTUTILS_BROWSER` |
 | `artifactsRoot` | no | Artifacts directory |
 | `recipesModule` | no | Rare override; normally inferred from `defineRecipes` |
+
+To dogfood Firefox (or WebKit) in Vitest, set `UNTESTUTILS_BROWSER=firefox` on a project/worker, or pass `browsers: ['firefox']`. Hydration waits on `goto` work across chromium/firefox/webkit.
 
 In `recipes.ts`:
 
@@ -75,8 +79,10 @@ Call `useHarness` once per describe (or inside a test). Prefer recipe **ids** re
 
 | Fixture | Role |
 |---------|------|
+| `harness` | Recipe id / Recipe via `test.override({ harness })` |
+| `browserName` | Active Playwright engine (`chromium` \| `firefox` \| `webkit`) |
 | `baseURL` | Current harness URL |
-| `page` | Playwright `Page` (chromium via `playwright-core`) |
+| `page` | Playwright `Page` (engine from `browserName` / `UNTESTUTILS_BROWSER`) |
 | `goto` | `page.goto` helper with Nuxt `waitUntil: 'hydration' \| 'route'` support |
 | `request` | Playwright APIRequestContext |
 
@@ -192,7 +198,9 @@ In the Nuxt app: `modules: ['untestutils/module']`.
 import { mountSuspended, mockNuxtImport, registerEndpoint } from 'untestutils/runtime'
 ```
 
-Do not add `untestutils()` (e2e plugin) to the same project as `environment: 'untestutils'`.
+Do not add `untestutils()` (e2e plugin) to the same project as `environment: 'untestutils'` (or the compat alias `environment: 'nuxt'`).
+
+Server unit (`nitroEnvironment: true`): import the real Nitro route module and wire it into in-process `$fetch` with `registerEndpoint` (see playground `unit-server/hello.spec.ts`).
 
 ## Next
 

@@ -70,16 +70,46 @@ See [Remote host](/guide/remote-host).
 ## nuxt
 
 ```ts
-import { nuxt } from 'untestutils/nuxt'
+import { nuxt, matrix } from 'untestutils/nuxt'
 
 nuxt({
   id: 'app',
   root: resolve('./fixtures/nuxt'),
   run: 'server', // 'server' | 'static' | 'dev'
+  preset: 'node-server', // optional Nitro deploy preset
 })
 ```
 
 Builds/starts a Nuxt app as a Recipe. Prefer `run: 'server'` for e2e shared builds.
+
+### `preset`
+
+Passed through as `nuxtConfig.nitro.preset` and included in the prepare hash.
+
+| Preset | Notes |
+|--------|--------|
+| `node-server` | Default Node listener (dogfood / local CI) |
+| `azure` | Azure SWA / Functions — build smoke; host-specific start is out of scope |
+| `cloudflare_module` / `cloudflare_pages` | Documented for identity/hash; use platform wrangler for full deploy e2e |
+
+### `matrix(base, variants)`
+
+Expand one fixture into many recipe ids (i18n-style):
+
+```ts
+export const recipes = defineRecipes({
+  ...matrix(
+    { id: 'basic', root: resolve('./fixtures/basic'), run: 'server' },
+    {
+      default: { env: { STRATEGY: 'prefix' } },
+      noSsr: { env: { STRATEGY: 'prefix' }, nuxtConfig: { ssr: false } },
+    },
+  ),
+}, import.meta.url)
+// → recipes basic, basic__noSsr with distinct identity / HOST env
+```
+
+Variant key `default` keeps `base.id`; other keys become `${id}__${key}`. Merges `env`, `nuxtConfig`, `preset`, `hashInputs`. See playground `examples/matrix-recipes.ts`.
 
 ## Stubs (not implemented yet)
 
