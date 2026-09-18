@@ -25,6 +25,18 @@ type Bump = (typeof BUMPS)[number]
 /** Only these leave the monorepo. Internals stay private and are bundled into the facade. */
 const PUBLISH_PACKAGES = ['untestutils'] as const
 
+/** Strict semver bump (changelogen treats 0.x "minor" like a patch). */
+function forceSemverBump(current: string, bump: Bump): string {
+  const m = /^(\d+)\.(\d+)\.(\d+)/.exec(current)
+  if (!m) fail(`Cannot parse version: ${current}`)
+  const major = Number(m[1])
+  const minor = Number(m[2])
+  const patch = Number(m[3])
+  if (bump === 'major') return `${major + 1}.0.0`
+  if (bump === 'minor') return `${major}.${minor + 1}.0`
+  return `${major}.${minor}.${patch + 1}`
+}
+
 const RELEASE_BRANCHES = new Set(['master', 'main'])
 
 function log(msg: string) {
@@ -212,6 +224,9 @@ async function main() {
     return
   }
 
+  const beforePkg = readJson(join(ROOT, 'package.json'))
+  const expectedVersion = forceSemverBump(String(beforePkg.version), bump)
+
   // Bump root package.json + write CHANGELOG.md (no git commit yet).
   run('pnpm', [
     'exec',
@@ -225,7 +240,27 @@ async function main() {
   ])
 
   const rootPkg = readJson(join(ROOT, 'package.json'))
-  const version = String(rootPkg.version)
+  let version = String(rootPkg.version)
+  if (version !== expectedVersion) {
+    log(`changelogen produced ${version}; forcing semver ${bump} → ${expectedVersion}`)
+    rootPkg.version = expectedVersion
+    writeJson(join(ROOT, 'package.json'), rootPkg)
+    version = expectedVersion
+    const changelogPath = join(ROOT, 'CHANGELOG.md')
+    if (existsSync(changelogPath)) {
+      const md = readFileSync(changelogPath, 'utf8')
+      // Rewrite first changelog heading + compare URL fragment if present
+      writeFileSync(
+        changelogPath,
+        md
+          .replace(/^## v\d+\.\d+\.\d+/m, `## v${expectedVersion}`)
+          .replace(
+            new RegExp(`\\.\\.\\.v${version.replace(/\./g, '\\.')}`),
+            `...v${expectedVersion}`,
+          ),
+      )
+    }
+  }
   if (!/^\d+\.\d+\.\d+/.test(version)) fail(`Invalid version after bump: ${version}`)
   const tag = `v${version}`
   log(`version → ${version}`)

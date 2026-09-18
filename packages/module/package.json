@@ -1,6 +1,6 @@
 {
   "name": "@untestutils/module",
-  "version": "0.1.9",
+  "version": "0.2.0",
   "private": true,
   "files": [
     "dist"
@@ -25,7 +25,7 @@
     "exsolve": "^1.1.1",
     "magic-string": "^0.30.0",
     "pathe": "catalog:",
-    "unplugin": "^2.3.0"
+    "unplugin": "^3.3.0"
   },
   "devDependencies": {
     "@untestutils/runtime": "workspace:*",

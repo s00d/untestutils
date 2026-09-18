@@ -1,6 +1,6 @@
 {
   "name": "untestutils",
-  "version": "0.1.9",
+  "version": "0.2.0",
   "description": "Recipe-based test harness for Vitest and Playwright — shared prepare, multi-framework factories, optional AI codegen",
   "keywords": [
     "e2e",
@@ -180,7 +180,7 @@
     "std-env": "^4.2.0",
     "tinyglobby": "^0.2.17",
     "ufo": "^1.6.4",
-    "unplugin": "^2.3.11"
+    "unplugin": "^3.3.0"
   },
   "devDependencies": {
     "@types/node": "catalog:",
