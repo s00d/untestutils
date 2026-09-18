@@ -6,36 +6,60 @@
 [![Donate](https://img.shields.io/badge/Donate-Donationalerts-ff4081?style=for-the-badge)](https://www.donationalerts.com/r/s00d88)
 
 <p align="center">
-  <img src="docs/public/logo.svg" alt="untestutils" width="160">
+  <img src="docs/public/logo.svg" alt="untestutils" width="140">
 </p>
 
 # untestutils
 
-Recipe-based test harness for **Vitest** and **Playwright**. Define how an app is prepared and started once (`Recipe`), share that prepare across files, and assert over HTTP, static files, or a browser — without reinventing setup for every suite.
+**Test the product the way it actually runs** — not a mock of a mock of a framework.
 
-Built for e2e and integration work: Nuxt and static sites, remote hosts, optional AI codegen (`fix` / `cover` / `generate`), and a small CLI.
+Most “test utils” help you write *more* tests. `untestutils` changes *what* you test: the same prepare → start → URL/dir path your users hit, with real cookies, SEO headers, redirects, locale payloads, and browser behavior — shared once across Vitest and Playwright.
 
-## Why untestutils?
+<p align="center">
+  <img src="docs/public/demo.gif" alt="untestutils: prepare once, assert against a live app" width="640">
+</p>
 
-Typical Vitest/Playwright setups either restart the app per file or glue fragile global hooks. `untestutils` centers on a single contract:
+## The idea
 
-- **Recipe** — `prepare?` → `start` → `{ url }` and/or `{ dir }`
-- **Harness** — `useHarness('id')` / Playwright `test.use({ harness })`
-- **Drivers** — thin factories (`staticDir`, `command`, `nuxt`, …), not a preset zoo
+Shipping software is not “a component mounted in happy-dom”. It is:
 
-Shared prepare cache, readiness, and teardown stay in one place. Migrate from `@nuxt/test-utils` when you outgrow its setup model.
+- a **built** (or generated) app
+- a **running** process on a real URL
+- **data and side effects** that only appear after prepare/start (i18n merges, cookies, sitemap, Nitro routes, …)
 
-## Key Features
+If your suite never walks that path, you are testing a parallel universe. Failures show up in staging instead.
 
-- 🧩 **Recipes, not presets** — compose targets; Nuxt is a factory, not a special universe
-- 🧰 **Utils** — cookies, SEO head parse, domain emulation, redirect tracking, poll (`untestutils/utils`)
-- ⚡ **Shared prepare** — warm once, reuse across Vitest workers / Playwright projects
-- 🧪 **Vitest + Playwright** — same recipe ids; fixtures `page` / `goto` / `$fetch`
-- 🌐 **Remote `host()`** — hit a deployed URL without local prepare
-- 🛠 **CLI** — `init`, `doctor`, AI `fix` / `cover` / `ai`, monorepo helpers
-- 🤖 **Optional AI** — generate, convert, fix, and cover tests with shared fs/browser tools
+`untestutils` is a harness around one contract:
 
-## Quick Setup
+```text
+Recipe  →  prepare?  →  start  →  { url } and/or { dir }
+Harness →  useHarness('id')  /  Playwright test.use({ harness })
+```
+
+You describe **how the real target comes up**. Specs assert against that live target. Prepare is cached and shared — so “test like production” stays fast enough for CI.
+
+## Why not “just helpers”?
+
+| Usual approach | With untestutils |
+| --- | --- |
+| Restart / re-mock the app per file | One prepare, many files |
+| Framework-special APIs that hide the URL | Same Recipe ids in Vitest **and** Playwright |
+| Assert on stubs and fixtures only | Assert on live `$fetch`, `page`, SEO, cookies, redirects |
+| Glue globalSetup / webServer by hand | Drivers (`nuxt`, `staticDir`, `command`, `host`, …) |
+
+Utils (`untestutils/utils`) exist, but they are tools for **real-runtime** checks — not a second testing philosophy.
+
+## What you get
+
+- 🧩 **Recipes, not preset zoos** — compose targets; Nuxt is a factory, not a special universe
+- ⚡ **Shared prepare** — warm once, reuse across workers / projects
+- 🧪 **Vitest + Playwright** — same ids; fixtures `page` / `goto` / `$fetch`
+- 🌐 **Remote `host()`** — post-deploy smoke against staging/prod
+- 🧰 **Reality-oriented utils** — cookies, SEO head, domain emulation, redirect tracking, poll
+- 🛠 **CLI** — `init`, `doctor`, optional AI `fix` / `cover` / `generate`
+- 📊 **Perf suite** — build + load against the same recipe mindset (`untestutils/perf`)
+
+## Quick start
 
 ```bash
 pnpm add -D untestutils vitest
@@ -46,17 +70,22 @@ pnpm dlx untestutils init --preset vitest
 ```
 
 ```ts
-// recipes.ts
-import { defineRecipes, staticDir } from 'untestutils'
+// recipes.ts — how the real app comes up
+import { defineRecipes } from 'untestutils'
+import { nuxt } from 'untestutils/nuxt'
 import { resolve } from 'node:path'
 
 export const recipes = defineRecipes({
-  site: staticDir({ id: 'site', root: resolve('./fixtures/static') }),
+  basic: nuxt({
+    id: 'basic',
+    root: resolve('./fixtures/basic'),
+    run: 'server',
+  }),
 })
 ```
 
 ```ts
-// vitest.config.ts — import plugin from untestutils/vitest/plugin
+// vitest.config.ts — plugin from untestutils/vitest/plugin
 import { defineConfig } from 'vitest/config'
 import { untestutils } from 'untestutils/vitest/plugin'
 import { recipes } from './recipes'
@@ -65,7 +94,7 @@ export default defineConfig({
   plugins: [
     untestutils({
       recipes,
-      prewarm: ['site'],
+      prewarm: ['basic'],
     }),
   ],
   test: { include: ['tests/e2e/**/*.test.ts'] },
@@ -73,16 +102,22 @@ export default defineConfig({
 ```
 
 ```ts
-// tests/e2e/home.test.ts — specs import from untestutils/vitest
+// tests/e2e/locale.test.ts — specs from untestutils/vitest
 import { describe, test, expect, useHarness } from 'untestutils/vitest'
+import { setLocaleCookie, getLocaleCookie } from 'untestutils/utils'
 
-describe('home', () => {
-  test('html', async () => {
-    const app = await useHarness('site')
-    expect(await app.$fetch('/')).toContain('</html>')
+describe('locale', () => {
+  test('cookie survives reload on the live app', async ({ page }) => {
+    const app = await useHarness('basic')
+    await page.goto(app.url)
+    await setLocaleCookie(page, 'de')
+    await page.reload()
+    expect(await getLocaleCookie(page)).toBe('de')
   })
 })
 ```
+
+Same Recipe id works from Playwright via `createPlaywrightConfig` — one definition of “how the app runs”, two runners.
 
 ## Links
 
