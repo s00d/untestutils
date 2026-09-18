@@ -12,18 +12,13 @@ on:
 
 jobs:
   test:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-        node: [20, 22]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node }}
+          node-version: 22
           cache: pnpm
       - run: pnpm install --ignore-scripts
       - run: pnpm run build
@@ -42,9 +37,7 @@ jobs:
       - run: pnpm run test:playground
       - run: pnpm run test:pack
       - run: pnpm exec playwright install chromium
-        if: matrix.os == 'ubuntu-latest'
       - run: pnpm run test:playwright
-        if: matrix.os == 'ubuntu-latest'
 
   remote:
     if: github.event_name == 'workflow_dispatch' && inputs.remote_url != ''

@@ -132,7 +132,6 @@
       "default": "./dist/runtime.mjs"
     },
     "./runtime/entry": {
-      "types": "./dist/runtime-entry.d.ts",
       "import": "./dist/runtime-entry.mjs",
       "default": "./dist/runtime-entry.mjs"
     },

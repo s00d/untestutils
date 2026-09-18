@@ -34,6 +34,7 @@ export default defineConfig({
         command: p('../drivers/src/command.ts'),
         runtime: p('../runtime/src/index.ts'),
         'runtime-entry': p('../runtime/src/entry.mjs'),
+        'runtime-browser-entry': p('../runtime/src/browser-entry.ts'),
         'runtime-nuxt-root': p('../runtime/src/nuxt-root.mjs'),
         'runtime-mocks-vue-devtools': p('../runtime/src/mocks/vue-devtools.mjs'),
         'vitest-environment': p('../vitest-environment-untestutils/index.mjs'),

@@ -6,10 +6,7 @@
     "index.mjs"
   ],
   "type": "module",
-  "exports": {
-    ".": "./index.mjs",
-    "./package.json": "./package.json"
-  },
+  "main": "./index.mjs",
   "engines": {
     "node": ">=20"
   }
