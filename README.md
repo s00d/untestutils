@@ -1,12 +1,12 @@
 [![npm version](https://img.shields.io/npm/v/untestutils/latest?style=for-the-badge)](https://www.npmjs.com/package/untestutils)
 [![npm downloads](https://img.shields.io/npm/dw/untestutils?style=for-the-badge)](https://www.npmjs.com/package/untestutils)
-[![License](https://img.shields.io/npm/l/untestutils?style=for-the-badge)](https://github.com/s00d/untestutils/blob/main/LICENSE)
-[![CI](https://img.shields.io/github/actions/workflow/status/s00d/untestutils/ci.yml?branch=main&style=for-the-badge&label=CI)](https://github.com/s00d/untestutils/actions/workflows/ci.yml)
+[![License](https://img.shields.io/npm/l/untestutils?style=for-the-badge)](https://github.com/s00d/untestutils/blob/master/LICENSE)
+[![CI](https://img.shields.io/github/actions/workflow/status/s00d/untestutils/ci.yml?branch=master&style=for-the-badge&label=CI)](https://github.com/s00d/untestutils/actions/workflows/ci.yml)
 [![Docs](https://img.shields.io/badge/Docs-GitHub%20Pages-2ea44f?style=for-the-badge)](https://s00d.github.io/untestutils/)
 [![Donate](https://img.shields.io/badge/Donate-Donationalerts-ff4081?style=for-the-badge)](https://www.donationalerts.com/r/s00d88)
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/s00d/untestutils/main/docs/public/logo.svg" alt="untestutils" width="160">
+  <img src="docs/public/logo.svg" alt="untestutils" width="160">
 </p>
 
 # untestutils
