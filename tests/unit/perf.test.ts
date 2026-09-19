@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'pathe';
-import { afterEach, describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import { averageBuildMetrics, averageTargetResults } from '../../packages/perf/src/average';
 import { measureBundle } from '../../packages/perf/src/bundle';
 import { parseArtilleryJson, parseAutocannonJson } from '../../packages/perf/src/load/parse';
@@ -8,6 +8,12 @@ import { checkThresholds } from '../../packages/perf/src/thresholds';
 import type { BuildMetrics, PerfTargetResult } from '../../packages/perf/src/types';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
+import {
+  createSampleAccumulator,
+  finalizeSamples,
+  pushSample,
+} from '../../packages/perf/src/process-sample';
+import type { StartedTarget } from '../../packages/perf/src/start';
 
 describe('perf/average', () => {
   test('averages build metrics', () => {
@@ -159,5 +165,64 @@ describe('perf/thresholds', () => {
       'requestsPerSecond',
       'responseTimeP95',
     ]);
+  });
+});
+
+describe('perf/load process metrics timing', () => {
+  test('finalizeSamples zeros when no samples (old early-take bug)', () => {
+    const m = finalizeSamples(createSampleAccumulator());
+    expect(m.maxCpuPct).toBe(0);
+    expect(m.avgMemoryMb).toBe(0);
+  });
+
+  test('runLoadPhase takes process metrics after load tools', async () => {
+    const order: string[] = [];
+    vi.resetModules();
+    vi.doMock('../../packages/perf/src/load/autocannon', () => ({
+      runAutocannon: async () => {
+        order.push('autocannon');
+        return {
+          requests: { average: 1, mean: 1, total: 1 },
+          latency: { average: 1, mean: 1, min: 1, max: 1, p50: 1, p97_5: 1, p99: 1 },
+          throughput: { average: 1 },
+          errors: 0,
+        };
+      },
+    }));
+    vi.doMock('../../packages/perf/src/load/artillery', () => ({
+      runArtillery: async () => undefined,
+    }));
+
+    const { runLoadPhase } = await import('../../packages/perf/src/load/index');
+    const started: StartedTarget = {
+      url: 'http://127.0.0.1:9',
+      port: 9,
+      takeProcessMetrics: () => {
+        order.push('take');
+        const acc = createSampleAccumulator();
+        pushSample(acc, { cpu: 42, memoryMb: 128 });
+        return finalizeSamples(acc);
+      },
+      stop: async () => {},
+    };
+
+    const metrics = await runLoadPhase({
+      target: {
+        id: 't',
+        root: '/tmp',
+        build: { command: 'true' },
+        start: { command: 'true', port: 9 },
+        load: { autocannon: { connections: 1, durationSec: 1 } },
+      },
+      started,
+      artifactsDir: await mkdtemp(join(tmpdir(), 'ut-perf-load-')),
+    });
+
+    expect(order).toEqual(['autocannon', 'take']);
+    expect(metrics.maxCpuPct).toBe(42);
+    expect(metrics.maxMemoryMb).toBe(128);
+    vi.doUnmock('../../packages/perf/src/load/autocannon');
+    vi.doUnmock('../../packages/perf/src/load/artillery');
+    vi.resetModules();
   });
 });

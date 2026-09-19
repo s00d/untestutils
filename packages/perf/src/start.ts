@@ -63,11 +63,6 @@ export async function startTarget(target: PerfTarget): Promise<StartedTarget> {
 
   let monitorAcc: SampleAccumulator | undefined;
   let stopMonitor: (() => void) | undefined;
-  if (child.pid) {
-    const m = startProcessMonitor(child.pid);
-    monitorAcc = m.acc;
-    stopMonitor = m.stop;
-  }
 
   const empty: ProcessMetrics = {
     maxMemoryMb: 0,
@@ -98,9 +93,16 @@ export async function startTarget(target: PerfTarget): Promise<StartedTarget> {
         });
     });
   } catch (err) {
-    stopMonitor?.();
     await killChild(child);
     throw err;
+  }
+
+  // Sample only while serving (ready → stop). Starting earlier often yields 0 samples
+  // when ready is fast (< monitor interval), which zeroed load CPU/RSS in reports.
+  if (child.pid) {
+    const m = startProcessMonitor(child.pid);
+    monitorAcc = m.acc;
+    stopMonitor = m.stop;
   }
 
   return {

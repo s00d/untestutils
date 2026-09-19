@@ -10,8 +10,7 @@ export async function runLoadPhase(opts: {
 }): Promise<LoadMetrics> {
   const { target, started, artifactsDir } = opts;
   const load = target.load;
-  const base = started.takeProcessMetrics();
-  if (!load) return base;
+  if (!load) return started.takeProcessMetrics();
 
   let autocannon;
   if (load.autocannon) {
@@ -40,12 +39,15 @@ export async function runLoadPhase(opts: {
     });
   }
 
+  // After load tools finish — sampling ran throughout autocannon/artillery.
+  const processMetrics = started.takeProcessMetrics();
+
   const summary = artillery?.aggregate;
   const durationSec = summary ? (summary.lastMetricAt - summary.firstMetricAt) / 1000 : undefined;
   const rt = summary?.summaries['http.response_time'];
 
   return {
-    ...base,
+    ...processMetrics,
     durationSec,
     responseTimeAvg: rt?.mean ?? autocannon?.latency.average,
     responseTimeMin: rt?.min ?? autocannon?.latency.min,
