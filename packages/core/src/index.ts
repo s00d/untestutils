@@ -38,6 +38,8 @@ export {
   loopbackUrl,
   normalizeBaseUrl,
   resolveArtifactsRoot,
+  resolveBindHost,
+  resolveProbeHost,
   findRepoRoot,
 } from './paths';
 export { waitForHttpReady, defaultReady } from './ready';
@@ -60,3 +62,28 @@ export {
   withQuietLogger,
 } from './progress';
 export { computeIdentity, assertUniqueRecipeBinding, resetRecipeBindings } from './identity';
+
+// Drivers (formerly @untestutils/drivers)
+export type { Driver } from './drivers/define-driver';
+export { defineDriver } from './drivers/define-driver';
+export { command } from './drivers/command';
+export type { CommandOptions } from './drivers/command';
+export { staticDir } from './drivers/static-dir';
+export type { StaticDirOptions } from './drivers/static-dir';
+export { nodeEntry } from './drivers/node-entry';
+export type { NodeEntryOptions } from './drivers/node-entry';
+export { host } from './drivers/host';
+export type { HostOptions } from './drivers/host';
+export {
+  resolveBin,
+  assertAppRoot,
+  cliFrameworkRecipe,
+  frameworkRoots,
+  _cliInternals,
+} from './drivers/cli-framework';
+export type {
+  ResolveBinOptions,
+  SpawnSpec,
+  CliFrameworkRecipeOptions,
+  FrameworkBaseOptions,
+} from './drivers/cli-framework';

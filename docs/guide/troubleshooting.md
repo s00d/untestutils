@@ -6,64 +6,40 @@ outline: deep
 
 # Troubleshooting
 
-## Run doctor
-
 ```bash
 pnpm exec untestutils doctor
-# or: pnpm dlx untestutils doctor
 ```
 
-Checks Node version, peers (`untestutils`, `vitest`, optional Playwright/Nuxt), presence of Vitest/Playwright config, and `recipes.ts`.
+Checks Node, peers, configs, and `recipes.ts`.
 
 ## Common errors
 
-### unknown recipe id / Did you call defineRecipes?
+**unknown recipe id** — `defineRecipes({ … }, import.meta.url)` and pass `recipes` into the plugin so workers re-import the module.
 
-Register recipes with `defineRecipes({ … }, import.meta.url)` and pass the imported `recipes` map into the plugin — workers re-import that module automatically.
+**no harness url** — call `useHarness` or list the id in `prewarm` before using `page` / `baseURL`.
 
-### no harness url — call await useHarness(...) first
+**Config pulled in fixtures** — use `untestutils/vitest/plugin` in config, not `untestutils/vitest`.
 
-Fixtures (`page`, `baseURL`) need a started target. Call `useHarness` or list the id in `prewarm`.
+**Ready hang / readiness failed** — local servers bind `ctx.host` (default `127.0.0.1`, override with `UNTESTUTILS_BIND_HOST`). Ready probes TCP then HTTP; wildcard binds like `0.0.0.0` still probe `127.0.0.1`. For `host()`, set `readyTimeoutMs` / `readyPath`, or `skipReady: true` if the URL is already up. Drivers that wait inside `start` use a noop `ready` so the orchestrator does not probe twice.
 
-### missing UNTESTUTILS_HOST_\*
+**Orphan processes** — hard-killed runs leave locks; clear `.untestutils` and retry. Teardown must not kill pid ≤ 1.
 
-Playwright `baseURL` reads env set during setup. Ensure global setup ran and `harness` option matches a prepared id.
+**Empty setup / recipes never load** — published facade must keep `vitest/setup-file` side effects (re-export, not a dead `await import`). Upgrade to a release that includes that fix.
 
-### Config import pulled in fixtures
-
-Use `untestutils/vitest/plugin` in config, not `untestutils/vitest`.
-
-### Ready hang / timeout
-
-- Confirm the server listens on `127.0.0.1`.
-- For `host()`, verify the URL is reachable or set `skipReady`.
-- Increase ready timeout on `command` / custom recipes.
-
-### Orphan processes
-
-Teardown should kill process trees safely (never pid ≤ 1). If a run was killed hard, clear stale locks under `.untestutils` and retry.
-
-### Peer dependency missing
-
-Install optional peers for the features you use (`@playwright/test`, `nuxt`, `ai`, …).
-
-## Useful env
+## Env
 
 | Variable | Purpose |
 |----------|---------|
-| `UNTESTUTILS_DEBUG=1` | Verbose logs + keep Nuxt/Vite prepare output |
-| `UNTESTUTILS_QUIET=1` | Silence harness prepare/start progress |
-| `UNTESTUTILS_PROGRESS=0` | Force progress off (same as quiet) |
-| `UNTESTUTILS_PROGRESS=1` | Force progress on even in CI |
-| `CI` / `GITHUB_ACTIONS` / … | Progress off by default; original build logs visible |
+| `UNTESTUTILS_DEBUG=1` | Verbose logs |
+| `UNTESTUTILS_QUIET=1` / `PROGRESS=0` | Silence progress |
 | `UNTESTUTILS_SHARE=0` | Disable share |
 | `UNTESTUTILS_ARTIFACTS_DIR` | Custom artifacts root |
+| `UNTESTUTILS_BIND_HOST` | Bind/probe host for local servers (default `127.0.0.1`; `localhost`/`::1` coerced to IPv4) |
 | `UNTESTUTILS_REMOTE_URL` | Remote `host()` URL |
-| `UNTESTUTILS_AI=1` | Allow live AI generation |
-| `UNTESTUTILS_AI_MOCK=1` | Mock AI for tests |
+| `UNTESTUTILS_BROWSER` | Playwright engine for Vitest fixtures |
 
 ## Next
 
 - [Getting started](/guide/getting-started)
+- [How it works](/guide/how-it-works)
 - [CLI](/cli/)
-- [Sharing & cache](/guide/sharing-and-cache)

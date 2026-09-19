@@ -1,11 +1,12 @@
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'pathe';
+import { loopbackUrl } from '@untestutils/core';
 import {
   cliFrameworkRecipe,
   frameworkRoots,
   resolveBin,
   type FrameworkBaseOptions,
-} from '@untestutils/drivers';
+} from '@untestutils/core';
 
 export type SvelteKitRun = 'preview' | 'server' | 'dev';
 
@@ -80,14 +81,14 @@ export function sveltekit(opts: SvelteKitOptions) {
         }
         return Promise.resolve();
       },
-      start: ({ port }) => ({
+      start: ({ port, host }) => ({
         command: process.execPath,
         args: [join(root, entryRel)],
         cwd: root,
         env: {
           PORT: String(port),
-          HOST: '127.0.0.1',
-          ORIGIN: `http://127.0.0.1:${port}`,
+          HOST: host,
+          ORIGIN: loopbackUrl(port, '/', host).replace(/\/$/, ''),
         },
       }),
     });
@@ -107,9 +108,9 @@ export function sveltekit(opts: SvelteKitOptions) {
       args: [bin(), 'build'],
       cwd: root,
     }),
-    start: ({ port }) => ({
+    start: ({ port, host }) => ({
       command: process.execPath,
-      args: [bin(), 'preview', '--host', '127.0.0.1', '--port', String(port), '--strictPort'],
+      args: [bin(), 'preview', '--host', host, '--port', String(port), '--strictPort'],
       cwd: root,
     }),
   });

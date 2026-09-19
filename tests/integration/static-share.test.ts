@@ -2,7 +2,7 @@ import { describe, expect, test, afterEach } from 'vitest';
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'pathe';
-import { staticDir } from '../../packages/drivers/src/static-dir';
+import { staticDir } from '../../packages/core/src/drivers/static-dir';
 import { ensurePrepared, stopAllTargets } from '../../packages/core/src/orchestrator';
 import { clearRegisteredRecipes } from '../../packages/core/src/recipes';
 import { resetRecipeBindings } from '../../packages/core/src/identity';

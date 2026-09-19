@@ -1,6 +1,6 @@
 ---
 title: Vitest
-description: Configure the untestutils Vitest plugin, prewarm, and browser fixtures.
+description: Plugin, prewarm, useHarness, and browser fixtures.
 outline: deep
 ---
 
@@ -9,97 +9,51 @@ outline: deep
 ## Plugin vs barrel
 
 ::: warning
-Config files must import from `untestutils/vitest/plugin`.
-
-Specs import from `untestutils/vitest`. Loading the barrel in config evaluates `test.extend` too early.
+Config: `untestutils/vitest/plugin`. Specs: `untestutils/vitest`. Do not load the barrel in config.
 :::
-
-```ts
-// vitest.config.ts
-import { untestutils } from 'untestutils/vitest/plugin'
-```
-
-```ts
-// *.test.ts
-import { describe, test, expect, useHarness } from 'untestutils/vitest'
-```
 
 ## Plugin options
 
 ```ts
-import { recipes } from './recipes'
-
 untestutils({
-  recipes, // from defineRecipes(..., import.meta.url)
+  recipes,              // from defineRecipes(..., import.meta.url)
   prewarm: ['site'],
-  browsers: ['chromium'], // or ['chromium', 'firefox', 'webkit']
-  artifactsRoot: undefined, // optional — sets UNTESTUTILS_ARTIFACTS_DIR
+  browsers: ['chromium'],
+  artifactsRoot: undefined,
 })
 ```
 
-| Option | Required | Notes |
-|--------|----------|-------|
-| `recipes` | yes | Import the map from your recipes module |
-| `prewarm` | no | Recipe ids to prepare/start in global setup |
-| `browsers` | no | Playwright engines for `page`/`goto` (default `['chromium']`). First entry sets `UNTESTUTILS_BROWSER` |
-| `artifactsRoot` | no | Artifacts directory |
-| `recipesModule` | no | Rare override; normally inferred from `defineRecipes` |
+| Option | Notes |
+|--------|--------|
+| `recipes` | Map from your recipes module |
+| `prewarm` | Ids to prepare/start in global setup |
+| `browsers` | Engines for `page` / `goto` (default `['chromium']`) |
+| `artifactsRoot` | Sets `UNTESTUTILS_ARTIFACTS_DIR` |
 
-To dogfood Firefox (or WebKit) in Vitest, set `UNTESTUTILS_BROWSER=firefox` on a project/worker, or pass `browsers: ['firefox']`. Hydration waits on `goto` work across chromium/firefox/webkit.
-
-In `recipes.ts`:
-
-```ts
-export const recipes = defineRecipes({
-  site: /* … */,
-}, import.meta.url)
-```
-
-Workers / globalSetup re-import that module automatically — no `fileURLToPath` in the Vitest config.
-
-The plugin injects global setup / setup files so targets are prepared and registered before specs run.
+Override engine per run: `UNTESTUTILS_BROWSER=firefox`.
 
 ## useHarness
 
 ```ts
 const app = await useHarness('site')
-// or: await useHarness(myInlineRecipe)
-
 await app.$fetch('/')
-app.url // string | undefined
-app.dir // string | undefined
+app.url
+app.dir
 await app.files.read('index.html')
 ```
 
-Call `useHarness` once per describe (or inside a test). Prefer recipe **ids** registered in `recipes.ts` so Playwright and Vitest share the same prepare cache.
+Prefer registered **ids** so Vitest and Playwright share the prepare cache.
 
 ## Fixtures
 
-`test` from `untestutils/vitest` extends Vitest with:
-
 | Fixture | Role |
 |---------|------|
-| `harness` | Recipe id / Recipe via `test.override({ harness })` |
-| `browserName` | Active Playwright engine (`chromium` \| `firefox` \| `webkit`) |
+| `harness` | Recipe id via `test.override({ harness })` |
+| `browserName` | `chromium` \| `firefox` \| `webkit` |
 | `baseURL` | Current harness URL |
-| `page` | Playwright `Page` (engine from `browserName` / `UNTESTUTILS_BROWSER`) |
-| `goto` | `page.goto` helper with Nuxt `waitUntil: 'hydration' \| 'route'` support |
-| `request` | Playwright APIRequestContext |
-
-```ts
-import { describe, test, expect } from 'untestutils/vitest'
-
-describe('ui', () => {
-  test('home', async ({ page, goto }) => {
-    await goto('/')
-    await expect(page.locator('h1')).toBeVisible()
-  })
-})
-```
-
-Ensure `await useHarness('…')` ran first (or prewarm started the target) so `baseURL` resolves.
-
-Prefer declaring the recipe on the suite:
+| `page` | Playwright `Page` |
+| `goto` | `page.goto` (+ Nuxt `waitUntil: 'hydration' \| 'route'`) |
+| `request` | APIRequestContext |
 
 ```ts
 import { describe, test, expect } from 'untestutils/vitest'
@@ -114,96 +68,19 @@ describe('ui', () => {
 })
 ```
 
-`test` is typed as `TestAPI<HarnessFixtures>` so `harness` / `page` / `goto` / `baseURL` / `request` resolve in editors and `tsc`.
+Ensure `useHarness` or `prewarm` started the target so `baseURL` resolves.
 
-## Progress output
+## Nuxt unit (separate project)
 
-With `prewarm`, the harness prints a **prepare once** wave, then a **mass run** banner — same story as the README demo GIF:
+E2e plugin and Nuxt unit env do **not** share one Vitest config:
 
-```
-◆ untestutils  ·  mass e2e on live targets
+- E2e: `untestutils/vitest/plugin`
+- Unit: `environment: 'untestutils'` + `untestutils/config` / `untestutils/runtime`
 
-▸ prepare once  — every worker reuses the same builds
-  2 recipes in the wave
-  async-components       building…
-  ✔ async-components       built · 6.5s
-  ✔ redirect               cached
-  ✔ 2/2 warm  ·  shared host registry
-
-▸ mass run  live URLs · real cookies/SEO/$fetch · no per-file rebuild
-  → redirect               http://127.0.0.1:61240
-
-  2 recipes prepared once  ·  session 8.1s
-  prepare once  →  many workers  →  real URLs & data
-  ■ teardown
-```
-
-| Env | Effect |
-|-----|--------|
-| `UNTESTUTILS_QUIET=1` | Silence harness progress |
-| `UNTESTUTILS_PROGRESS=0` | Same — force progress off |
-| `UNTESTUTILS_PROGRESS=1` | Force progress on (even in CI) |
-| `CI=true` / `GITHUB_ACTIONS` / … | Progress **off** by default; original Nuxt/Vite logs stay visible |
-| `UNTESTUTILS_DEBUG=1` | Verbose internals; never mute build logs |
-
-In CI (or with quiet/progress off) prepare does **not** mute `consola` — you get the original build output. Failures always rethrow; `progress.fail` still prints to stderr and is never suppressed by quiet/CI.
-
-## Coverage
-
-Use the built-in helper (or `coverage: true` on the plugin):
-
-```ts
-import { defineConfig } from 'vitest/config'
-import { untestutils, createCoverageConfig } from 'untestutils/vitest/plugin'
-
-export default defineConfig({
-  plugins: [
-    untestutils({
-      recipes,
-      coverage: true, // or { thresholds: { lines: 90 } }
-    }),
-  ],
-  // or without plugin merge:
-  // test: { coverage: createCoverageConfig() }
-})
-```
-
-Peer: `@vitest/coverage-v8`. Defaults: 80% lines/functions/statements, 70% branches.
-
-## In-process Nuxt unit
-
-Use a **separate** Vitest config from the e2e harness plugin:
-
-```ts
-// vitest.unit.config.ts
-import { defineVitestProject } from 'untestutils/config'
-
-export default defineVitestProject({
-  test: {
-    include: ['tests/unit/**/*.spec.ts'],
-    environmentOptions: {
-      nuxt: {
-        rootDir: '.', // Nuxt app under test
-        domEnvironment: 'happy-dom',
-        // nitroEnvironment: true, // server-side unit path
-      },
-    },
-  },
-})
-```
-
-In the Nuxt app: `modules: ['untestutils/module']`.
-
-```ts
-import { mountSuspended, mockNuxtImport, registerEndpoint } from 'untestutils/runtime'
-```
-
-Do not add `untestutils()` (e2e plugin) to the same project as `environment: 'untestutils'` (or the compat alias `environment: 'nuxt'`).
-
-Server unit (`nitroEnvironment: true`): import the real Nitro route module and wire it into in-process `$fetch` with `registerEndpoint` (see playground `unit-server/hello.spec.ts`).
+See [API overview](/api/) (`config`, `runtime`, `module`).
 
 ## Next
 
 - [Playwright](/guide/playwright)
+- [Utils](/guide/utils)
 - [API: Vitest](/api/vitest)
-- [Troubleshooting](/guide/troubleshooting)

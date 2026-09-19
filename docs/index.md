@@ -1,13 +1,13 @@
 ---
 titleTemplate: false
 title: untestutils
-description: Recipe-based test harness for Vitest and Playwright
+description: Live prepare → start → URL tests for Vitest and Playwright. Shared prepare stays fast enough for CI.
 layout: home
 
 hero:
   name: untestutils
-  text: Recipe-based test harness
-  tagline: Shared prepare for Vitest and Playwright — Nuxt, static, command, and remote hosts.
+  text: Test the live app
+  tagline: Prepare once, assert against a real URL — Vitest and Playwright share the same recipes. Fast enough for CI.
   image:
     src: /logo.svg
     alt: untestutils logo
@@ -16,29 +16,20 @@ hero:
       text: Get started
       link: /guide/getting-started
     - theme: alt
-      text: Migrate from @nuxt/test-utils
-      link: /migration/from-nuxt-test-utils
+      text: Why
+      link: /why
+    - theme: alt
+      text: Roadmap
+      link: /roadmap
     - theme: alt
       text: GitHub
       link: https://github.com/s00d/untestutils
 
 features:
-  - title: Shared builds
-    details: Prepare once per Recipe identity, reuse across files and workers via .untestutils artifacts.
-    icon:
-      src: /icons/icon-cache.png
-  - title: Vitest + Playwright
-    details: One recipes.ts powers both runners — plugin for Vitest, createPlaywrightConfig for Playwright Test.
-    icon:
-      src: /icons/icon-vitest.png
-  - title: Drivers
-    details: staticDir, command, nodeEntry, host, and nuxt({ run }). Extend with defineDriver.
-  - title: Remote smoke
-    details: Point host() at a deployed URL for post-deploy Playwright without local prepare.
-    icon:
-      src: /icons/icon-playwright.png
-  - title: CLI
-    details: init, convert, ai, doctor — scaffold configs or migrate existing tests.
-  - title: Optional AI
-    details: Generate or convert e2e specs with cached artifacts under .untestutils/ai.
+  - title: Live target
+    details: Specs hit a real prepare → start → URL path — cookies, SEO, redirects, locale — not happy-dom stubs.
+  - title: Shared prepare
+    details: Build once per recipe identity, reuse across files and workers via .untestutils. That is the CI time win.
+  - title: One recipes.ts
+    details: Same ids for Vitest and Playwright. Drivers for Nuxt, static, command, remote host, and more.
 ---

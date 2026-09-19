@@ -29,10 +29,10 @@ export class FileLock {
   constructor(
     private readonly lockPath: string,
     private readonly identity: string,
-    private readonly staleMs = DEFAULT_STALE_MS,
+    private readonly staleMs: number = DEFAULT_STALE_MS,
   ) {}
 
-  async acquire(timeoutMs = 120_000): Promise<void> {
+  async acquire(timeoutMs: number = 120_000): Promise<void> {
     await mkdir(dirname(this.lockPath), { recursive: true });
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {

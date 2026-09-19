@@ -1,1 +1,1 @@
-export * from '@untestutils/runtime';
+export * from '@untestutils/nuxt/runtime';

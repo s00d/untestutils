@@ -18,7 +18,7 @@ import {
   stopAllTargets,
   TargetRegistry,
 } from '@untestutils/core';
-import { staticDir } from '@untestutils/drivers';
+import { staticDir } from '@untestutils/core';
 
 describe('playwright package', () => {
   afterEach(async () => {
@@ -134,7 +134,7 @@ describe('playwright package', () => {
     await writeFile(join(site, 'index.html'), '<html>mod</html>');
     const recipesFile = join(site, 'recipes.mjs');
     const coreUrl = new URL('../../packages/core/src/index.ts', import.meta.url).href;
-    const driversUrl = new URL('../../packages/drivers/src/index.ts', import.meta.url).href;
+    const driversUrl = new URL('../../packages/core/src/drivers/index.ts', import.meta.url).href;
     await writeFile(
       recipesFile,
       `

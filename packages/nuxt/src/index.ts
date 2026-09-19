@@ -11,9 +11,14 @@ import {
   withQuietLogger,
   type Recipe,
 } from '@untestutils/core';
-import { assertAppRoot, staticDir } from '@untestutils/drivers';
+import { assertAppRoot, staticDir } from '@untestutils/core';
 
 type RecipeWithRoot = Recipe & { root?: string };
+type NuxtBuildHandle = { close: () => Promise<void> };
+type NuxtKitRuntime = {
+  loadNuxt: (opts: Record<string, unknown>) => Promise<NuxtBuildHandle>;
+  buildNuxt: (nuxt: NuxtBuildHandle) => Promise<void>;
+};
 
 export type NuxtRun = 'server' | 'static' | 'dev';
 
@@ -169,12 +174,9 @@ async function buildNuxtApp(
   outDir: string,
   nuxtConfig?: Record<string, unknown>,
   ssr = true,
-) {
+): Promise<void> {
   return withQuietLogger(async () => {
-    const kit = (await import(pathToFileURL(_internals.resolveKit(rootDir)).href)) as {
-      loadNuxt: (opts: Record<string, unknown>) => Promise<{ close: () => Promise<void> }>;
-      buildNuxt: (nuxt: { close: () => Promise<void> }) => Promise<void>;
-    };
+    const kit = (await import(pathToFileURL(_internals.resolveKit(rootDir)).href)) as NuxtKitRuntime;
     const nuxt = await kit.loadNuxt({
       cwd: rootDir,
       dev: false,
@@ -206,12 +208,9 @@ async function generateNuxtApp(
   rootDir: string,
   outDir: string,
   nuxtConfig?: Record<string, unknown>,
-) {
+): Promise<void> {
   return withQuietLogger(async () => {
-    const kit = (await import(pathToFileURL(_internals.resolveKit(rootDir)).href)) as {
-      loadNuxt: (opts: Record<string, unknown>) => Promise<{ close: () => Promise<void> }>;
-      buildNuxt: (nuxt: { close: () => Promise<void> }) => Promise<void>;
-    };
+    const kit = (await import(pathToFileURL(_internals.resolveKit(rootDir)).href)) as NuxtKitRuntime;
     const nuxt = await kit.loadNuxt({
       cwd: rootDir,
       dev: false,
@@ -255,7 +254,20 @@ function findPublicDir(outDir: string): string {
 }
 
 /** @internal test seams */
-export const _internals = {
+export interface NuxtInternals {
+  resolveKit: typeof resolveKit;
+  resolveNuxiEntry: typeof resolveNuxiEntry;
+  buildNuxtApp: typeof buildNuxtApp;
+  generateNuxtApp: typeof generateNuxtApp;
+  findServerEntry: typeof findServerEntry;
+  findPublicDir: typeof findPublicDir;
+  findWorkspaceRoot: typeof findWorkspaceRoot;
+  workspacePackageSrcDirs: typeof workspacePackageSrcDirs;
+  resolveHashInputs: typeof resolveHashInputs;
+  withEnv: typeof withEnv;
+}
+
+export const _internals: NuxtInternals = {
   resolveKit,
   resolveNuxiEntry,
   buildNuxtApp,
@@ -288,7 +300,7 @@ export function nuxt(opts: NuxtOptions): Recipe {
       /* v8 ignore next */
       hashInputs: async () => _internals.resolveHashInputs(opts, root),
       ready: async () => {},
-      start: async ({ port }) => {
+      start: async ({ port, host }) => {
         ensureRoot();
         return _internals.withEnv(opts.env, async () => {
           const nuxi = _internals.resolveNuxiEntry(root);
@@ -298,14 +310,14 @@ export function nuxt(opts: NuxtOptions): Recipe {
               ...process.env,
               ...startEnv,
               PORT: String(port),
-              HOST: '127.0.0.1',
+              HOST: host,
               NODE_ENV: 'development',
               // Harness may restart after a hard kill left a Nuxt lock file.
               NUXT_IGNORE_LOCK: '1',
             },
             captureLogs: true,
           });
-          const url = loopbackUrl(port);
+          const url = loopbackUrl(port, '/', host);
           try {
             await waitForHttpReady(url, {
               timeoutMs: opts.readyTimeoutMs ?? 180_000,
@@ -359,7 +371,7 @@ export function nuxt(opts: NuxtOptions): Recipe {
         _internals.buildNuxtApp(root, outDir, mergeNuxtConfig(opts), true),
       );
     },
-    start: async ({ port, outDir }) => {
+    start: async ({ port, host, outDir }) => {
       ensureRoot();
       const entry = _internals.findServerEntry(outDir);
       const managed = spawnManaged(process.execPath, [entry], {
@@ -368,12 +380,12 @@ export function nuxt(opts: NuxtOptions): Recipe {
           ...process.env,
           ...startEnv,
           PORT: String(port),
-          HOST: '127.0.0.1',
+          HOST: host,
           NODE_ENV: 'production',
         },
         captureLogs: true,
       });
-      const url = loopbackUrl(port);
+      const url = loopbackUrl(port, '/', host);
       try {
         await waitForHttpReady(url, { timeoutMs: opts.readyTimeoutMs ?? 60_000 });
       } catch (e) {

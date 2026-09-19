@@ -5,7 +5,7 @@ import { join } from 'pathe';
 import { contentHash, sha1, hashString } from '../../packages/core/src/hash';
 import { TargetRegistry } from '../../packages/core/src/target-registry';
 import { ArtifactStore } from '../../packages/core/src/artifact-store';
-import { LOOPBACK_HOST, normalizeBaseUrl, loopbackUrl } from '../../packages/core/src/paths';
+import { LOOPBACK_HOST, normalizeBaseUrl, loopbackUrl, resolveBindHost, resolveProbeHost } from '../../packages/core/src/paths';
 import { defineRecipes, clearRegisteredRecipes } from '../../packages/core/src/recipes';
 import { resetRecipeBindings } from '../../packages/core/src/identity';
 import { defineRecipe } from '../../packages/core/src/recipes';
@@ -29,10 +29,27 @@ describe('hash', () => {
 });
 
 describe('paths', () => {
+  const prev = process.env.UNTESTUTILS_BIND_HOST;
+  afterEach(() => {
+    if (prev === undefined) delete process.env.UNTESTUTILS_BIND_HOST;
+    else process.env.UNTESTUTILS_BIND_HOST = prev;
+  });
+
   test('loopback constants', () => {
     expect(LOOPBACK_HOST).toBe('127.0.0.1');
     expect(loopbackUrl(3000)).toBe('http://127.0.0.1:3000/');
     expect(normalizeBaseUrl('http://localhost:3000/')).toContain('127.0.0.1');
+  });
+
+  test('resolveBindHost + probe remaps wildcards', () => {
+    delete process.env.UNTESTUTILS_BIND_HOST;
+    expect(resolveBindHost()).toBe('127.0.0.1');
+    process.env.UNTESTUTILS_BIND_HOST = 'localhost';
+    expect(resolveBindHost()).toBe('127.0.0.1');
+    process.env.UNTESTUTILS_BIND_HOST = '0.0.0.0';
+    expect(resolveBindHost()).toBe('0.0.0.0');
+    expect(resolveProbeHost('0.0.0.0')).toBe('127.0.0.1');
+    expect(loopbackUrl(4000, '/', '0.0.0.0')).toBe('http://127.0.0.1:4000/');
   });
 });
 

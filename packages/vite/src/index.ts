@@ -4,7 +4,7 @@ import {
   frameworkRoots,
   resolveBin,
   type FrameworkBaseOptions,
-} from '@untestutils/drivers';
+} from '@untestutils/core';
 
 export type ViteRun = 'preview' | 'dev';
 

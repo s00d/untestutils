@@ -1,1 +1,1 @@
-export * from '@untestutils/config';
+export * from '@untestutils/nuxt/config';

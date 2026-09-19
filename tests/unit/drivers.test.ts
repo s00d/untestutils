@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'pathe';
 import { createServer } from 'node:http';
 import { ofetch } from 'ofetch';
-import { defineDriver, command, staticDir, nodeEntry, host } from '@untestutils/drivers';
+import { defineDriver, command, staticDir, nodeEntry, host } from '@untestutils/core';
 import { defineRecipe } from '@untestutils/core';
 import { ensurePrepared, stopAllTargets } from '@untestutils/core';
 import { clearRegisteredRecipes } from '@untestutils/core';

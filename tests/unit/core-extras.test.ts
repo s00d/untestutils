@@ -83,7 +83,7 @@ describe('core extras', () => {
     const site = await mkdtemp(join(tmpdir(), 'ut-s-'));
     await writeFile(join(site, 'index.html'), 'hi');
     process.env.UNTESTUTILS_ARTIFACTS_DIR = artifacts;
-    const { staticDir } = await import('@untestutils/drivers');
+    const { staticDir } = await import('@untestutils/core');
     defineRecipes({ site: staticDir({ id: 'site', root: site }) });
     const h = await useHarness('site');
     expect(getCurrentHarness()?.id).toBe('site');
@@ -133,8 +133,11 @@ describe('core extras', () => {
     await defaultReady({ kind: 'dir', dir: '/tmp' });
     await defaultReady({ kind: 'url', url, stop: async () => {} });
     await expect(waitForHttpReady('http://127.0.0.1:1/', { timeoutMs: 400 })).rejects.toThrow(
-      /readiness failed/,
+      /readiness failed.*phase=tcp/,
     );
+    await expect(
+      waitForHttpReady('http://example.invalid/', { timeoutMs: 400, skipTcp: true }),
+    ).rejects.toThrow(/Remote\/non-loopback|readyTimeoutMs|skipReady/);
     await new Promise<void>((r) => server.close(() => r()));
   });
 
@@ -263,7 +266,7 @@ describe('core extras', () => {
     process.env.UNTESTUTILS_SHARE = '0';
     const site = await mkdtemp(join(tmpdir(), 'ut-s2-'));
     await writeFile(join(site, 'index.html'), 'z');
-    const { staticDir } = await import('@untestutils/drivers');
+    const { staticDir } = await import('@untestutils/core');
     const recipe = staticDir({ id: 'share0', root: site });
     await ensurePrepared(recipe, { artifactsRoot: artifacts });
     delete process.env.UNTESTUTILS_SHARE;

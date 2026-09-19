@@ -5,7 +5,7 @@ import {
   frameworkRoots,
   resolveBin,
   type FrameworkBaseOptions,
-} from '@untestutils/drivers';
+} from '@untestutils/core';
 
 export type RemixRun = 'server' | 'dev';
 
@@ -121,13 +121,13 @@ export function remix(opts: RemixOptions) {
       }
       return Promise.resolve();
     },
-    start: ({ port }) => {
+    start: ({ port, host }) => {
       const serve = resolveRemixServe(root);
       return {
         command: process.execPath,
         args: [serve, join(root, serverEntry)],
         cwd: root,
-        env: { PORT: String(port), HOST: '127.0.0.1' },
+        env: { PORT: String(port), HOST: host },
       };
     },
   });

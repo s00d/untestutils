@@ -5,7 +5,7 @@ import {
   frameworkRoots,
   resolveBin,
   type FrameworkBaseOptions,
-} from '@untestutils/drivers';
+} from '@untestutils/core';
 
 export type SolidStartRun = 'preview' | 'server' | 'dev';
 
@@ -79,11 +79,11 @@ export function solidstart(opts: SolidStartOptions) {
         }
         return Promise.resolve();
       },
-      start: ({ port }) => ({
+      start: ({ port, host }) => ({
         command: process.execPath,
         args: [join(root, serverEntry)],
         cwd: root,
-        env: { PORT: String(port), HOST: '127.0.0.1' },
+        env: { PORT: String(port), HOST: host },
       }),
     });
   }

@@ -24,7 +24,10 @@ export default defineConfig({
         replacement: resolve(root, 'packages/playwright/src/index.ts'),
       },
       { find: '@untestutils/core', replacement: resolve(root, 'packages/core/src/index.ts') },
-      { find: '@untestutils/drivers', replacement: resolve(root, 'packages/drivers/src/index.ts') },
+      {
+        find: /^@untestutils\/nuxt\/(.*)$/,
+        replacement: resolve(root, 'packages/nuxt/src/$1'),
+      },
       { find: '@untestutils/nuxt', replacement: resolve(root, 'packages/nuxt/src/index.ts') },
       { find: '@untestutils/ai', replacement: resolve(root, 'packages/ai/src/index.ts') },
       { find: '@untestutils/vite', replacement: resolve(root, 'packages/vite/src/index.ts') },
@@ -39,9 +42,18 @@ export default defineConfig({
         find: '@untestutils/solidstart',
         replacement: resolve(root, 'packages/solidstart/src/index.ts'),
       },
-      { find: '@untestutils/runtime', replacement: resolve(root, 'packages/runtime/src/index.ts') },
-      { find: '@untestutils/module', replacement: resolve(root, 'packages/module/src/index.ts') },
-      { find: '@untestutils/config', replacement: resolve(root, 'packages/config/src/index.ts') },
+      {
+        find: '@untestutils/runtime',
+        replacement: resolve(root, 'packages/nuxt/src/runtime/index.ts'),
+      },
+      {
+        find: '@untestutils/module',
+        replacement: resolve(root, 'packages/nuxt/src/module/index.ts'),
+      },
+      {
+        find: '@untestutils/config',
+        replacement: resolve(root, 'packages/nuxt/src/config/index.ts'),
+      },
       { find: '@untestutils/cli', replacement: resolve(root, 'packages/cli/src/main.ts') },
       { find: /^untestutils\/(.*)$/, replacement: resolve(root, 'packages/untestutils/src/$1.ts') },
       { find: 'untestutils', replacement: resolve(root, 'packages/untestutils/src/index.ts') },

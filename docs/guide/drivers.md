@@ -1,37 +1,29 @@
 ---
-title: Drivers and recipes
-description: Built-in drivers — staticDir, command, nodeEntry, host, nuxt, vite, next, astro, sveltekit, remix, solidstart.
+title: Drivers
+description: Built-in Recipe factories — staticDir, command, nodeEntry, host, nuxt, and other frameworks.
 outline: deep
 ---
 
-# Drivers and recipes
+# Drivers
 
-Drivers are factories that return a **Recipe**. Import them from `untestutils` (or `untestutils/nuxt` for Nuxt).
+Drivers return a **Recipe**. Import from `untestutils` (Nuxt from `untestutils/nuxt`).
 
 ```ts
 import { defineRecipes, staticDir, command, nodeEntry, host } from 'untestutils'
 import { nuxt } from 'untestutils/nuxt'
 ```
 
+Full option lists: [API: Drivers](/api/drivers) · [API: Nuxt](/api/nuxt).
+
 ## staticDir
 
-Serve a directory over HTTP on loopback.
-
 ```ts
-staticDir({
-  id: 'docs',
-  root: resolve('./dist'),
-})
+staticDir({ id: 'docs', root: resolve('./dist') })
 ```
 
 ## command
 
-Shell prepare/start with placeholders:
-
-| Token | Expands to |
-|-------|------------|
-| `$PORT` | Free port |
-| `$OUT_DIR` | Artifact output dir |
+Placeholders: `$PORT`, `$OUT_DIR`.
 
 ```ts
 command({
@@ -44,28 +36,34 @@ command({
 
 ## nodeEntry
 
-Spawn a Node entry file (HTTP server) with `$PORT` / env injection.
-
 ```ts
-nodeEntry({
-  id: 'api',
-  entry: resolve('./server.mjs'),
-})
+nodeEntry({ id: 'api', entry: resolve('./server.mjs') })
 ```
 
-## host
+## host (remote / staging)
 
-Attach to an **already running** URL — no prepare. Used for staging/prod smoke.
+No local prepare — attach to a deployed URL.
 
 ```ts
 host({
   id: 'staging',
   url: process.env.UNTESTUTILS_REMOTE_URL!,
-  // skipReady: true // if the URL is up but readiness probe should be skipped
+  // readyTimeoutMs: 120_000,
+  // readyPath: '/health',
+  // skipReady: true,
 })
 ```
 
-See [Remote host](/guide/remote-host).
+```bash
+UNTESTUTILS_REMOTE_URL=https://staging.example.com pnpm exec playwright test
+```
+
+Use for post-deploy smoke (e.g. `workflow_dispatch`), not every PR. Playground: `playground/playwright/remote.spec.ts`.
+
+| Driver | Prepare | Use case |
+|--------|---------|----------|
+| `staticDir` / `nuxt` / `command` | yes | Local / CI e2e |
+| `host` | no | Staging / prod smoke |
 
 ## nuxt
 
@@ -76,94 +74,33 @@ nuxt({
   id: 'app',
   root: resolve('./fixtures/nuxt'),
   run: 'server', // 'server' | 'static' | 'dev'
-  preset: 'node-server', // optional Nitro deploy preset
+  preset: 'node-server', // optional Nitro preset (part of prepare hash)
 })
 ```
 
-Builds/starts a Nuxt app as a Recipe. Prefer `run: 'server'` for e2e shared builds.
+Prefer `run: 'server'` for shared e2e builds. `matrix(base, variants)` expands one fixture into many recipe ids.
 
-### `preset`
+## Other frameworks
 
-Passed through as `nuxtConfig.nitro.preset` and included in the prepare hash.
-
-| Preset | Notes |
+| Export | Status |
 |--------|--------|
-| `node-server` | Default Node listener (dogfood / local CI) |
-| `azure` | Azure SWA / Functions — build smoke; host-specific start is out of scope |
-| `cloudflare_module` / `cloudflare_pages` | Documented for identity/hash; use platform wrangler for full deploy e2e |
+| `untestutils/vite` \| `next` \| `astro` \| `sveltekit` | Dogfood’d in CI |
+| `untestutils/remix` \| `solidstart` | Available; not CI-stable yet — see [Roadmap](/roadmap) |
 
-### `matrix(base, variants)`
-
-Expand one fixture into many recipe ids (i18n-style):
-
-```ts
-export const recipes = defineRecipes({
-  ...matrix(
-    { id: 'basic', root: resolve('./fixtures/basic'), run: 'server' },
-    {
-      default: { env: { STRATEGY: 'prefix' } },
-      noSsr: { env: { STRATEGY: 'prefix' }, nuxtConfig: { ssr: false } },
-    },
-  ),
-}, import.meta.url)
-// → recipes basic, basic__noSsr with distinct identity / HOST env
-```
-
-Variant key `default` keeps `base.id`; other keys become `${id}__${key}`. Merges `env`, `nuxtConfig`, `preset`, `hashInputs`. See playground `examples/matrix-recipes.ts`.
-
-## Framework CLIs (e2e Recipes)
-
-Shared options: `id?`, `root`, `run?`, `env?`, `hashInputs?`, `readyPath?`, `readyTimeoutMs?`.
-Install the framework in the app under test (optional peers on the published package).
-
-| Import | Default `run` | Modes |
-|--------|---------------|--------|
-| `untestutils/vite` | `preview` | `preview`, `dev` |
-| `untestutils/next` | `server` | `server`, `dev`, `static` (`output: 'export'` → `out/`) |
-| `untestutils/astro` | `preview` | `preview`, `server` (Node adapter entry), `dev` |
-| `untestutils/sveltekit` | `preview` | `preview`, `server` (adapter-node), `dev` |
-| `untestutils/remix` | `server` | `server` (remix-serve), `dev` |
-| `untestutils/solidstart` | `preview` | `preview` / `server` (Vinxi), `dev` |
-
-```ts
-import { vite } from 'untestutils/vite'
-import { next } from 'untestutils/next'
-import { astro } from 'untestutils/astro'
-import { sveltekit } from 'untestutils/sveltekit'
-import { remix } from 'untestutils/remix'
-import { solidstart } from 'untestutils/solidstart'
-
-vite({ id: 'spa', root: resolve('./apps/spa'), run: 'preview' })
-next({ id: 'web', root: resolve('./apps/web'), run: 'server' })
-```
-
-`dev` uses `share: 'never'`. Build modes share prepare cache via TargetRegistry like Nuxt.
-
-Playground dogfood: `fixtures/vite-spa`, `next-app`, `astro-site`, `sveltekit-app`. Remix/SolidStart examples: `playground/examples/remix-solid-recipes.ts`.
-
-## In-process unit (Nuxt)
-
-| Import | Role |
-|--------|------|
-| `untestutils/config` | `defineVitestConfig` / `defineVitestProject` |
-| `untestutils/runtime` | `mountSuspended`, mocks, `registerEndpoint` |
-| `untestutils/module` | Required in `nuxt.config` for macros |
-
-Keep unit env and e2e harness in **separate** Vitest configs.
+Same Recipe idea. Options: [API: Drivers](/api/drivers).
 
 ## defineRecipes
 
 ```ts
 export const recipes = defineRecipes({
-  site: staticDir({ id: 'site', root: '…' }),
-  app: nuxt({ id: 'app', root: '…', run: 'server' }),
-})
+  site: staticDir({ id: 'site', root: resolve('./public') }),
+  app: nuxt({ id: 'app', root: resolve('./fixtures/app'), run: 'server' }),
+}, import.meta.url)
 ```
 
-Ids must be unique. Use the same string in `prewarm`, `useHarness('id')`, and `test.use({ harness: 'id' })`.
+Pass `import.meta.url` so workers can re-import the module.
 
 ## Next
 
-- [Extending](/guide/extending) — custom `defineDriver`
-- [API: Drivers](/api/drivers)
-- [API: Nuxt](/api/nuxt)
+- [How it works](/guide/how-it-works)
+- [Vitest](/guide/vitest) · [Playwright](/guide/playwright)

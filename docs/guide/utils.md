@@ -1,12 +1,12 @@
 ---
 title: Utils
-description: Shared e2e helpers — cookies, SEO head, poll, domain emulation, redirects.
+description: Cookies, SEO head, poll, domain emulation, redirects — for live targets.
 outline: deep
 ---
 
 # Utils
 
-Import from `untestutils/utils` (optional peer: `playwright-core` for browser helpers).
+`untestutils/utils` — helpers for **real-runtime** checks (optional peer: `playwright-core`).
 
 ```ts
 import {
@@ -19,60 +19,43 @@ import {
 } from 'untestutils/utils'
 ```
 
-## Cookies
+## Cookies / headers
 
 ```ts
-await setLocaleCookie(page, baseURL!, 'de') // clears then sets `user-locale`
-await setLocaleCookie(page, baseURL!, 'en', { name: 'i18n_redirected', clear: false })
-const locale = await getLocaleCookie(page)
+await setLocaleCookie(page, baseURL!, 'de')
 await clearCookies(page)
-```
-
-## Headers
-
-```ts
 await page.setExtraHTTPHeaders(acceptLanguageHeaders('de-DE,de;q=0.9'))
-await request.get('/', { headers: {
-  ...acceptLanguageHeaders('fr'),
-  ...forwardedHostHeaders('example.com', 'https'),
-}})
+await setAcceptLanguage(page, 'de')
 ```
 
-Or `await setAcceptLanguage(page, 'de')`.
-
-## SEO head
+## SEO
 
 ```ts
-const html = await (await request.get('/en')).text()
-const head = parseSeoHead(html)
-// head.canonical, head.ogUrl, head.ogLocale, head.hreflangs
-
-const live = await readSeoHead(page)
+const head = parseSeoHead(await (await request.get('/en')).text())
+// head.canonical, head.ogUrl, head.hreflangs
+await readSeoHead(page)
 extractSitemapLocs(xml)
 extractJsonLd(html)
 ```
 
-## Browser
+## Browser / redirects
 
 ```ts
 await emulateDomain(page, 'https://en.example.com', baseURL!)
-
-const { responses, findByPath, stop } = trackResponses(page)
+const { findByPath, stop } = trackResponses(page)
 await goto('/')
 expect(findByPath('/')?.status).toBe(302)
 stop()
-
-const { messages, stop: stopConsole } = collectHydrationIssues(page)
-await goto('/')
-expect(messages).toHaveLength(0)
-stopConsole()
 ```
 
-## Poll / HTTP
+## Poll
 
 ```ts
 await pollUntil(async () => (await fetch(url)).ok)
 await waitForUrlOk(url)
-await waitForUrlIncludes(url, 'ready')
-await runSequential(items, async (item) => { … })
 ```
+
+## Next
+
+- [Vitest](/guide/vitest)
+- [Why](/why) — utils are not a second philosophy

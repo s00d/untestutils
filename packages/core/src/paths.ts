@@ -3,12 +3,36 @@ import { homedir } from 'node:os';
 import { dirname, isAbsolute, join, normalize, resolve } from 'pathe';
 import { fileURLToPath } from 'node:url';
 
-/** Always bind/serve on IPv4 loopback — never `localhost` (::1 trap). */
+/** Default IPv4 loopback — prefer this over `localhost` (::1 trap). */
 export const LOOPBACK_HOST = '127.0.0.1';
 
-export function loopbackUrl(port: number, path = '/'): string {
+/**
+ * Host used to bind local servers and allocate free ports.
+ * Override with `UNTESTUTILS_BIND_HOST` (e.g. `0.0.0.0` to listen on all interfaces;
+ * ready probes still hit `127.0.0.1` via {@link resolveProbeHost}).
+ */
+export function resolveBindHost(): string {
+  const raw = process.env.UNTESTUTILS_BIND_HOST?.trim();
+  if (!raw) return LOOPBACK_HOST;
+  if (raw === 'localhost' || raw === '::1' || raw === '[::1]') return LOOPBACK_HOST;
+  return raw;
+}
+
+/** Host used in ready-check / harness URLs — never a wildcard bind address. */
+export function resolveProbeHost(bindHost: string = resolveBindHost()): string {
+  const h = bindHost.replace(/^\[|\]$/g, '').toLowerCase();
+  if (h === '0.0.0.0' || h === '*' || h === '::' || h === '::0') return LOOPBACK_HOST;
+  return bindHost;
+}
+
+export function loopbackUrl(
+  port: number,
+  path: string = '/',
+  host: string = resolveBindHost(),
+): string {
+  const probe = resolveProbeHost(host);
   const p = path.startsWith('/') ? path : `/${path}`;
-  return `http://${LOOPBACK_HOST}:${port}${p}`;
+  return `http://${probe}:${port}${p}`;
 }
 
 export function normalizeBaseUrl(url: string): string {
@@ -26,7 +50,7 @@ export function normalizeBaseUrl(url: string): string {
   }
 }
 
-export function resolveArtifactsRoot(cwd = process.cwd()): string {
+export function resolveArtifactsRoot(cwd: string = process.cwd()): string {
   if (process.env.UNTESTUTILS_ARTIFACTS_DIR) {
     return resolve(cwd, process.env.UNTESTUTILS_ARTIFACTS_DIR);
   }
@@ -34,7 +58,7 @@ export function resolveArtifactsRoot(cwd = process.cwd()): string {
   return join(repoRoot, '.untestutils');
 }
 
-export function findRepoRoot(start = process.cwd()): string {
+export function findRepoRoot(start: string = process.cwd()): string {
   let dir = resolve(start);
   for (;;) {
     if (existsSync(join(dir, 'pnpm-workspace.yaml')) || existsSync(join(dir, '.git'))) {

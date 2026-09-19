@@ -20,7 +20,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      # Facade postinstall (nuxt prepare) needs a built untestutils/module export.
+      # Emit-only packages: build dist before postinstall hooks.
       - run: pnpm install --ignore-scripts
       - run: pnpm run build
       - run: pnpm install

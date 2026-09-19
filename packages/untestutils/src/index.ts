@@ -1,5 +1,5 @@
 /**
- * untestutils — public facade. Re-exports private workspace packages.
+ * untestutils — thin public facade. Re-exports @untestutils/* packages (no bundling).
  */
 export {
   defineRecipe,
@@ -14,6 +14,8 @@ export {
   loopbackUrl,
   normalizeBaseUrl,
   resolveArtifactsRoot,
+  resolveBindHost,
+  resolveProbeHost,
   getFreePort,
   waitForHttpReady,
   contentHash,
@@ -37,7 +39,7 @@ export type {
   UseHarnessOptions,
 } from '@untestutils/core';
 
-export { command, staticDir, nodeEntry, host, defineDriver } from '@untestutils/drivers';
+export { command, staticDir, nodeEntry, host, defineDriver } from '@untestutils/core';
 
 export type {
   CommandOptions,
@@ -45,4 +47,4 @@ export type {
   NodeEntryOptions,
   HostOptions,
   Driver,
-} from '@untestutils/drivers';
+} from '@untestutils/core';

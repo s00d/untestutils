@@ -1,14 +1,14 @@
 ---
-title: Perf
-description: Build + load performance suites with pluggable targets and reporters.
+title: Perf suite
+description: Build + load benchmarks with untestutils/perf — not e2e harness speed.
 outline: deep
 ---
 
-# Perf
+# Perf suite
 
-Import from `untestutils/perf` or run `untestutils perf --config ./perf.config.ts`.
-
-Measures **build** (wall time + RSS/CPU + optional bundle sizes) and optional **load** (autocannon / artillery) against started servers. Targets are filesystem apps — not tied to Nuxt.
+::: tip
+This is **build/load benchmarking** (`untestutils/perf`), not the e2e shared-prepare story. Optional / not in CI dogfood — see [Roadmap](/roadmap). For CI speed of tests, see [Why](/why).
+:::
 
 ```ts
 import { definePerfSuite, consoleReporter, jsonReporter } from 'untestutils/perf'
@@ -26,16 +26,8 @@ export default definePerfSuite({
         command: 'node',
         args: ['.output/server/index.mjs'],
         port: 10000,
-        env: { NITRO_PRESET: 'node-server' },
       },
-      load: {
-        autocannon: { connections: 10, durationSec: 10 },
-        artillery: { config: './benchmark/artillery.yml' },
-      },
-      bundle: {
-        dirs: ['.output/public', '.output/server'],
-        classify: (p) => (p.includes('locales') ? 'asset' : 'code'),
-      },
+      load: { autocannon: { connections: 10, durationSec: 10 } },
     },
   ],
   thresholds: { buildTimeSec: 120, responseTimeP95: 500 },
@@ -45,9 +37,6 @@ export default definePerfSuite({
 ```bash
 untestutils perf --config ./perf.config.ts
 untestutils perf --config ./perf.config.ts --only app --skip-load
-untestutils perf --config ./perf.config.ts --runs 3 --json
 ```
 
-Optional peers: install `autocannon` / `artillery` for faster local runs; otherwise the harness falls back to `npx`.
-
-Custom reporters implement `onStart` / `onTarget` / `onEnd` — markdown/charts stay in the consumer repo.
+Optional peers: `autocannon` / `artillery` (else `npx` fallback). Custom reporters: `onStart` / `onTarget` / `onEnd`.

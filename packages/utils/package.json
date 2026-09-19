@@ -1,32 +1,32 @@
 {
   "name": "@untestutils/utils",
   "version": "0.4.4",
-  "private": true,
   "description": "Shared e2e/test utilities — cookies, SEO head, poll, browser helpers",
   "files": [
-    "src"
+    "dist"
   ],
   "type": "module",
   "sideEffects": false,
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "import": "./src/index.ts",
-      "default": "./src/index.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
     },
     "./package.json": "./package.json"
   },
   "scripts": {
-    "build": "node -e \"console.log('[@untestutils/utils] private — use root pnpm run build (facade only)')\"",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build": "obuild && tsc -p tsconfig.build.json",
+    "prepack": "pnpm build",
+    "publint": "publint --strict"
   },
   "devDependencies": {
     "@types/node": "catalog:",
     "playwright-core": "catalog:",
     "publint": "catalog:",
     "typescript": "catalog:",
-    "vite": "catalog:",
-    "vite-plugin-dts": "catalog:"
+    "obuild": "catalog:"
   },
   "peerDependencies": {
     "playwright-core": "catalog:"
@@ -38,5 +38,17 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "license": "MIT",
+  "homepage": "https://s00d.github.io/untestutils/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/s00d/untestutils.git",
+    "directory": "packages/utils"
+  },
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "publishConfig": {
+    "access": "public"
   }
 }

@@ -7,7 +7,7 @@ export default defineConfig({
     typecheck: {
       enabled: true,
       include: ['tests/types/**/*.test.ts'],
-      // don't typecheck package vite configs (vite-plugin-dts option drift)
+      // ignore ambient errors from consumer-facing type fixtures
       ignoreSourceErrors: true,
     },
   },

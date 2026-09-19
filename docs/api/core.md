@@ -1,67 +1,39 @@
 ---
 title: Core API
-description: defineRecipes, useHarness, types, and artifact helpers.
+description: defineRecipes, useHarness, Recipe fields.
 outline: deep
 ---
 
 # Core API
 
-Import from `untestutils` (re-exports `@untestutils/core` + drivers).
+Import from `untestutils`.
 
 ## defineRecipes / defineRecipe
 
 ```ts
-import { defineRecipes, defineRecipe } from 'untestutils'
-
 export const recipes = defineRecipes({
   site: /* Recipe */,
-})
-
-const inline = defineRecipe({
-  id: 'inline',
-  start: async () => ({ kind: 'url', url: 'http://127.0.0.1:3000/', stop: async () => {} }),
-})
+}, import.meta.url)
 ```
 
-### Recipe fields
-
-| Field | Type | Notes |
-|-------|------|-------|
-| `id` | `string?` | Required when registered by name |
-| `prepare` | `(ctx) => Promise<void>` | Optional build step |
-| `start` | `(ctx) => Promise<Running>` | Required |
-| `ready` | ready options / fn | Optional HTTP gate |
-| `hashInputs` | inputs for identity | Optional |
-| `share` | share policy | Optional |
+| Field | Notes |
+|-------|--------|
+| `id` | Set when registering by key |
+| `prepare?` | Build into artifact dir |
+| `start` | Required → `Running` |
+| `ready?` | HTTP / custom gate |
+| `hashInputs?` | Identity inputs |
+| `share?` | Share policy |
 
 `Running`: `{ kind: 'url', url, stop }` and/or `{ kind: 'dir', dir }`.
 
 ## useHarness
 
 ```ts
-import { useHarness } from 'untestutils'
-// or from 'untestutils/vitest'
-
 const app = await useHarness('site')
+// app.url, app.dir, app.$fetch, app.files.*
 ```
 
-### HarnessHandle
+Also: `getCurrentHarness()`, `ensurePrepared()`, `stopAllTargets()`, `resolveArtifactsRoot()`, `waitForHttpReady()`, `TargetRegistry`, `SCHEMA_VERSION`.
 
-| Member | Notes |
-|--------|-------|
-| `url?` | Base URL when running a server |
-| `dir?` | Directory when kind includes dir |
-| `$fetch` | ofetch against `url` |
-| `files.read/exists/list` | Read fixture/output files |
-| `dispose?` | Optional cleanup |
-
-Also: `getCurrentHarness()`, `getHarness(id)`, `ensurePrepared()`, `stopAllTargets()`.
-
-## Utilities (selected)
-
-`resolveArtifactsRoot`, `normalizeBaseUrl`, `LOOPBACK_HOST`, `getFreePort`, `waitForHttpReady`, `contentHash`, `FileLock`, `TargetRegistry`, `ArtifactStore`, `envFlag`, `debug`, `SCHEMA_VERSION`.
-
-## Next
-
-- [Concepts](/guide/concepts)
-- [Drivers API](/api/drivers)
+See [How it works](/guide/how-it-works) · [Drivers API](/api/drivers).

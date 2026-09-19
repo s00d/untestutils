@@ -1,7 +1,7 @@
 {
   "name": "untestutils",
   "version": "0.4.4",
-  "description": "Recipe-based test harness for Vitest and Playwright — shared prepare, multi-framework factories, optional AI codegen",
+  "description": "Recipe-based test harness for Vitest and Playwright \u2014 thin facade over @untestutils/* packages",
   "keywords": [
     "e2e",
     "harness",
@@ -18,14 +18,15 @@
   "author": "s00d",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/s00d/untestutils.git"
+    "url": "git+https://github.com/s00d/untestutils.git",
+    "directory": "packages/untestutils"
   },
   "bin": {
-    "untestutils": "./dist/cli-run.mjs"
+    "untestutils": "./bin.mjs"
   },
   "files": [
     "dist",
-    "templates",
+    "bin.mjs",
     "vitest-environment-untestutils",
     "vitest-environment-nuxt",
     "LICENSE",
@@ -134,11 +135,25 @@
       "default": "./dist/runtime.mjs"
     },
     "./runtime/entry": {
+      "types": "./dist/runtime-entry.d.ts",
       "import": "./dist/runtime-entry.mjs",
       "default": "./dist/runtime-entry.mjs"
     },
-    "./runtime/nuxt-root": "./dist/runtime-nuxt-root.mjs",
-    "./runtime/mocks/vue-devtools": "./dist/runtime-mocks-vue-devtools.mjs",
+    "./runtime/nuxt-root": {
+      "types": "./dist/runtime-nuxt-root.d.ts",
+      "import": "./dist/runtime-nuxt-root.mjs",
+      "default": "./dist/runtime-nuxt-root.mjs"
+    },
+    "./runtime/mocks/vue-devtools": {
+      "types": "./dist/runtime-mocks-vue-devtools.d.ts",
+      "import": "./dist/runtime-mocks-vue-devtools.mjs",
+      "default": "./dist/runtime-mocks-vue-devtools.mjs"
+    },
+    "./runtime/browser-entry": {
+      "types": "./dist/runtime-browser-entry.d.ts",
+      "import": "./dist/runtime-browser-entry.mjs",
+      "default": "./dist/runtime-browser-entry.mjs"
+    },
     "./module": {
       "types": "./dist/module.d.ts",
       "import": "./dist/module.mjs",
@@ -149,119 +164,64 @@
       "import": "./dist/config.mjs",
       "default": "./dist/config.mjs"
     },
-    "./vitest-environment": {
-      "import": "./dist/vitest-environment.mjs",
-      "default": "./dist/vitest-environment.mjs"
-    },
+    "./vitest-environment": "./vitest-environment-untestutils/index.mjs",
     "./ai": {
       "types": "./dist/ai.d.ts",
       "import": "./dist/ai.mjs",
       "default": "./dist/ai.mjs"
     },
-    "./package.json": "./package.json",
-    "./runtime/browser-entry": {
-      "import": "./dist/runtime-browser-entry.mjs",
-      "default": "./dist/runtime-browser-entry.mjs"
-    }
+    "./package.json": "./package.json"
   },
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
-    "build": "vite build",
+    "build": "obuild && tsc -p tsconfig.build.json",
+    "prepack": "pnpm build",
     "publint": "publint --strict"
   },
   "dependencies": {
-    "c12": "^3.3.3",
-    "citty": "^0.2.2",
-    "consola": "^3.4.2",
-    "defu": "^6.1.7",
-    "destr": "^2.0.5",
-    "estree-walker": "^3.0.3",
-    "exsolve": "^1.1.1",
-    "fake-indexeddb": "^6.2.5",
-    "local-pkg": "^1.2.1",
-    "magic-string": "^0.30.21",
-    "node-fetch-native": "^1.6.7",
-    "node-mock-http": "^1.0.5",
-    "nypm": "^0.6.10",
-    "ofetch": "^1.5.1",
-    "pathe": "^2.0.3",
-    "radix3": "^1.1.2",
-    "scule": "^1.3.0",
-    "std-env": "^4.2.0",
-    "tinyglobby": "^0.2.17",
-    "ufo": "^1.6.4",
-    "unplugin": "^3.3.0"
-  },
-  "devDependencies": {
-    "@types/node": "catalog:",
     "@untestutils/ai": "workspace:*",
-    "@untestutils/astro": "workspace:*",
-    "@untestutils/config": "workspace:*",
+    "@untestutils/cli": "workspace:*",
     "@untestutils/core": "workspace:*",
-    "@untestutils/drivers": "workspace:*",
-    "@untestutils/module": "workspace:*",
-    "@untestutils/next": "workspace:*",
     "@untestutils/nuxt": "workspace:*",
     "@untestutils/perf": "workspace:*",
     "@untestutils/playwright": "workspace:*",
-    "@untestutils/remix": "workspace:*",
-    "@untestutils/runtime": "workspace:*",
-    "@untestutils/solidstart": "workspace:*",
-    "@untestutils/sveltekit": "workspace:*",
     "@untestutils/utils": "workspace:*",
-    "@untestutils/vite": "workspace:*",
     "@untestutils/vitest": "workspace:*",
-    "publint": "catalog:",
-    "rolldown-plugin-dts": "^0.28.6",
-    "typescript": "catalog:",
-    "vite": "catalog:"
+    "vitest-environment-untestutils": "workspace:*"
   },
   "peerDependencies": {
-    "@ai-sdk/anthropic": "^4.0.57",
-    "@ai-sdk/google": "^4.0.75",
-    "@ai-sdk/openai": "^4.0.70",
-    "@ai-sdk/xai": "^5.0.3",
-    "@nuxt/kit": "^4.5.2",
+    "@untestutils/astro": "0.4.4",
+    "@untestutils/next": "0.4.4",
+    "@untestutils/remix": "0.4.4",
+    "@untestutils/solidstart": "0.4.4",
+    "@untestutils/sveltekit": "0.4.4",
+    "@untestutils/vite": "0.4.4",
     "@playwright/test": "^1.63.0",
-    "@vue/test-utils": "^2.5.1",
-    "ai": "^7.0.106",
-    "happy-dom": "^20.14.5",
-    "nuxt": "^4.5.2",
     "playwright-core": "^1.63.0",
-    "vitest": "^4.0.0 || ^5.0.0",
-    "vue": "^3.5.0"
+    "vitest": "^4.0.0 || ^5.0.0"
   },
   "peerDependenciesMeta": {
-    "@ai-sdk/anthropic": {
+    "@untestutils/astro": {
       "optional": true
     },
-    "@ai-sdk/google": {
+    "@untestutils/next": {
       "optional": true
     },
-    "@ai-sdk/openai": {
+    "@untestutils/remix": {
       "optional": true
     },
-    "@ai-sdk/xai": {
+    "@untestutils/solidstart": {
       "optional": true
     },
-    "@nuxt/kit": {
+    "@untestutils/sveltekit": {
+      "optional": true
+    },
+    "@untestutils/vite": {
       "optional": true
     },
     "@playwright/test": {
-      "optional": true
-    },
-    "@vue/test-utils": {
-      "optional": true
-    },
-    "ai": {
-      "optional": true
-    },
-    "happy-dom": {
-      "optional": true
-    },
-    "nuxt": {
       "optional": true
     },
     "playwright-core": {
@@ -269,10 +229,20 @@
     },
     "vitest": {
       "optional": true
-    },
-    "vue": {
-      "optional": true
     }
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@untestutils/astro": "workspace:*",
+    "@untestutils/next": "workspace:*",
+    "@untestutils/nuxt": "workspace:*",
+    "@untestutils/remix": "workspace:*",
+    "@untestutils/solidstart": "workspace:*",
+    "@untestutils/sveltekit": "workspace:*",
+    "@untestutils/vite": "workspace:*",
+    "obuild": "catalog:",
+    "publint": "catalog:",
+    "typescript": "catalog:"
   },
   "engines": {
     "node": ">=20"

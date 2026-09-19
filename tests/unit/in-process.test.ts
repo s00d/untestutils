@@ -6,13 +6,13 @@ import {
   mockNuxtImport,
   unmockNuxtImport,
   mockComponent,
-} from '@untestutils/runtime';
-import untestutilsModule from '@untestutils/module';
+} from '@untestutils/nuxt/runtime';
+import untestutilsModule from '@untestutils/nuxt/module';
 import {
   defineVitestConfig,
   defineVitestProject,
   getVitestConfigFromNuxt,
-} from '@untestutils/config';
+} from '@untestutils/nuxt/config';
 
 describe('runtime API surface', () => {
   test('all helpers are exported as functions', () => {

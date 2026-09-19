@@ -6,42 +6,51 @@ outline: deep
 
 # Getting started
 
-untestutils is a **recipe-based test harness** for Vitest and Playwright. You declare targets once (`prepare` + `start`), share builds across specs, and reuse the same `recipes.ts` from both runners.
+Declare targets once (`prepare` + `start`), share builds across specs, reuse the same `recipes.ts` from Vitest and Playwright.
+
+New here? Read [Why](/why) first (one page).
 
 ## Requirements
 
 - Node.js **>= 20**
-- Vitest **5+** (for e2e)
+- Vitest **4+** or **5+**
 - Optional: `@playwright/test`, `playwright-core`, `nuxt`
 
 ## Install
 
+Always install facade / adapters at the **same version** (lockstep).
+
 ::: code-group
 
 ```bash [pnpm]
-pnpm add -D untestutils vitest
-# optional peers
-pnpm add -D @playwright/test playwright-core nuxt
+pnpm add -D untestutils @untestutils/vitest vitest
+# Nuxt recipes:
+pnpm add -D @untestutils/nuxt
+# Playwright:
+pnpm add -D @untestutils/playwright @playwright/test playwright-core
 ```
 
 ```bash [npm]
-npm install -D untestutils vitest
-```
-
-```bash [yarn]
-yarn add -D untestutils vitest
+npm install -D untestutils @untestutils/vitest vitest
 ```
 
 :::
 
-Or scaffold files with the CLI:
+| Need | Packages |
+|------|----------|
+| Core + Vitest e2e | `untestutils`, `@untestutils/vitest` |
+| Playwright | `@untestutils/playwright` (+ Playwright peers) |
+| Nuxt / Vite / Next / … | `@untestutils/<framework>` only for that stack |
+
+Preferred imports: `@untestutils/vitest/plugin`, `@untestutils/nuxt`. Facade subpaths (`untestutils/vitest/plugin`, …) still work when peers are installed.
+
+Scaffold:
 
 ```bash
 pnpm dlx untestutils init --preset vitest
-# or: playwright | nuxt | full
+# playwright | nuxt | full
+pnpm dlx untestutils doctor
 ```
-
-Then run `untestutils doctor` to verify peers and configs.
 
 ## Minimal Vitest e2e
 
@@ -55,19 +64,19 @@ import { resolve } from 'node:path'
 export const recipes = defineRecipes({
   site: staticDir({
     id: 'site',
-    root: resolve('./fixtures/static'), // folder with index.html
+    root: resolve('./fixtures/static'),
   }),
-})
+}, import.meta.url)
 ```
 
 ### 2. Vitest config
 
-Import the **plugin** from `untestutils/vitest/plugin` — not from `untestutils/vitest` (that entry loads fixtures and must stay out of config load).
+Import the plugin from `@untestutils/vitest/plugin` (or `untestutils/vitest/plugin`) — **not** the specs entry.
 
 ```ts
 // vitest.config.ts
 import { defineConfig } from 'vitest/config'
-import { untestutils } from 'untestutils/vitest/plugin'
+import { untestutils } from '@untestutils/vitest/plugin'
 import { recipes } from './recipes'
 
 export default defineConfig({
@@ -88,7 +97,7 @@ export default defineConfig({
 
 ```ts
 // tests/e2e/home.test.ts
-import { describe, test, expect, useHarness } from 'untestutils/vitest'
+import { describe, test, expect, useHarness } from '@untestutils/vitest'
 
 describe('home', () => {
   test('serves HTML', async () => {
@@ -104,13 +113,16 @@ describe('home', () => {
 pnpm exec vitest run
 ```
 
-Artifacts land under **`.untestutils/`** at the repo root (never inside a workspace package).
+Artifacts: **`.untestutils/`** at the repo root (never inside a published package).
+
+## Examples
+
+Monorepo playground: [playground/](https://github.com/s00d/untestutils/tree/master/playground) (Vitest + Playwright dogfood).
 
 ## Next
 
-- [Concepts](/guide/concepts) — Recipe, Driver, prepare vs start
-- [Vitest guide](/guide/vitest) — fixtures `page` / `goto` / `request`
-- [Utils](/guide/utils) — cookies, SEO head, poll, domain emulation
-- [Playwright](/guide/playwright) — shared recipes with Playwright Test
-- [Release](/guide/release) — changelog, version bump, npm publish
-- [CLI](/cli/) — `init`, `convert`, `doctor`
+- [How it works](/guide/how-it-works)
+- [Vitest](/guide/vitest) · [Playwright](/guide/playwright)
+- [Drivers](/guide/drivers)
+- [Roadmap](/roadmap)
+- [CLI](/cli/)

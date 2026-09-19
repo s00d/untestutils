@@ -8,7 +8,7 @@ import {
   frameworkRoots,
   nodeEntry,
   staticDir,
-} from '@untestutils/drivers';
+} from '@untestutils/core';
 import { vite } from '@untestutils/vite';
 import { next } from '@untestutils/next';
 import { astro } from '@untestutils/astro';

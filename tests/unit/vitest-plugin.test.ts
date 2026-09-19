@@ -12,7 +12,7 @@ import {
   stopAllTargets,
   TargetRegistry,
 } from '@untestutils/core';
-import { staticDir } from '@untestutils/drivers';
+import { staticDir } from '@untestutils/core';
 
 describe('vitest plugin', () => {
   afterEach(async () => {

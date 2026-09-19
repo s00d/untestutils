@@ -5,7 +5,7 @@ import {
   frameworkRoots,
   resolveBin,
   type FrameworkBaseOptions,
-} from '@untestutils/drivers';
+} from '@untestutils/core';
 
 export type AstroRun = 'preview' | 'server' | 'dev';
 
@@ -80,11 +80,11 @@ export function astro(opts: AstroOptions) {
         }
         return Promise.resolve();
       },
-      start: ({ port }) => ({
+      start: ({ port, host }) => ({
         command: process.execPath,
         args: [join(root, entryRel)],
         cwd: root,
-        env: { PORT: String(port), HOST: '127.0.0.1' },
+        env: { PORT: String(port), HOST: host },
       }),
     });
   }
@@ -103,9 +103,9 @@ export function astro(opts: AstroOptions) {
       args: [bin(), 'build'],
       cwd: root,
     }),
-    start: ({ port }) => ({
+    start: ({ port, host }) => ({
       command: process.execPath,
-      args: [bin(), 'preview', '--host', '127.0.0.1', '--port', String(port)],
+      args: [bin(), 'preview', '--host', host, '--port', String(port)],
       cwd: root,
       env: { ASTRO_PREVIEW_BACKGROUND: '0' },
     }),

@@ -1,4 +1,17 @@
 {
   "extends": "../../tsconfig.base.json",
-  "include": ["src/**/*.ts"]
+  "include": [
+    "src",
+    "types"
+  ],
+  "compilerOptions": {
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
+    "skipLibCheck": true,
+    "noEmit": true,
+    "strict": true,
+    "isolatedDeclarations": true
+  }
 }

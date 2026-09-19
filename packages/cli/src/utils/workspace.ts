@@ -41,18 +41,18 @@ export function cliPackageRoot(): string {
 export function templatesRoot(): string {
   const mono = findMonorepoRoot();
   if (mono) {
-    const fromMono = join(mono, 'packages/cli/src/templates');
+    const fromMono = join(mono, 'packages/cli/templates');
     if (existsSync(fromMono)) return fromMono;
   }
   const root = cliPackageRoot();
   for (const c of [
-    join(root, 'src/templates'),
     join(root, 'templates'),
     join(root, 'dist/templates'),
+    join(root, 'src/templates'),
   ]) {
     if (existsSync(c)) return c;
   }
-  // bundled into untestutils facade
+  // bundled into untestutils facade (legacy) or published package
   let dir = dirname(fileURLToPath(import.meta.url));
   for (let i = 0; i < 6; i++) {
     const pkgPath = join(dir, 'package.json');
@@ -76,5 +76,5 @@ export function templatesRoot(): string {
     if (parent === dir) break;
     dir = parent;
   }
-  return join(cliPackageRoot(), 'src/templates');
+  return join(cliPackageRoot(), 'templates');
 }

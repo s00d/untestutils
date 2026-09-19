@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'pathe';
 import { createServer } from 'node:http';
 import { ofetch } from 'ofetch';
-import { host } from '../../packages/drivers/src/host';
+import { host } from '../../packages/core/src/drivers/host';
 import { ensurePrepared, stopAllTargets } from '../../packages/core/src/orchestrator';
 import { clearRegisteredRecipes } from '../../packages/core/src/recipes';
 import { resetRecipeBindings } from '../../packages/core/src/identity';

@@ -6,7 +6,7 @@ export const portNet = {
   createServer: (...args: Parameters<typeof net.createServer>) => net.createServer(...args),
 };
 
-export function getFreePort(host = LOOPBACK_HOST): Promise<number> {
+export function getFreePort(host: string = LOOPBACK_HOST): Promise<number> {
   return new Promise((resolve, reject) => {
     const server = portNet.createServer();
     server.once('error', reject);
@@ -23,7 +23,11 @@ export function getFreePort(host = LOOPBACK_HOST): Promise<number> {
   });
 }
 
-export function waitForPort(port: number, host = LOOPBACK_HOST, timeoutMs = 30_000): Promise<void> {
+export function waitForPort(
+  port: number,
+  host: string = LOOPBACK_HOST,
+  timeoutMs: number = 30_000,
+): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   return new Promise((resolve, reject) => {
     const attempt = () => {

@@ -1,31 +1,14 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "./tsconfig.json",
   "compilerOptions": {
-    "baseUrl": ".",
-    "lib": ["ES2022", "DOM"],
-    "skipLibCheck": true,
-    "paths": {
-      "@untestutils/core": ["../core/src/index.ts"],
-      "@untestutils/drivers": ["../drivers/src/index.ts"],
-      "@untestutils/utils": ["../utils/src/index.ts"],
-      "@untestutils/perf": ["../perf/src/index.ts"],
-      "@untestutils/vitest": ["../vitest/src/index.ts"],
-      "@untestutils/vitest/*": ["../vitest/src/*"],
-      "@untestutils/playwright": ["../playwright/src/index.ts"],
-      "@untestutils/playwright/*": ["../playwright/src/*"],
-      "@untestutils/nuxt": ["../nuxt/src/index.ts"],
-      "@untestutils/vite": ["../vite/src/index.ts"],
-      "@untestutils/next": ["../next/src/index.ts"],
-      "@untestutils/astro": ["../astro/src/index.ts"],
-      "@untestutils/sveltekit": ["../sveltekit/src/index.ts"],
-      "@untestutils/remix": ["../remix/src/index.ts"],
-      "@untestutils/solidstart": ["../solidstart/src/index.ts"],
-      "@untestutils/ai": ["../ai/src/index.ts"],
-      "@untestutils/runtime": ["../runtime/src/index.ts"],
-      "@untestutils/module": ["../module/src/index.ts"],
-      "@untestutils/config": ["../config/src/index.ts"],
-      "@untestutils/cli": ["../cli/src/main.ts"]
-    }
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "declarationMap": true,
+    "outDir": "dist",
+    "rootDir": "src"
   },
-  "include": ["src/**/*.ts"]
+  "include": [
+    "src/**/*.ts"
+  ]
 }

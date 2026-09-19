@@ -2,12 +2,14 @@ import { defineConfig } from 'vitepress';
 import { withMermaid } from 'vitepress-plugin-mermaid';
 
 const docsBase = process.env.NODE_ENV === 'production' ? '/untestutils/' : '/';
+const description =
+  'Live prepare → start → URL tests for Vitest and Playwright. Shared prepare stays fast enough for CI.';
 
 export default withMermaid(
   defineConfig({
     lang: 'en-US',
     title: 'untestutils',
-    description: 'Recipe-based test harness for Vitest and Playwright',
+    description,
     titleTemplate: ':title | untestutils',
     lastUpdated: true,
     cleanUrls: true,
@@ -20,13 +22,7 @@ export default withMermaid(
       ['link', { rel: 'apple-touch-icon', href: `${docsBase}apple-touch-icon.png` }],
       ['meta', { property: 'og:type', content: 'website' }],
       ['meta', { property: 'og:title', content: 'untestutils' }],
-      [
-        'meta',
-        {
-          property: 'og:description',
-          content: 'Recipe-based test harness for Vitest and Playwright',
-        },
-      ],
+      ['meta', { property: 'og:description', content: description }],
       ['meta', { property: 'og:image', content: `${docsBase}og-image.png` }],
       ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
     ],
@@ -37,15 +33,16 @@ export default withMermaid(
       search: { provider: 'local' },
       socialLinks: [{ icon: 'github', link: 'https://github.com/s00d/untestutils' }],
       editLink: {
-        pattern: 'https://github.com/s00d/untestutils/edit/main/docs/:path',
+        pattern: 'https://github.com/s00d/untestutils/edit/master/docs/:path',
         text: 'Edit this page',
       },
       nav: [
         { text: 'Guide', link: '/guide/getting-started' },
+        { text: 'Why', link: '/why' },
+        { text: 'Roadmap', link: '/roadmap' },
         { text: 'Migration', link: '/migration/from-nuxt-test-utils' },
         { text: 'API', link: '/api/' },
         { text: 'CLI', link: '/cli/' },
-        { text: 'Examples', link: '/examples' },
       ],
       sidebar: {
         '/guide/': [
@@ -53,19 +50,37 @@ export default withMermaid(
             text: 'Guide',
             items: [
               { text: 'Getting started', link: '/guide/getting-started' },
-              { text: 'Concepts', link: '/guide/concepts' },
+              { text: 'How it works', link: '/guide/how-it-works' },
               { text: 'Vitest', link: '/guide/vitest' },
-              { text: 'Utils', link: '/guide/utils' },
-              { text: 'Perf', link: '/guide/perf' },
               { text: 'Playwright', link: '/guide/playwright' },
-              { text: 'Drivers & recipes', link: '/guide/drivers' },
-              { text: 'Sharing & cache', link: '/guide/sharing-and-cache' },
-              { text: 'Remote host', link: '/guide/remote-host' },
+              { text: 'Drivers', link: '/guide/drivers' },
+              { text: 'Utils', link: '/guide/utils' },
+              { text: 'Troubleshooting', link: '/guide/troubleshooting' },
+            ],
+          },
+          {
+            text: 'Advanced',
+            collapsed: true,
+            items: [
+              { text: 'Perf suite', link: '/guide/perf' },
               { text: 'AI codegen', link: '/guide/ai' },
               { text: 'Extending', link: '/guide/extending' },
-              { text: 'Troubleshooting', link: '/guide/troubleshooting' },
-              { text: 'Release', link: '/guide/release' },
             ],
+          },
+        ],
+        '/why': [
+          {
+            text: 'Why',
+            items: [
+              { text: 'Why untestutils', link: '/why' },
+              { text: 'Roadmap', link: '/roadmap' },
+            ],
+          },
+        ],
+        '/roadmap': [
+          {
+            text: 'Roadmap',
+            items: [{ text: 'Roadmap', link: '/roadmap' }],
           },
         ],
         '/migration/': [
@@ -74,7 +89,6 @@ export default withMermaid(
             items: [
               { text: 'From @nuxt/test-utils', link: '/migration/from-nuxt-test-utils' },
               { text: 'From raw Playwright', link: '/migration/from-raw-playwright' },
-              { text: 'Pain points covered', link: '/migration/pain-points' },
             ],
           },
         ],

@@ -61,7 +61,6 @@ const DEFAULT_APP_INCLUDE = ['src/**/*.{ts,tsx,js,jsx,mjs,vue}'];
 /** Default workspace packages covered in the untestutils monorepo. */
 export const UNTESTUTILS_WORKSPACE_PACKAGES = [
   'core',
-  'drivers',
   'nuxt',
   'vitest',
   'playwright',
@@ -70,9 +69,6 @@ export const UNTESTUTILS_WORKSPACE_PACKAGES = [
   'next',
   'astro',
   'sveltekit',
-  'runtime',
-  'module',
-  'config',
   'untestutils',
 ] as const;
 

@@ -4,7 +4,7 @@ import { ArtifactStore } from './artifact-store';
 import { debug, envFlag } from './debug';
 import { assertUniqueRecipeBinding, computeIdentity } from './identity';
 import { FileLock, lockPathFor } from './lock';
-import { LOOPBACK_HOST, resolveArtifactsRoot } from './paths';
+import { loopbackUrl, resolveArtifactsRoot, resolveBindHost } from './paths';
 import { getFreePort } from './ports';
 import { progress } from './progress';
 import { defaultReady } from './ready';
@@ -149,22 +149,22 @@ export async function ensurePrepared(
       return { id, identity, hash, outDir, running, recipe };
     }
 
-    const port = await getFreePort();
+    const bindHost = resolveBindHost();
+    const port = await getFreePort(bindHost);
     const startCtx = {
       root,
       outDir,
       artifactsRoot,
       port,
-      host: LOOPBACK_HOST,
+      host: bindHost,
       env: scrubEnv(),
       run: createRunHelper({
         cwd: root,
-        env: { ...scrubEnv(), PORT: String(port), HOST: LOOPBACK_HOST },
+        env: { ...scrubEnv(), PORT: String(port), HOST: bindHost },
       }),
     };
 
-    const url = `http://${LOOPBACK_HOST}:${port}`;
-    progress.start(id, url);
+    progress.start(id, loopbackUrl(port, '/', bindHost));
     try {
       const running = await recipe.start(startCtx);
       if (recipe.ready) await recipe.ready(running);

@@ -1,2 +1,2 @@
-export { default } from '@untestutils/module';
-export * from '@untestutils/module';
+export { default } from '@untestutils/nuxt/module';
+export * from '@untestutils/nuxt/module';
