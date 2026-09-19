@@ -1,6 +1,6 @@
 {
   "name": "vitest-environment-untestutils",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "description": "Vitest environment shim → @untestutils/nuxt/environment",
   "homepage": "https://s00d.github.io/untestutils/",
   "license": "MIT",

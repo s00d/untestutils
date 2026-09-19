@@ -1,6 +1,6 @@
 {
   "name": "untestutils",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "description": "Recipe-based test harness for Vitest and Playwright — thin facade over @untestutils/* packages",
   "keywords": [
     "e2e",
@@ -205,18 +205,18 @@
   },
   "peerDependencies": {
     "@playwright/test": "^1.63.0",
-    "@untestutils/ai": "0.6.3",
-    "@untestutils/astro": "0.6.3",
-    "@untestutils/next": "0.6.3",
-    "@untestutils/nuxt": "0.6.3",
-    "@untestutils/perf": "0.6.3",
-    "@untestutils/remix": "0.6.3",
-    "@untestutils/solidstart": "0.6.3",
-    "@untestutils/sveltekit": "0.6.3",
-    "@untestutils/vite": "0.6.3",
+    "@untestutils/ai": "0.6.4",
+    "@untestutils/astro": "0.6.4",
+    "@untestutils/next": "0.6.4",
+    "@untestutils/nuxt": "0.6.4",
+    "@untestutils/perf": "0.6.4",
+    "@untestutils/remix": "0.6.4",
+    "@untestutils/solidstart": "0.6.4",
+    "@untestutils/sveltekit": "0.6.4",
+    "@untestutils/vite": "0.6.4",
     "playwright-core": "^1.63.0",
     "vitest": "^4.0.0 || ^5.0.0",
-    "vitest-environment-untestutils": "0.6.3"
+    "vitest-environment-untestutils": "0.6.4"
   },
   "peerDependenciesMeta": {
     "@untestutils/ai": {
