@@ -5,6 +5,7 @@ import {
   frameworkRoots,
   resolveBin,
   type FrameworkBaseOptions,
+  type Recipe,
 } from '@untestutils/core';
 
 export type AstroRun = 'preview' | 'server' | 'dev';
@@ -31,7 +32,7 @@ function resolveAstroBin(root: string): string {
  * `run: 'server'` — build + `node dist/server/entry.mjs`
  * `run: 'dev'` — `astro dev`
  */
-export function astro(opts: AstroOptions) {
+export function astro(opts: AstroOptions): Recipe {
   const root = resolve(opts.root);
   const runMode: AstroRun = opts.run ?? 'preview';
   const id = opts.id ?? `astro-${runMode}-${root.split('/').pop()}`;

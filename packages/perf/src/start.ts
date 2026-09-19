@@ -14,8 +14,8 @@ export type StartedTarget = {
 };
 
 /** True when nothing is listening / bound on host:port. */
-export function isPortFree(port: number, host = LOOPBACK_HOST): Promise<boolean> {
-  return new Promise((resolvePromise) => {
+export function isPortFree(port: number, host: string = LOOPBACK_HOST): Promise<boolean> {
+  return new Promise((resolvePromise: (value: boolean) => void) => {
     const server = net.createServer();
     server.once('error', () => resolvePromise(false));
     server.listen(port, host, () => {

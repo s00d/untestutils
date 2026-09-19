@@ -4,6 +4,7 @@ import {
   frameworkRoots,
   resolveBin,
   type FrameworkBaseOptions,
+  type Recipe,
 } from '@untestutils/core';
 
 export type ViteRun = 'preview' | 'dev';
@@ -27,7 +28,7 @@ function resolveViteBin(root: string): string {
  * `run: 'preview'` (default) — `vite build` then `vite preview`
  * `run: 'dev'` — `vite` with strictPort (never shared)
  */
-export function vite(opts: ViteOptions) {
+export function vite(opts: ViteOptions): Recipe {
   const root = resolve(opts.root);
   const runMode: ViteRun = opts.run ?? 'preview';
   const id = opts.id ?? `vite-${runMode}-${root.split('/').pop()}`;

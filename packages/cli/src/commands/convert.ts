@@ -1,33 +1,35 @@
-import { defineCommand } from 'citty';
+import { defineCommand, type CommandDef } from 'citty';
 import { consola } from 'consola';
 import { resolve, dirname, basename, join } from 'pathe';
 import { convertTestFile } from '@untestutils/ai';
 import { writeText, pathExists } from '../utils/fs';
 import { copyFile } from 'node:fs/promises';
 
-export const convertCommand = defineCommand({
+const convertArgs = {
+  path: {
+    type: 'positional',
+    description: 'Test file path',
+    required: true,
+  },
+  'in-place': {
+    type: 'boolean',
+    description: 'Overwrite source (writes .bak backup)',
+    default: false,
+    alias: 'i',
+  },
+  root: {
+    type: 'string',
+    description: 'Project root for AI tools',
+    default: '.',
+  },
+} as const;
+
+export const convertCommand: CommandDef<typeof convertArgs> = defineCommand({
   meta: {
     name: 'convert',
     description: 'Convert existing tests to the untestutils API via AI',
   },
-  args: {
-    path: {
-      type: 'positional',
-      description: 'Test file path',
-      required: true,
-    },
-    'in-place': {
-      type: 'boolean',
-      description: 'Overwrite source (writes .bak backup)',
-      default: false,
-      alias: 'i',
-    },
-    root: {
-      type: 'string',
-      description: 'Project root for AI tools',
-      default: '.',
-    },
-  },
+  args: convertArgs,
   async run({ args }) {
     const file = resolve(String(args.path));
     if (!(await pathExists(file))) {

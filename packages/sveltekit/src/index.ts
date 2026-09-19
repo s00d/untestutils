@@ -6,6 +6,7 @@ import {
   frameworkRoots,
   resolveBin,
   type FrameworkBaseOptions,
+  type Recipe,
 } from '@untestutils/core';
 
 export type SvelteKitRun = 'preview' | 'server' | 'dev';
@@ -32,7 +33,7 @@ function resolveViteBin(root: string): string {
  * `run: 'server'` — build + `node build` (adapter-node)
  * `run: 'dev'` — `vite dev`
  */
-export function sveltekit(opts: SvelteKitOptions) {
+export function sveltekit(opts: SvelteKitOptions): Recipe {
   const root = resolve(opts.root);
   const runMode: SvelteKitRun = opts.run ?? 'preview';
   const id = opts.id ?? `sveltekit-${runMode}-${root.split('/').pop()}`;

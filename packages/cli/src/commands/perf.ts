@@ -1,9 +1,35 @@
-import { defineCommand } from 'citty';
+import { defineCommand, type CommandDef } from 'citty';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'pathe';
 import { consola } from 'consola';
 
-export const perfCommand = defineCommand({
+const perfArgs = {
+  config: {
+    type: 'string',
+    required: true,
+    description: 'Path to perf.config.ts exporting definePerfSuite(...) or default suite',
+  },
+  only: {
+    type: 'string',
+    description: 'Target id(s), comma-separated',
+  },
+  runs: {
+    type: 'string',
+    description: 'Override consecutive runs',
+  },
+  skipLoad: {
+    type: 'boolean',
+    default: false,
+    description: 'Measure builds only (skip autocannon/artillery)',
+  },
+  json: {
+    type: 'boolean',
+    default: false,
+    description: 'Also write JSON report under artifactsDir',
+  },
+} as const;
+
+export const perfCommand: CommandDef<typeof perfArgs> = defineCommand({
   meta: {
     name: 'perf',
     description: [
@@ -15,31 +41,7 @@ export const perfCommand = defineCommand({
       '  untestutils perf --config ./perf.config.ts --runs 3 --json',
     ].join('\n'),
   },
-  args: {
-    config: {
-      type: 'string',
-      required: true,
-      description: 'Path to perf.config.ts exporting definePerfSuite(...) or default suite',
-    },
-    only: {
-      type: 'string',
-      description: 'Target id(s), comma-separated',
-    },
-    runs: {
-      type: 'string',
-      description: 'Override consecutive runs',
-    },
-    skipLoad: {
-      type: 'boolean',
-      default: false,
-      description: 'Measure builds only (skip autocannon/artillery)',
-    },
-    json: {
-      type: 'boolean',
-      default: false,
-      description: 'Also write JSON report under artifactsDir',
-    },
-  },
+  args: perfArgs,
   async run({ args }) {
     const configPath = resolve(args.config);
     const mod = (await import(pathToFileURL(configPath).href)) as {

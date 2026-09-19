@@ -55,7 +55,10 @@ type WorkerFixtures = {
   harnessId: string;
 };
 
-export const test = base.extend<TestFixtures, WorkerFixtures>({
+export const test: ReturnType<typeof base.extend<TestFixtures, WorkerFixtures>> = base.extend<
+  TestFixtures,
+  WorkerFixtures
+>({
   harness: ['', { option: true, scope: 'worker' }],
   harnessId: [
     async ({ harness }, use) => {

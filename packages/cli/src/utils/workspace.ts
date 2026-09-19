@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { existsSync, readFileSync } from 'node:fs';
 
 /** Untestutils monorepo root when the CLI runs inside this repository. */
-export function findMonorepoRoot(start = process.cwd()): string | null {
+export function findMonorepoRoot(start: string = process.cwd()): string | null {
   let dir = start;
   for (let i = 0; i < 12; i++) {
     if (

@@ -2,8 +2,11 @@ import net from 'node:net';
 import { LOOPBACK_HOST } from './paths';
 
 /** @internal injectable for port allocation edge cases */
-export const portNet = {
-  createServer: (...args: Parameters<typeof net.createServer>) => net.createServer(...args),
+export const portNet: {
+  createServer: (...args: Parameters<typeof net.createServer>) => ReturnType<typeof net.createServer>;
+} = {
+  createServer: (...args: Parameters<typeof net.createServer>): ReturnType<typeof net.createServer> =>
+    net.createServer(...args),
 };
 
 export function getFreePort(host: string = LOOPBACK_HOST): Promise<number> {

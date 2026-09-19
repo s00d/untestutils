@@ -33,7 +33,9 @@ export interface HarnessFixtures {
 const browserPromises = new Map<HarnessBrowserName, Promise<Browser>>();
 
 /** @internal */
-export const browserApi = {
+export const browserApi: {
+  launch: (name?: HarnessBrowserName) => Promise<Browser>;
+} = {
   /* v8 ignore next 8 — real browser launch covered in playground e2e */
   async launch(name: HarnessBrowserName = 'chromium') {
     const pw = await import('playwright-core');
@@ -46,7 +48,7 @@ export const browserApi = {
 };
 
 /** @internal */
-export function getBrowser(name?: HarnessBrowserName) {
+export function getBrowser(name?: HarnessBrowserName): Promise<Browser> {
   const browserName = name ?? resolveHarnessBrowserName();
   let p = browserPromises.get(browserName);
   if (!p) {
@@ -57,7 +59,7 @@ export function getBrowser(name?: HarnessBrowserName) {
 }
 
 /** @internal reset for tests */
-export function resetBrowserPromise() {
+export function resetBrowserPromise(): void {
   browserPromises.clear();
 }
 
@@ -69,6 +71,8 @@ export async function resolveBaseURL(): Promise<string> {
 }
 
 type CookieInput = Parameters<BrowserContext['addCookies']>[0][number];
+type GotoFixture = (path: string, options?: Record<string, unknown>) => Promise<Response | null>;
+type PlaywrightTestModule = typeof import('@playwright/test');
 
 /** Rewrite cookies so `domain: 'localhost'` applies on 127.0.0.1 harness URLs. */
 export function normalizeHarnessCookies(cookies: CookieInput[], baseURL: string): CookieInput[] {
@@ -98,7 +102,7 @@ function patchContextCookies(context: BrowserContext, baseURL: string): void {
 }
 
 /** @internal */
-export function createGoto(page: Page, baseURL: string) {
+export function createGoto(page: Page, baseURL: string): GotoFixture {
   return async (path: string, options?: Record<string, unknown>) => {
     const url = path.startsWith('http') ? path : new URL(path, baseURL).toString();
     const waitUntil = (options as { waitUntil?: string } | undefined)?.waitUntil;
@@ -134,7 +138,10 @@ export async function waitForNuxt(page: Page, mode: 'hydration' | 'route'): Prom
 }
 
 /** @internal — body of the page fixture (callable from unit tests) */
-export async function usePageFixture(baseURL: string, use: (page: Page) => Promise<void>) {
+export async function usePageFixture(
+  baseURL: string,
+  use: (page: Page) => Promise<void>,
+): Promise<void> {
   const browser = await getBrowser();
   const context = await browser.newContext({ baseURL });
   patchContextCookies(context, baseURL);
@@ -147,7 +154,7 @@ export async function usePageFixture(baseURL: string, use: (page: Page) => Promi
 export async function useRequestFixture(
   baseURL: string,
   use: (ctx: APIRequestContext) => Promise<void>,
-) {
+): Promise<void> {
   const requestApi = await importRequestApi();
   const ctx = await requestApi.newContext({ baseURL });
   await use(ctx);
@@ -155,19 +162,19 @@ export async function useRequestFixture(
 }
 
 /** @internal */
-export async function importRequestApi() {
+export async function importRequestApi(): Promise<PlaywrightTestModule['request']> {
   const { request } = await import('@playwright/test');
   return request;
 }
 
 /** Prefer Playwright web-first expect when available. */
-export async function loadExpect() {
+export async function loadExpect(): Promise<PlaywrightTestModule['expect']> {
   const mod = await importExpectModule();
   return mod.expect;
 }
 
 /** @internal */
-export async function importExpectModule() {
+export async function importExpectModule(): Promise<PlaywrightTestModule> {
   return import('@playwright/test');
 }
 

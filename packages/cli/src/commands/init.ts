@@ -1,4 +1,4 @@
-import { defineCommand } from 'citty';
+import { defineCommand, type CommandDef } from 'citty';
 import { consola } from 'consola';
 import { addDependency } from 'nypm';
 import { resolve } from 'pathe';
@@ -6,34 +6,36 @@ import { applyPreset, peersForPreset, type InitPreset } from '../utils/templates
 
 const PRESETS: InitPreset[] = ['vitest', 'playwright', 'nuxt', 'full'];
 
-export const initCommand = defineCommand({
+const initArgs = {
+  preset: {
+    type: 'string',
+    description: 'Preset: vitest | playwright | nuxt | full',
+    default: 'vitest',
+    alias: 'p',
+  },
+  cwd: {
+    type: 'string',
+    description: 'Project directory',
+    default: '.',
+  },
+  force: {
+    type: 'boolean',
+    description: 'Overwrite existing files',
+    default: false,
+  },
+  install: {
+    type: 'boolean',
+    description: 'Install peer dependencies via nypm',
+    default: true,
+  },
+} as const;
+
+export const initCommand: CommandDef<typeof initArgs> = defineCommand({
   meta: {
     name: 'init',
     description: 'Add base untestutils configs and example tests to a project',
   },
-  args: {
-    preset: {
-      type: 'string',
-      description: 'Preset: vitest | playwright | nuxt | full',
-      default: 'vitest',
-      alias: 'p',
-    },
-    cwd: {
-      type: 'string',
-      description: 'Project directory',
-      default: '.',
-    },
-    force: {
-      type: 'boolean',
-      description: 'Overwrite existing files',
-      default: false,
-    },
-    install: {
-      type: 'boolean',
-      description: 'Install peer dependencies via nypm',
-      default: true,
-    },
-  },
+  args: initArgs,
   async run({ args }) {
     const preset = String(args.preset) as InitPreset;
     if (!PRESETS.includes(preset)) {

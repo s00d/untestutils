@@ -59,6 +59,8 @@ export function trackResponses(page: Page): {
 
 export type ConsoleMatch = { type: string; text: string };
 
+export type ConsoleCollector = { messages: ConsoleMatch[]; stop: () => void };
+
 /**
  * Collect console messages matching a predicate (hydration warnings, etc.).
  * Call `stop()` when done; `messages` stays filled.
@@ -66,7 +68,7 @@ export type ConsoleMatch = { type: string; text: string };
 export function collectConsole(
   page: Page,
   predicate: (msg: { type: () => string; text: () => string }) => boolean = () => true,
-): { messages: ConsoleMatch[]; stop: () => void } {
+): ConsoleCollector {
   const messages: ConsoleMatch[] = [];
   const onConsole = (msg: { type: () => string; text: () => string }) => {
     if (predicate(msg)) messages.push({ type: msg.type(), text: msg.text() });
@@ -79,7 +81,7 @@ export function collectConsole(
 }
 
 /** Collect hydration / mismatch console errors & warnings. */
-export function collectHydrationIssues(page: Page) {
+export function collectHydrationIssues(page: Page): ConsoleCollector {
   return collectConsole(page, (msg) => {
     if (msg.type() !== 'error' && msg.type() !== 'warning') return false;
     const text = msg.text().toLowerCase();

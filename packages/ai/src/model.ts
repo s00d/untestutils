@@ -1,7 +1,17 @@
 import type { runLlmGenerate } from './agent/run';
 
+type ModelInternals = {
+  importAi: () => Promise<typeof import('ai')>;
+  importAnthropic: () => Promise<typeof import('@ai-sdk/anthropic')>;
+  importXai: () => Promise<typeof import('@ai-sdk/xai')>;
+  importGoogle: () => Promise<typeof import('@ai-sdk/google')>;
+  importOpenai: () => Promise<typeof import('@ai-sdk/openai')>;
+  resolveModel: () => Promise<unknown>;
+  runLlmGenerate: typeof runLlmGenerate;
+};
+
 /** @internal test seams for LLM path */
-export const _internals = {
+export const _internals: ModelInternals = {
   importAi: () => import('ai'),
   importAnthropic: () => import('@ai-sdk/anthropic'),
   importXai: () => import('@ai-sdk/xai'),

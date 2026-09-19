@@ -136,7 +136,11 @@ function companion(name: 'pw-global-setup' | 'pw-global-teardown'): string {
 }
 
 /** @internal */
-export const playwrightCompanionIo = {
+export const playwrightCompanionIo: {
+  createRequire: typeof createRequire;
+  existsSync: typeof existsSync;
+  fileURLToPath: typeof fileURLToPath;
+} = {
   createRequire,
   existsSync,
   fileURLToPath,

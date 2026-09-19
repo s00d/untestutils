@@ -181,7 +181,10 @@ export async function convertTestFile(opts: ConvertTestOptions): Promise<Generat
   }
 }
 
-export async function aiTestFromFile(path: string, defaults: Partial<AiTestOptions> = {}) {
+export async function aiTestFromFile(
+  path: string,
+  defaults: Partial<AiTestOptions> = {},
+): Promise<GenerateResult> {
   const raw = await readFile(path, 'utf8');
   const fm = raw.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
   const meta: Record<string, unknown> = {};

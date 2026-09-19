@@ -3,7 +3,7 @@ import { readdir, stat } from 'node:fs/promises';
 import { join, resolve } from 'pathe';
 import { glob } from 'tinyglobby';
 
-export const IGNORE = new Set([
+export const IGNORE: Set<string> = new Set([
   'node_modules',
   '.git',
   'dist',

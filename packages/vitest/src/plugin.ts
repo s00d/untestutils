@@ -79,7 +79,11 @@ function companion(name: 'global-setup' | 'setup-file'): string {
 }
 
 /** @internal injectable fs/require for companion resolution tests */
-export const companionIo = {
+export const companionIo: {
+  createRequire: typeof createRequire;
+  existsSync: typeof existsSync;
+  fileURLToPath: typeof fileURLToPath;
+} = {
   createRequire,
   existsSync,
   fileURLToPath,

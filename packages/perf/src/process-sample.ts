@@ -1,4 +1,5 @@
 import { execSync } from 'node:child_process';
+import type { ProcessMetrics } from './types';
 
 export type ProcessSample = { cpu: number; memoryMb: number };
 
@@ -54,7 +55,7 @@ export function pushSample(acc: SampleAccumulator, sample: ProcessSample): void 
   acc.samples++;
 }
 
-export function finalizeSamples(acc: SampleAccumulator) {
+export function finalizeSamples(acc: SampleAccumulator): ProcessMetrics {
   return {
     maxMemoryMb: acc.maxMemoryMb,
     minMemoryMb: Number.isFinite(acc.minMemoryMb) ? acc.minMemoryMb : 0,

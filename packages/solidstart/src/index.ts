@@ -5,6 +5,7 @@ import {
   frameworkRoots,
   resolveBin,
   type FrameworkBaseOptions,
+  type Recipe,
 } from '@untestutils/core';
 
 export type SolidStartRun = 'preview' | 'server' | 'dev';
@@ -31,7 +32,7 @@ function resolveVinxiBin(root: string): string {
  * `run: 'server'` — build + `node .output/server/index.mjs`
  * `run: 'dev'` — `vinxi dev`
  */
-export function solidstart(opts: SolidStartOptions) {
+export function solidstart(opts: SolidStartOptions): Recipe {
   const root = resolve(opts.root);
   const runMode: SolidStartRun = opts.run ?? 'preview';
   const id = opts.id ?? `solidstart-${runMode}-${root.split('/').pop()}`;

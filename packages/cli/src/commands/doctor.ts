@@ -1,4 +1,4 @@
-import { defineCommand } from 'citty';
+import { defineCommand, type CommandDef } from 'citty';
 import { consola } from 'consola';
 import { existsSync } from 'node:fs';
 import { resolve, join } from 'pathe';
@@ -17,18 +17,20 @@ function canResolve(id: string, cwd: string): boolean {
   }
 }
 
-export const doctorCommand = defineCommand({
+const doctorArgs = {
+  cwd: {
+    type: 'string',
+    description: 'Project directory',
+    default: '.',
+  },
+} as const;
+
+export const doctorCommand: CommandDef<typeof doctorArgs> = defineCommand({
   meta: {
     name: 'doctor',
     description: 'Check untestutils environment and configs',
   },
-  args: {
-    cwd: {
-      type: 'string',
-      description: 'Project directory',
-      default: '.',
-    },
-  },
+  args: doctorArgs,
   async run({ args }) {
     const cwd = resolve(String(args.cwd));
     const checks: Check[] = [];

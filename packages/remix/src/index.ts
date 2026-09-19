@@ -5,6 +5,7 @@ import {
   frameworkRoots,
   resolveBin,
   type FrameworkBaseOptions,
+  type Recipe,
 } from '@untestutils/core';
 
 export type RemixRun = 'server' | 'dev';
@@ -50,7 +51,7 @@ function resolveViteBin(root: string): string {
  * `run: 'server'` (default) — vite/remix build + remix-serve
  * `run: 'dev'` — remix vite:dev / vite
  */
-export function remix(opts: RemixOptions) {
+export function remix(opts: RemixOptions): Recipe {
   const root = resolve(opts.root);
   const runMode: RemixRun = opts.run ?? 'server';
   const id = opts.id ?? `remix-${runMode}-${root.split('/').pop()}`;

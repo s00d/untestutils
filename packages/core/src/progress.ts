@@ -55,7 +55,15 @@ type WaveState = {
 };
 
 /** @internal mutable seam for unit tests */
-export const progressIo = {
+export const progressIo: {
+  lines: string[];
+  capture: boolean;
+  bannerShown: boolean;
+  wave: WaveState | null;
+  write: (line: string) => void;
+  writeErr: (line: string) => void;
+  reset: () => void;
+} = {
   lines: [] as string[],
   capture: false,
   bannerShown: false,

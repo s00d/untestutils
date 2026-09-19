@@ -1,7 +1,7 @@
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { defineCommand } from 'citty';
+import { defineCommand, type CommandDef } from 'citty';
 import { commands } from './commands';
 
 function readOwnVersion(): string {
@@ -27,7 +27,7 @@ function readOwnVersion(): string {
   return '0.0.0';
 }
 
-export const main = defineCommand({
+export const main: CommandDef = defineCommand({
   meta: {
     name: 'untestutils',
     version: readOwnVersion(),

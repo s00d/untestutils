@@ -1,51 +1,53 @@
-import { defineCommand } from 'citty';
+import { defineCommand, type CommandDef } from 'citty';
 import { consola } from 'consola';
 import { resolve } from 'pathe';
 import { aiTest, aiTestFromFile } from '@untestutils/ai';
 import { writeText } from '../utils/fs';
 
-export const aiCommand = defineCommand({
+const aiArgs = {
+  prompt: {
+    type: 'string',
+    description: 'Scenario text',
+    alias: 'p',
+  },
+  file: {
+    type: 'string',
+    description: 'Markdown with frontmatter (id/root/recipes/focus)',
+    alias: 'f',
+  },
+  id: {
+    type: 'string',
+    description: 'Generation id',
+    default: 'cli',
+  },
+  root: {
+    type: 'string',
+    description: 'Project root',
+    default: '.',
+  },
+  recipes: {
+    type: 'string',
+    description: 'Comma-separated recipe ids',
+    default: '',
+  },
+  focus: {
+    type: 'string',
+    description: 'Comma-separated focus file hints',
+    default: '',
+  },
+  out: {
+    type: 'string',
+    description: 'Copy generated file to this path',
+  },
+} as const;
+
+export const aiCommand: CommandDef<typeof aiArgs> = defineCommand({
   meta: {
     name: 'ai',
     alias: ['generate'],
     description: 'Generate an e2e test from a prompt or markdown file',
   },
-  args: {
-    prompt: {
-      type: 'string',
-      description: 'Scenario text',
-      alias: 'p',
-    },
-    file: {
-      type: 'string',
-      description: 'Markdown with frontmatter (id/root/recipes/focus)',
-      alias: 'f',
-    },
-    id: {
-      type: 'string',
-      description: 'Generation id',
-      default: 'cli',
-    },
-    root: {
-      type: 'string',
-      description: 'Project root',
-      default: '.',
-    },
-    recipes: {
-      type: 'string',
-      description: 'Comma-separated recipe ids',
-      default: '',
-    },
-    focus: {
-      type: 'string',
-      description: 'Comma-separated focus file hints',
-      default: '',
-    },
-    out: {
-      type: 'string',
-      description: 'Copy generated file to this path',
-    },
-  },
+  args: aiArgs,
   async run({ args }) {
     const root = resolve(String(args.root));
     const recipes = String(args.recipes || '')

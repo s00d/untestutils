@@ -1,4 +1,4 @@
-import { defineCommand } from 'citty';
+import { defineCommand, type CommandDef } from 'citty';
 import { consola } from 'consola';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'pathe';
@@ -6,55 +6,57 @@ import { execSync } from 'node:child_process';
 import { fixBrokenTests } from '@untestutils/ai';
 import { pathExists, writeText } from '../utils/fs';
 
-export const fixCommand = defineCommand({
+const fixArgs = {
+  path: {
+    type: 'positional',
+    description: 'Failing test file',
+    required: true,
+  },
+  log: {
+    type: 'string',
+    description: 'Path to failure log file (or use --run)',
+    alias: 'l',
+  },
+  run: {
+    type: 'string',
+    description: 'Shell command that fails (stdout/stderr captured as log)',
+  },
+  root: {
+    type: 'string',
+    description: 'Project root',
+    default: '.',
+  },
+  recipes: {
+    type: 'string',
+    description: 'Comma-separated recipe ids',
+    default: '',
+  },
+  'base-url': {
+    type: 'string',
+    description: 'App base URL for Playwright page tools',
+  },
+  browser: {
+    type: 'boolean',
+    description: 'Enable browser tools even without --base-url',
+    default: false,
+  },
+  write: {
+    type: 'boolean',
+    description: 'Overwrite the failing file in place',
+    default: true,
+  },
+  out: {
+    type: 'string',
+    description: 'Write fixed source to this path instead',
+  },
+} as const;
+
+export const fixCommand: CommandDef<typeof fixArgs> = defineCommand({
   meta: {
     name: 'fix',
     description: 'Fix a broken untestutils test via AI (failure log + optional browser tools)',
   },
-  args: {
-    path: {
-      type: 'positional',
-      description: 'Failing test file',
-      required: true,
-    },
-    log: {
-      type: 'string',
-      description: 'Path to failure log file (or use --run)',
-      alias: 'l',
-    },
-    run: {
-      type: 'string',
-      description: 'Shell command that fails (stdout/stderr captured as log)',
-    },
-    root: {
-      type: 'string',
-      description: 'Project root',
-      default: '.',
-    },
-    recipes: {
-      type: 'string',
-      description: 'Comma-separated recipe ids',
-      default: '',
-    },
-    'base-url': {
-      type: 'string',
-      description: 'App base URL for Playwright page tools',
-    },
-    browser: {
-      type: 'boolean',
-      description: 'Enable browser tools even without --base-url',
-      default: false,
-    },
-    write: {
-      type: 'boolean',
-      description: 'Overwrite the failing file in place',
-      default: true,
-    },
-    out: {
-      type: 'string',
-      description: 'Write fixed source to this path instead',
-    },
-  },
+  args: fixArgs,
   async run({ args }) {
     const file = resolve(String(args.path));
     if (!(await pathExists(file))) {

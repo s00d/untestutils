@@ -4,7 +4,10 @@ import { dirname, join, resolve } from 'pathe';
 import { fileURLToPath } from 'node:url';
 
 /** @internal */
-export const aiFs = {
+export const aiFs: {
+  existsSync: typeof existsSync;
+  readFile: typeof readFile;
+} = {
   existsSync,
   readFile,
 };
@@ -31,7 +34,7 @@ export async function loadPrompt(name: PromptName): Promise<string> {
   return DEFAULTS[name];
 }
 
-export const loadSystemPrompt = () => loadPrompt('v1');
-export const loadConvertPrompt = () => loadPrompt('convert-v1');
-export const loadFixPrompt = () => loadPrompt('fix-v1');
-export const loadCoverPrompt = () => loadPrompt('cover-v1');
+export const loadSystemPrompt = (): Promise<string> => loadPrompt('v1');
+export const loadConvertPrompt = (): Promise<string> => loadPrompt('convert-v1');
+export const loadFixPrompt = (): Promise<string> => loadPrompt('fix-v1');
+export const loadCoverPrompt = (): Promise<string> => loadPrompt('cover-v1');

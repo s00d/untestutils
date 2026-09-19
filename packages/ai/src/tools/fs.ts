@@ -1,7 +1,17 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { join, relative, resolve, sep } from 'pathe';
 import { IGNORE } from '../tree';
-import type { AgentToolBag } from '../agent/types';
+import type { AgentTool, AgentToolBag } from '../agent/types';
+
+type DirectoryEntry = { name: string; type: 'dir' | 'file' };
+type GrepHit = { file: string; line: number; text: string };
+
+export type AiTools = {
+  readPaths: () => string[];
+  list_dir: (path?: string) => Promise<unknown>;
+  read_file: (path: string) => Promise<unknown>;
+  grep: (pattern: string, path?: string) => Promise<unknown>;
+};
 
 function redact(content: string): string {
   return content
@@ -26,7 +36,7 @@ export function createFsTools(
     return full;
   }
 
-  const list_dir = async (path = '.') => {
+  const list_dir = async (path = '.'): Promise<DirectoryEntry[]> => {
     const full = assertInside(path);
     const entries = await readdir(full, { withFileTypes: true });
     return entries
@@ -34,7 +44,7 @@ export function createFsTools(
       .map((e) => ({ name: e.name, type: e.isDirectory() ? 'dir' : 'file' }));
   };
 
-  const read_file = async (path: string) => {
+  const read_file = async (path: string): Promise<string> => {
     if (filesRead >= limits.maxFilesRead) throw new Error('maxFilesRead exceeded');
     const full = assertInside(path);
     if (full.includes(`${sep}.env`) || /secret|credential/i.test(full)) {
@@ -48,11 +58,11 @@ export function createFsTools(
     return redact(content);
   };
 
-  const grep = async (pattern: string, path = '.') => {
+  const grep = async (pattern: string, path = '.'): Promise<GrepHit[]> => {
     const full = assertInside(path);
     const re = new RegExp(pattern);
-    const hits: { file: string; line: number; text: string }[] = [];
-    async function walk(dir: string) {
+    const hits: GrepHit[] = [];
+    async function walk(dir: string): Promise<void> {
       if (hits.length >= 50) return;
       const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
       for (const e of entries) {
@@ -117,9 +127,11 @@ export function createFsTools(
 export function createAiTools(
   root: string,
   limits: { maxFilesRead: number; maxBytesTotal: number },
-) {
+): AiTools {
   const bag = createFsTools(root, limits);
-  const byName = Object.fromEntries(bag.tools.map((t) => [t.name, t]));
+  const byName: Record<string, AgentTool | undefined> = Object.fromEntries(
+    bag.tools.map((t) => [t.name, t]),
+  );
   return {
     readPaths: bag.readPaths,
     list_dir: (path?: string) => byName.list_dir!.execute({ path }),

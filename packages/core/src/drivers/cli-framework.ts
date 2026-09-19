@@ -194,4 +194,8 @@ export function cliFrameworkRecipe(opts: CliFrameworkRecipeOptions): Recipe {
 }
 
 /** @internal */
-export const _cliInternals = { resolveBin, runCommand, assertAppRoot };
+export const _cliInternals: {
+  resolveBin: typeof resolveBin;
+  runCommand: typeof runCommand;
+  assertAppRoot: typeof assertAppRoot;
+} = { resolveBin, runCommand, assertAppRoot };
