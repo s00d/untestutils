@@ -1,6 +1,6 @@
 {
   "name": "vitest-environment-untestutils",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "description": "Vitest environment shim for untestutils unit tests",
   "files": [
     "index.mjs"
