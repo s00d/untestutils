@@ -1,25 +1,36 @@
 ---
 title: Roadmap
-description: Path from 0.5 to a honest 1.0 — what is stable, what is missing, what stays optional.
+description: Path from 0.6 to a honest 1.0 — what is stable, what is missing, what stays optional.
 outline: deep
 ---
 
 # Roadmap
 
-Current line: **0.5.x** (pre-1.0). The core harness works in production dogfood (e.g. large Nuxt e2e suites). **1.0** means a clear [support matrix](/guide/support-matrix) and no silent gaps between docs and CI.
+Current line: **0.6.x** (pre-1.0). Theme: **honest consumer path** — init → install → e2e, overrides in CI, peers match docs. **1.0** means a clear [support matrix](/guide/support-matrix) and no silent gaps between docs and CI.
 
-## Stable now (0.5)
+## Stable now (0.6)
 
 - Recipe contract: prepare → start → URL/dir, shared identity cache under `.untestutils`
 - Vitest plugin + Playwright `createPlaywrightConfig`, same `recipes.ts`
 - Drivers: `staticDir`, `command`, `nodeEntry`, `host`, `nuxt({ run })`
 - Framework dogfood in CI: Vite, Next, Astro, SvelteKit, Remix, SolidStart (+ static)
+- Typed config overrides in CI (`viteConfig` / `nextConfig` / `kitConfig` / …)
 - Nuxt unit (`environment: 'untestutils'`) in playground CI (`test:playground:unit`)
+- CLI `init` / `doctor` / `doctor --recipes` + temp-dir dogfood (`test:cli-dogfood`)
+- Node **22** primary CI + **Node 20** smoke (`test:unit` + `test:pack`)
 - Utils for live checks (cookies, SEO, redirects, poll)
 - Scoped emit-only publish: `@untestutils/*` + thin `untestutils` facade; lockstep semver
 - Docs site (this)
 
 Use the **same version** for facade and any `@untestutils/*` adapter you install.
+
+### Migration note (0.6)
+
+`@untestutils/nuxt` and `vitest-environment-untestutils` are **optional peers** (no longer hard deps of the facade). Nuxt users:
+
+```bash
+pnpm add -D untestutils @untestutils/nuxt vitest-environment-untestutils nuxt
+```
 
 ## Before 1.0
 
@@ -35,14 +46,14 @@ Keep **stable** vs **experimental** vs **optional** honest as features land.
 | Nuxt server recipes | Stable, unit/driver covered | Keep |
 | Vite / Next / Astro / SvelteKit / Remix / SolidStart | Dogfood in playground CI | Keep |
 | Nuxt unit | Documented + `test:playground:unit` in CI | Keep |
+| CLI scaffolding | Dogfood in CI | Keep |
 | AI codegen | Optional, mock in CI | Stay optional (labeled) |
-| Perf suite | Unit coverage; no CI dogfood | Stay optional (labeled) |
+| Perf suite | Unit + optional `workflow_dispatch` dogfood | Stay optional (labeled) |
 
 ### 2. Package hygiene
 
-- Node floor: smoke Node 20 or raise `engines` to match CI (22)
-- Clearer peer signal for Vitest as primary consumer
-- Slimmer facade (optional peers for nuxt / ai / perf) where practical
+- Clearer peer signal for Vitest as primary consumer (doctor checks majors 4\|5)
+- Slimmer facade (optional peers for nuxt / ai / perf) — done in 0.6
 
 ### 3. Typecheck surface
 
@@ -57,7 +68,6 @@ Ship **1.0.0** with the matrix above, changelog that states stable vs optional, 
 - WebKit in Playwright CI (optional job)
 - Richer framework fixtures as demand appears
 - Live-LLM AI smoke (mock stays CI default)
-- Perf dogfood job when thresholds have an owner
 - Vitest Browser Mode as a separate optional track (not recipe-e2e)
 
 ## Explore (pre-release — decided)
@@ -78,12 +88,9 @@ Vitest Browser Mode is a **separate** optional track — not recipe-e2e. See [Br
 
 - Replacing Vitest or Playwright
 - Drop-in compatibility with `@nuxt/test-utils`
-- Guaranteed AI output quality
-- Fake “X ms faster” numbers — speed = [shared prepare](/why)
+- Shipping a second browser stack before Chromiumoxide proves a win
 
 ## Next
 
 - [Support matrix](/guide/support-matrix)
-- [Why](/why)
 - [Getting started](/guide/getting-started)
-- [CONTRIBUTING](https://github.com/s00d/untestutils/blob/master/CONTRIBUTING.md)

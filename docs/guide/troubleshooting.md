@@ -8,15 +8,20 @@ outline: deep
 
 ```bash
 pnpm exec untestutils doctor
+pnpm exec untestutils doctor --recipes
 ```
 
-Checks Node, peers, configs, and `recipes.ts`.
+Checks Node, peers (Vitest major 4|5), configs, and `recipes.ts`. `doctor --recipes` lists registered ids.
 
 ## Common errors
 
-**unknown recipe id** — `defineRecipes({ … }, import.meta.url)` and pass `recipes` into the plugin so workers re-import the module.
+**unknown recipe id** — `defineRecipes({ … }, import.meta.url)` and pass `recipes` into the plugin so workers re-import the module. Error messages list **known ids** when the registry is loaded.
+
+**prewarm id not found** — same: id must exist in the recipes module; message lists known ids.
 
 **no harness url** — call `useHarness` or list the id in `prewarm` before using `page` / `baseURL`.
+
+**Playwright picked up `*.test.ts`** — `createPlaywrightConfig` defaults to `testMatch: '**/*.spec.ts'`. Override via `testMatch` if needed.
 
 **Config pulled in fixtures** — use `untestutils/vitest/plugin` in config, not `untestutils/vitest`.
 

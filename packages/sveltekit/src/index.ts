@@ -5,10 +5,13 @@ import {
   configOverrideHashInput,
   deepMergePlain,
   defineDriver,
+  findFirstExistingConfig,
   frameworkRoots,
+  installMergedConfigOverride,
   loopbackUrl,
   matrixRecipe,
   resolveBin,
+  runCommand,
   serializeViteMergeConfigModule,
   writeEphemeralConfig,
   type Driver,
@@ -20,12 +23,20 @@ export type SvelteKitRun = 'preview' | 'server' | 'dev';
 
 export type ViteConfigOverride = Record<string, unknown>;
 
+/** JSON-serializable patches merged onto `svelte.config.*` (kit / preprocess plain fields). */
+export type KitConfigOverride = Record<string, unknown>;
+
 export interface SvelteKitOptions extends FrameworkBaseOptions {
   run?: SvelteKitRun;
   /** adapter-node output entry relative to root (default `build/index.js`). */
   serverEntry?: string;
   /** Merged onto the app vite.config (SvelteKit is a Vite plugin). */
   viteConfig?: ViteConfigOverride;
+  /**
+   * Merged onto `svelte.config.*` via backup/restore (`withMergedConfigOverride`).
+   * Prefer plain `kit.*` fields (e.g. `appDir`) — adapters/functions are not serializable.
+   */
+  kitConfig?: KitConfigOverride;
 }
 
 export type SvelteKitMatrixVariant = Partial<
@@ -39,8 +50,17 @@ export type SvelteKitMatrixVariant = Partial<
     | 'readyTimeoutMs'
     | 'workspaceDeps'
     | 'viteConfig'
+    | 'kitConfig'
   >
 >;
+
+const SVELTE_CONFIG_NAMES = [
+  'svelte.config.js',
+  'svelte.config.ts',
+  'svelte.config.mjs',
+  'svelte.config.mts',
+  'svelte.config.cjs',
+];
 
 function resolveViteBin(root: string): string {
   return resolveBin({
@@ -55,7 +75,12 @@ function resolveViteBin(root: string): string {
 function hashInputsFor(opts: SvelteKitOptions, root: string, extra: string[]): string[] {
   const inputs = [...(opts.hashInputs ?? [root]), ...extra];
   if (opts.viteConfig) inputs.push(configOverrideHashInput('viteConfig', opts.viteConfig));
+  if (opts.kitConfig) inputs.push(configOverrideHashInput('kitConfig', opts.kitConfig));
   return inputs;
+}
+
+function resolveSvelteConfigPath(root: string): string {
+  return findFirstExistingConfig(root, SVELTE_CONFIG_NAMES) ?? join(root, 'svelte.config.js');
 }
 
 async function viteConfigArgs(
@@ -84,8 +109,10 @@ export const sveltekit: Driver<SvelteKitOptions> = defineDriver(
     const runMode: SvelteKitRun = opts.run ?? 'preview';
     const id = opts.id ?? `sveltekit-${runMode}-${root.split('/').pop()}`;
     const bin = () => resolveViteBin(root);
+    const hasKit = Boolean(opts.kitConfig && Object.keys(opts.kitConfig).length);
 
     if (runMode === 'dev') {
+      let restore: (() => Promise<void>) | undefined;
       return cliFrameworkRecipe({
         id,
         root,
@@ -97,6 +124,12 @@ export const sveltekit: Driver<SvelteKitOptions> = defineDriver(
         readyTimeoutMs: opts.readyTimeoutMs,
         workspaceDeps: opts.workspaceDeps,
         start: async ({ port, outDir }) => {
+          if (hasKit) {
+            restore = await installMergedConfigOverride(
+              resolveSvelteConfigPath(root),
+              opts.kitConfig!,
+            );
+          }
           const configArgs = await viteConfigArgs(root, outDir, opts.viteConfig);
           return {
             command: process.execPath,
@@ -112,6 +145,10 @@ export const sveltekit: Driver<SvelteKitOptions> = defineDriver(
             ],
             cwd: root,
           };
+        },
+        afterStop: async () => {
+          await restore?.();
+          restore = undefined;
         },
       });
     }
@@ -129,12 +166,24 @@ export const sveltekit: Driver<SvelteKitOptions> = defineDriver(
         readyTimeoutMs: opts.readyTimeoutMs,
         workspaceDeps: opts.workspaceDeps,
         prepare: async ({ outDir }) => {
-          const configArgs = await viteConfigArgs(root, outDir, opts.viteConfig);
-          return {
-            command: process.execPath,
-            args: [bin(), 'build', ...configArgs],
-            cwd: root,
-          };
+          const restore = hasKit
+            ? await installMergedConfigOverride(resolveSvelteConfigPath(root), opts.kitConfig!)
+            : undefined;
+          try {
+            const configArgs = await viteConfigArgs(root, outDir, opts.viteConfig);
+            const result = await runCommand(process.execPath, [bin(), 'build', ...configArgs], {
+              cwd: root,
+              env: { ...process.env, ...opts.env, OUT_DIR: outDir },
+              timeoutMs: opts.readyTimeoutMs ?? 300_000,
+            });
+            if (result.exitCode !== 0) {
+              throw new Error(
+                `[untestutils/sveltekit] prepare failed (${result.exitCode}):\n${result.stderr.slice(-2000)}\n${result.stdout.slice(-1000)}`,
+              );
+            }
+          } finally {
+            await restore?.();
+          }
         },
         verifyAfterPrepare: () => {
           const entry = join(root, entryRel);
@@ -169,12 +218,24 @@ export const sveltekit: Driver<SvelteKitOptions> = defineDriver(
       readyTimeoutMs: opts.readyTimeoutMs,
       workspaceDeps: opts.workspaceDeps,
       prepare: async ({ outDir }) => {
-        const configArgs = await viteConfigArgs(root, outDir, opts.viteConfig);
-        return {
-          command: process.execPath,
-          args: [bin(), 'build', ...configArgs],
-          cwd: root,
-        };
+        const restore = hasKit
+          ? await installMergedConfigOverride(resolveSvelteConfigPath(root), opts.kitConfig!)
+          : undefined;
+        try {
+          const configArgs = await viteConfigArgs(root, outDir, opts.viteConfig);
+          const result = await runCommand(process.execPath, [bin(), 'build', ...configArgs], {
+            cwd: root,
+            env: { ...process.env, ...opts.env, OUT_DIR: outDir },
+            timeoutMs: opts.readyTimeoutMs ?? 300_000,
+          });
+          if (result.exitCode !== 0) {
+            throw new Error(
+              `[untestutils/sveltekit] prepare failed (${result.exitCode}):\n${result.stderr.slice(-2000)}\n${result.stdout.slice(-1000)}`,
+            );
+          }
+        } finally {
+          await restore?.();
+        }
       },
       start: async ({ port, host, outDir }) => {
         const configArgs = await viteConfigArgs(root, outDir, opts.viteConfig);
@@ -214,6 +275,13 @@ export function matrix(
           ? deepMergePlain(
               (b.viteConfig ?? {}) as Record<string, unknown>,
               (patch.viteConfig ?? {}) as Record<string, unknown>,
+            )
+          : undefined,
+      kitConfig:
+        b.kitConfig || patch.kitConfig
+          ? deepMergePlain(
+              (b.kitConfig ?? {}) as Record<string, unknown>,
+              (patch.kitConfig ?? {}) as Record<string, unknown>,
             )
           : undefined,
       hashInputs: [...(b.hashInputs ?? [b.root]), ...(patch.hashInputs ?? []), `variant:${name}`],

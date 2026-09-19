@@ -5,7 +5,9 @@ import { writeIfMissing } from './fs';
 
 export type InitPreset = 'vitest' | 'playwright' | 'nuxt' | 'full';
 
-/** Relative template paths under src/templates */
+export type PackageManagerName = 'npm' | 'pnpm' | 'yarn' | 'bun';
+
+/** Relative template paths under templates/ */
 const PRESET_FILES: Record<InitPreset, string[]> = {
   vitest: [
     'vitest/vitest.config.ts',
@@ -19,7 +21,14 @@ const PRESET_FILES: Record<InitPreset, string[]> = {
     'playwright/tests/e2e/smoke.spec.ts',
     'vitest/fixtures/basic/index.html',
   ],
-  nuxt: ['nuxt/vitest.config.ts', 'nuxt/recipes.ts', 'nuxt/tests/e2e/smoke.test.ts'],
+  nuxt: [
+    'nuxt/vitest.config.ts',
+    'nuxt/recipes.ts',
+    'nuxt/tests/e2e/smoke.test.ts',
+    'nuxt/fixtures/nuxt/package.json',
+    'nuxt/fixtures/nuxt/nuxt.config.ts',
+    'nuxt/fixtures/nuxt/app.vue',
+  ],
   full: [
     'vitest/vitest.config.ts',
     'playwright/playwright.config.ts',
@@ -64,7 +73,7 @@ export function peersForPreset(preset: InitPreset): string[] {
     base.push('@playwright/test', 'playwright-core');
   }
   if (preset === 'nuxt' || preset === 'full') {
-    base.push('nuxt');
+    base.push('nuxt', '@untestutils/nuxt', 'vitest-environment-untestutils');
   }
   return [...new Set(base)];
 }

@@ -23,10 +23,24 @@ export const recipes = defineRecipes(
       root: join(root, 'fixtures/vite-spa'),
       run: 'preview',
     }),
+    /** Dogfood typed viteConfig override (define merges over fixture default). */
+    viteSpaOverride: vite({
+      id: 'viteSpaOverride',
+      root: join(root, 'fixtures/vite-spa'),
+      run: 'preview',
+      viteConfig: { define: { __UT_MARK__: JSON.stringify('ut-mark-override') } },
+    }),
     nextStatic: next({
       id: 'nextStatic',
       root: join(root, 'fixtures/next-app'),
       run: 'static',
+    }),
+    /** Dogfood typed nextConfig override (env visible in static HTML). */
+    nextStaticOverride: next({
+      id: 'nextStaticOverride',
+      root: join(root, 'fixtures/next-app'),
+      run: 'static',
+      nextConfig: { env: { UT_MARK: 'override-ok' } },
     }),
     astroSite: astro({
       id: 'astroSite',
@@ -37,6 +51,13 @@ export const recipes = defineRecipes(
       id: 'sveltekitApp',
       root: join(root, 'fixtures/sveltekit-app'),
       run: 'preview',
+    }),
+    /** Dogfood typed kitConfig override (changes kit.appDir in build output). */
+    sveltekitKitCfg: sveltekit({
+      id: 'sveltekitKitCfg',
+      root: join(root, 'fixtures/sveltekit-app'),
+      run: 'preview',
+      kitConfig: { kit: { appDir: '_app_ut' } },
     }),
     remixApp: remix({
       id: 'remixApp',

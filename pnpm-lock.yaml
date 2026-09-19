@@ -131,6 +131,9 @@ importers:
       '@untestutils/core':
         specifier: workspace:*
         version: link:packages/core
+      '@untestutils/nuxt':
+        specifier: workspace:*
+        version: link:packages/nuxt
       '@untestutils/playwright':
         specifier: workspace:*
         version: link:packages/playwright
@@ -197,6 +200,9 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@26.6.1)(@vitest/coverage-v8@5.0.1)(happy-dom@20.14.5)(jsdom@30.1.0)(vite@8.3.0(@types/node@26.6.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1))
+      vitest-environment-untestutils:
+        specifier: workspace:*
+        version: link:packages/vitest-environment-untestutils
 
   docs:
     devDependencies:
@@ -634,9 +640,6 @@ importers:
       '@untestutils/core':
         specifier: workspace:*
         version: link:../core
-      '@untestutils/nuxt':
-        specifier: workspace:*
-        version: link:../nuxt
       '@untestutils/playwright':
         specifier: workspace:*
         version: link:../playwright
@@ -652,9 +655,6 @@ importers:
       vitest:
         specifier: ^4.0.0 || ^5.0.0
         version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@26.6.1)(@vitest/coverage-v8@5.0.1)(happy-dom@20.14.5)(jsdom@30.1.0)(vite@8.3.0(@types/node@26.6.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1))
-      vitest-environment-untestutils:
-        specifier: workspace:*
-        version: link:../vitest-environment-untestutils
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -668,6 +668,9 @@ importers:
       '@untestutils/next':
         specifier: workspace:*
         version: link:../next
+      '@untestutils/nuxt':
+        specifier: workspace:*
+        version: link:../nuxt
       '@untestutils/perf':
         specifier: workspace:*
         version: link:../perf
@@ -692,6 +695,9 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
+      vitest-environment-untestutils:
+        specifier: workspace:*
+        version: link:../vitest-environment-untestutils
 
   packages/utils:
     devDependencies:
@@ -779,6 +785,9 @@ importers:
       '@playwright/test':
         specifier: 'catalog:'
         version: 1.63.0
+      '@untestutils/nuxt':
+        specifier: workspace:*
+        version: link:../packages/nuxt
       '@vue/test-utils':
         specifier: 'catalog:'
         version: 2.5.1(@vue/compiler-dom@3.5.43)(@vue/server-renderer@3.5.43)(vue@3.5.43(typescript@6.0.3))
@@ -794,6 +803,9 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@26.6.1)(@vitest/coverage-v8@5.0.1)(happy-dom@20.14.5)(jsdom@30.1.0)(vite@8.3.0(@types/node@26.6.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1))
+      vitest-environment-untestutils:
+        specifier: workspace:*
+        version: link:../packages/vitest-environment-untestutils
       vue:
         specifier: 'catalog:'
         version: 3.5.43(typescript@6.0.3)

@@ -12,20 +12,22 @@ New here? Read [Why](/why) first (one page).
 
 ## Requirements
 
-- Node.js **>= 20**
-- Vitest **4+** or **5+**
-- Optional: `@playwright/test`, `playwright-core`, `nuxt`
+- Node.js **>= 20** (CI primary **22**, smoke **20**)
+- Vitest **4+** or **5+** (peer `^4 || ^5`)
+- Optional: `@playwright/test`, `playwright-core`, Nuxt stack
 
 ## Install
 
 Always install facade / adapters at the **same version** (lockstep).
 
-`untestutils` pulls **core + vitest + playwright + nuxt + utils + cli**. Framework adapters (`vite` / `next` / …) and **AI / Perf** are optional peers.
+`untestutils` pulls **core + vitest + playwright + utils + cli**. **Nuxt**, framework adapters (`vite` / `next` / …), **AI**, and **Perf** are optional peers.
 
 ::: code-group
 
 ```bash [pnpm]
 pnpm add -D untestutils vitest
+# Nuxt recipes + unit:
+pnpm add -D @untestutils/nuxt vitest-environment-untestutils nuxt
 # Optional peers when needed:
 pnpm add -D @untestutils/vite          # or next / astro / …
 pnpm add -D @untestutils/ai            # codegen
@@ -44,7 +46,7 @@ npm install -D untestutils vitest
 | Core recipes + drivers | Yes | — |
 | Vitest e2e plugin / fixtures | Yes | `vitest` peer |
 | Playwright config | Yes | Playwright peers |
-| Nuxt recipes + unit | Yes | `nuxt` when building apps |
+| Nuxt recipes + unit | No (optional peer) | `@untestutils/nuxt` + `vitest-environment-untestutils` + `nuxt` |
 | Vite / Next / Astro / … | No | `@untestutils/<name>` |
 | AI / Perf | No (optional) | `@untestutils/ai` / `@untestutils/perf` |
 
@@ -55,7 +57,9 @@ Scaffold:
 ```bash
 pnpm dlx untestutils init --preset vitest
 # playwright | nuxt | full
+# Flags: --no-install, --pm pnpm|npm|yarn|bun, --force
 pnpm dlx untestutils doctor
+pnpm dlx untestutils doctor --recipes
 ```
 
 ## Minimal Vitest e2e

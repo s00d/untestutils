@@ -1,0 +1,10 @@
+{
+  "name": "untestutils-nuxt-fixture",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "preview": "nuxt preview"
+  }
+}

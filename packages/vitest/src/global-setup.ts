@@ -29,6 +29,17 @@ function readRegistryUrls(artifactsRoot: string, map: Awaited<ReturnType<TargetR
   return urls;
 }
 
+function formatKnownIds(
+  recipesMap: Record<string, import('@untestutils/core').Recipe> | undefined,
+): string {
+  const fromMap = recipesMap ? Object.keys(recipesMap) : [];
+  const fromReg = listRegisteredRecipes()
+    .map((r) => r.id)
+    .filter(Boolean) as string[];
+  const known = [...new Set([...fromMap, ...fromReg])].sort();
+  return known.length ? ` Known ids: ${known.join(', ')}.` : '';
+}
+
 export default async function globalSetup(project: TestProject): Promise<() => Promise<void>> {
   await loadRecipesModule();
 
@@ -52,7 +63,7 @@ export default async function globalSetup(project: TestProject): Promise<() => P
       const recipe = recipesMap?.[id] ?? getRegisteredRecipe(id);
       if (!recipe) {
         throw new Error(
-          `[untestutils] prewarm id "${id}" not found. Pass recipesModule to untestutils() and call defineRecipes() in that module.`,
+          `[untestutils] prewarm id "${id}" not found.${formatKnownIds(recipesMap)} Pass recipesModule to untestutils() and call defineRecipes() in that module.`,
         );
       }
       await ensurePrepared(recipe, { artifactsRoot });

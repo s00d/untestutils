@@ -7,7 +7,7 @@ outline: deep
 # AI codegen
 
 ::: tip
-**Optional** — not part of the 1.0 stability bar. Mock works in CI; live LLM is best-effort. See [Roadmap](/roadmap).
+**Optional peer** — not part of the 1.0 stability bar. CI runs **mock only** (`test:ai`); there is **no live-LLM** job. See [Roadmap](/roadmap).
 :::
 
 Optional. Package: `untestutils/ai`. CLI shares one toolkit (fs + optional browser tools).

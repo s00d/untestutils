@@ -13,11 +13,13 @@
   },
   "devDependencies": {
     "@playwright/test": "catalog:",
+    "@untestutils/nuxt": "workspace:*",
     "@vue/test-utils": "catalog:",
     "happy-dom": "catalog:",
     "nuxt": "catalog:",
     "playwright-core": "catalog:",
     "vitest": "catalog:",
+    "vitest-environment-untestutils": "workspace:*",
     "vue": "catalog:"
   }
 }

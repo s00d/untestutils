@@ -151,6 +151,16 @@ describe('framework Recipe factories', () => {
       appConfig: { server: { preset: 'node-server' } },
     }).hashInputs!(ctx);
     expect(solidCfg.some((x) => String(x).startsWith('appConfig:'))).toBe(true);
+
+    const kitBare = await sveltekit({ id: 'sk0', root: '/tmp/x', run: 'preview' }).hashInputs!(ctx);
+    const kitCfg = await sveltekit({
+      id: 'sk1',
+      root: '/tmp/x',
+      run: 'preview',
+      kitConfig: { kit: { appDir: '_app_ut' } },
+    }).hashInputs!(ctx);
+    expect(kitCfg).not.toEqual(kitBare);
+    expect(kitCfg.some((x) => String(x).startsWith('kitConfig:'))).toBe(true);
   });
 
   test('matrix deep-merges typed config overrides', async () => {

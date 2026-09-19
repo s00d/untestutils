@@ -90,11 +90,16 @@ Same Recipe idea. Each package exports `matrix()` (merges `env` / `hashInputs` /
 
 ### Typed config overrides
 
-Same role as Nuxt [`nuxtConfig`](/api/nuxt): JSON-serializable patches hashed into prepare identity.
+Same role as Nuxt [`nuxtConfig`](/api/nuxt): **JSON-serializable** patches hashed into prepare identity.
+
+::: tip Serialization
+Overrides are stringified into the prepare hash and into ephemeral merge modules. Stick to plain data (`define`, `env`, nested objects/arrays). **Functions, classes, and `Symbol`s are not supported** — wrap those in your own ephemeral config file if you need them.
+:::
 
 | Adapter | Option | How applied |
 |---------|--------|-------------|
-| `vite` / `sveltekit` / `remix` | `viteConfig` | Ephemeral `vite.untestutils.mjs` + `vite --config` (`mergeConfig`) |
+| `vite` / `remix` | `viteConfig` | Ephemeral `vite.untestutils.mjs` + `vite --config` (`mergeConfig`) |
+| `sveltekit` | `viteConfig` / `kitConfig` | Vite via `--config`; `kitConfig` via `withMergedConfigOverride` on `svelte.config.*` |
 | `astro` | `astroConfig` | Ephemeral `--config` + Astro `mergeConfig` |
 | `solidstart` | `appConfig` | `withEphemeralFile` on `app.config.*` (TS-safe; vinxi discovers root config) |
 | `next` | `nextConfig` | `withEphemeralFile` on `next.config.*` (backup → merge wrapper → restore; Next has no `--config`) |
@@ -122,7 +127,15 @@ export const recipes = defineRecipes({
     },
   ),
 }, import.meta.url)
+// → recipes: spa, spa__alt  (id + `__` + variant name)
 ```
+
+### `matrix()` vs explicit `app()` ids
+
+- Use **`matrix()`** when variants share one base and differ by `env` / config overrides — ids become `id__variant` (e.g. `spa__alt`). Fine for strategy matrices.
+- Prefer **explicit** `vite({ id: 'spa-no-prefix', … })` (or `app('…')` style) when harness ids are part of test contracts, CI filters, or docs — avoid inventing consumer-side merge helpers that reimplement `matrix`.
+
+`listRegisteredRecipes()` (core) and `untestutils doctor --recipes` list what is registered.
 
 Core also exports `matrixRecipe` / `defineDriver` for custom adapters. Options: [API: Drivers](/api/drivers).
 

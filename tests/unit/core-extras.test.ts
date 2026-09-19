@@ -74,6 +74,12 @@ describe('core extras', () => {
 
   test('resolveRecipe unknown throws', async () => {
     await expect(resolveRecipe('nope')).rejects.toThrow(/unknown recipe/);
+    const listed = defineRecipe({
+      id: 'listed',
+      start: async () => ({ kind: 'dir', dir: '/tmp' }),
+    });
+    defineRecipes({ listed });
+    await expect(resolveRecipe('nope')).rejects.toThrow(/Known ids:.*listed/);
     const r = defineRecipe({ id: 'obj', start: async () => ({ kind: 'dir', dir: '/tmp' }) });
     expect(await resolveRecipe(r)).toBe(r);
   });

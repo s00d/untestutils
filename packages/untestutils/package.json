@@ -183,11 +183,9 @@
   "dependencies": {
     "@untestutils/cli": "workspace:*",
     "@untestutils/core": "workspace:*",
-    "@untestutils/nuxt": "workspace:*",
     "@untestutils/playwright": "workspace:*",
     "@untestutils/utils": "workspace:*",
-    "@untestutils/vitest": "workspace:*",
-    "vitest-environment-untestutils": "workspace:*"
+    "@untestutils/vitest": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "catalog:",
@@ -202,20 +200,23 @@
     "@untestutils/vite": "workspace:*",
     "obuild": "catalog:",
     "publint": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest-environment-untestutils": "workspace:*"
   },
   "peerDependencies": {
     "@playwright/test": "^1.63.0",
     "@untestutils/ai": "0.5.4",
     "@untestutils/astro": "0.5.4",
     "@untestutils/next": "0.5.4",
+    "@untestutils/nuxt": "0.5.4",
     "@untestutils/perf": "0.5.4",
     "@untestutils/remix": "0.5.4",
     "@untestutils/solidstart": "0.5.4",
     "@untestutils/sveltekit": "0.5.4",
     "@untestutils/vite": "0.5.4",
     "playwright-core": "^1.63.0",
-    "vitest": "^4.0.0 || ^5.0.0"
+    "vitest": "^4.0.0 || ^5.0.0",
+    "vitest-environment-untestutils": "0.5.4"
   },
   "peerDependenciesMeta": {
     "@untestutils/ai": {
@@ -225,6 +226,9 @@
       "optional": true
     },
     "@untestutils/next": {
+      "optional": true
+    },
+    "@untestutils/nuxt": {
       "optional": true
     },
     "@untestutils/perf": {
@@ -249,6 +253,9 @@
       "optional": true
     },
     "vitest": {
+      "optional": true
+    },
+    "vitest-environment-untestutils": {
       "optional": true
     }
   },

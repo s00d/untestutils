@@ -2,12 +2,21 @@ import { test as base } from '@playwright/test';
 import {
   ensurePrepared,
   getRegisteredRecipe,
+  listRegisteredRecipes,
   normalizeBaseUrl,
   resolveArtifactsRoot,
   envKey,
   TargetRegistry,
   type Recipe,
 } from '@untestutils/core';
+
+function formatKnownIds(): string {
+  const known = listRegisteredRecipes()
+    .map((r) => r.id)
+    .filter(Boolean)
+    .sort();
+  return known.length ? ` Known ids: ${known.join(', ')}.` : '';
+}
 
 /**
  * Prepare (or reuse) the harness and ensure `UNTESTUTILS_HOST_*` is set in
@@ -18,7 +27,9 @@ export async function resolvePlaywrightHarnessId(harness: string | Recipe): Prom
   const id = typeof harness === 'string' ? harness : harness.id;
   if (!id) throw new Error('[untestutils/playwright] test.use({ harness }) required');
   const recipe = typeof harness === 'string' ? getRegisteredRecipe(harness) : harness;
-  if (!recipe) throw new Error(`[untestutils/playwright] unknown harness "${id}"`);
+  if (!recipe) {
+    throw new Error(`[untestutils/playwright] unknown harness "${id}".${formatKnownIds()}`);
+  }
   const artifactsRoot = resolveArtifactsRoot();
   const prepared = await ensurePrepared(recipe, { artifactsRoot });
   const runningUrl = 'url' in prepared.running ? prepared.running.url : undefined;

@@ -2,9 +2,15 @@ import { defineCommand, type CommandDef } from 'citty';
 import { consola } from 'consola';
 import { addDependency } from 'nypm';
 import { resolve } from 'pathe';
-import { applyPreset, peersForPreset, type InitPreset } from '../utils/templates';
+import {
+  applyPreset,
+  peersForPreset,
+  type InitPreset,
+  type PackageManagerName,
+} from '../utils/templates';
 
 const PRESETS: InitPreset[] = ['vitest', 'playwright', 'nuxt', 'full'];
+const PMS: PackageManagerName[] = ['npm', 'pnpm', 'yarn', 'bun'];
 
 const initArgs = {
   preset: {
@@ -25,8 +31,12 @@ const initArgs = {
   },
   install: {
     type: 'boolean',
-    description: 'Install peer dependencies via nypm',
+    description: 'Install peer dependencies via nypm (use --no-install to skip)',
     default: true,
+  },
+  pm: {
+    type: 'string',
+    description: 'Package manager: pnpm | npm | yarn | bun (default: auto-detect, else pnpm)',
   },
 } as const;
 
@@ -57,20 +67,32 @@ export const initCommand: CommandDef<typeof initArgs> = defineCommand({
       consola.start(`Installing dependencies: ${deps.join(', ')}`);
       try {
         // Fresh projects often have no lockfile — nypm cannot auto-detect. Prefer
-        // detected PM, else pnpm (matches engines/docs), always as -D.
+        // --pm, else detected PM, else pnpm (matches engines/docs), always as -D.
+        const pmArg = args.pm ? String(args.pm) : undefined;
+        if (pmArg && !PMS.includes(pmArg as PackageManagerName)) {
+          consola.error(`Unknown --pm "${pmArg}". Available: ${PMS.join(', ')}`);
+          process.exitCode = 1;
+          return;
+        }
         const { detectPackageManager } = await import('nypm');
-        const detected = await detectPackageManager(cwd, { includeParentDirs: false });
+        const detected = pmArg
+          ? undefined
+          : await detectPackageManager(cwd, { includeParentDirs: false });
+        const packageManager =
+          (pmArg as PackageManagerName | undefined) ?? detected?.name ?? 'pnpm';
         await addDependency(deps, {
           cwd,
           silent: false,
-          packageManager: detected?.name ?? 'pnpm',
+          packageManager,
           dev: true,
         });
-        consola.success('Dependencies installed');
+        consola.success(`Dependencies installed (${packageManager})`);
       } catch (e) {
         consola.warn(`Could not install automatically: ${e}`);
         consola.info(`Install manually: ${deps.join(' ')}`);
       }
+    } else {
+      consola.info('Skipped install (--no-install). Install peers manually when ready.');
     }
 
     consola.box(
@@ -79,6 +101,7 @@ export const initCommand: CommandDef<typeof initArgs> = defineCommand({
         '  1. Review recipes.ts and fixture app paths',
         '  2. pnpm test / npx vitest run',
         '  3. untestutils doctor — environment check',
+        '  4. untestutils doctor --recipes — list recipe ids',
       ].join('\n'),
     );
   },

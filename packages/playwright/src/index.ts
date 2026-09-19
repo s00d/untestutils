@@ -1,6 +1,7 @@
 import {
   ensureRecipes,
   getRegisteredRecipe,
+  listRegisteredRecipes,
   getRecipesModulePath,
   ensurePrepared,
   stopAllTargets,
@@ -101,6 +102,8 @@ export function createPlaywrightConfig(opts: PlaywrightHarnessOptions & PWConfig
   const browsers = browsersOpt?.length ? browsersOpt : undefined;
   const defaults: PWConfig = {
     fullyParallel: true,
+    // Avoid picking up Vitest `*.test.ts` when both live under the same tree (e.g. full preset).
+    testMatch: '**/*.spec.ts',
   };
   if (process.env.CI && rest.workers === undefined) {
     defaults.workers = 2;
@@ -117,6 +120,8 @@ export function createPlaywrightConfig(opts: PlaywrightHarnessOptions & PWConfig
   return {
     ...defaults,
     ...rest,
+    // Caller `testMatch` / `testDir` win via rest spread above; keep defaults only when unset.
+    testMatch: rest.testMatch ?? defaults.testMatch,
     use: {
       ...(rest.use ?? {}),
     },
@@ -184,8 +189,13 @@ export async function playwrightGlobalSetup(): Promise<void> {
     for (const id of prewarm) {
       const recipe = recipesFromModule?.[id] ?? getRegisteredRecipe(id);
       if (!recipe) {
+        const known = listRegisteredRecipes()
+          .map((r) => r.id)
+          .filter(Boolean)
+          .sort();
+        const hint = known.length ? ` Known ids: ${known.join(', ')}.` : '';
         throw new Error(
-          `[untestutils/playwright] prewarm "${id}" missing — import recipes via defineRecipes(..., import.meta.url)`,
+          `[untestutils/playwright] prewarm "${id}" missing.${hint} Import recipes via defineRecipes(..., import.meta.url)`,
         );
       }
       await ensurePrepared(recipe, { artifactsRoot });

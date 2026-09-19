@@ -7,7 +7,7 @@ outline: deep
 # Perf suite
 
 ::: tip
-This is **build/load benchmarking** (`untestutils/perf`), not the e2e shared-prepare story. Optional / not in CI dogfood — see [Roadmap](/roadmap). For CI speed of tests, see [Why](/why).
+This is **build/load benchmarking** (`untestutils/perf`), not the e2e shared-prepare story. **Optional peer** — unit tests run on every PR; a tiny dogfood job is available via CI `workflow_dispatch` (`run_perf`). Not part of the 1.0 stability bar — see [Roadmap](/roadmap). For CI speed of tests, see [Why](/why).
 :::
 
 ```ts

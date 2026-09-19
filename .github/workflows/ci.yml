@@ -9,6 +9,10 @@ on:
       remote_url:
         description: Optional UNTESTUTILS_REMOTE_URL for post-deploy smoke
         required: false
+      run_perf:
+        description: Run optional perf dogfood job
+        type: boolean
+        default: false
 
 jobs:
   test:
@@ -37,8 +41,25 @@ jobs:
       - run: pnpm run test:playground
       - run: pnpm run test:playground:unit
       - run: pnpm run test:pack
+      - run: pnpm run test:cli-dogfood
       - run: pnpm exec playwright install --with-deps chromium firefox
       - run: pnpm run test:playwright
+
+  node20:
+    name: Node 20 smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --ignore-scripts
+      - run: pnpm run build
+      - run: pnpm install
+      - run: pnpm run test:unit
+      - run: pnpm run test:pack
 
   remote:
     if: github.event_name == 'workflow_dispatch' && inputs.remote_url != ''
@@ -57,3 +78,22 @@ jobs:
       - run: pnpm run test:playwright
         env:
           UNTESTUTILS_REMOTE_URL: ${{ inputs.remote_url }}
+
+  perf:
+    if: github.event_name == 'workflow_dispatch' && inputs.run_perf == true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --ignore-scripts
+      - run: pnpm run build
+      - run: pnpm install
+      - run: pnpm run test:unit -- tests/unit/perf.test.ts
+        continue-on-error: false
+      - name: Tiny perf fixture (skip-load)
+        run: |
+          pnpm exec tsx packages/cli/src/run.ts perf --config scripts/perf-dogfood.config.ts --skip-load

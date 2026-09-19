@@ -11,7 +11,7 @@ import { defaultReady } from './ready';
 import { createRunHelper } from './run-helper';
 import { TargetRegistry } from './target-registry';
 import type { Recipe, Running, SharePolicy } from './types';
-import { getRegisteredRecipe } from './recipes';
+import { getRegisteredRecipe, listRegisteredRecipes } from './recipes';
 import { isPidAlive, killPidTree } from './process';
 import { ofetch } from 'ofetch';
 import { constants } from 'node:fs';
@@ -48,8 +48,17 @@ function rememberLive(
 export async function resolveRecipe(input: string | Recipe): Promise<Recipe> {
   if (typeof input === 'string') {
     const r = getRegisteredRecipe(input);
-    if (!r)
-      throw new Error(`[untestutils] unknown recipe id "${input}". Did you call defineRecipes()?`);
+    if (!r) {
+      const known = listRegisteredRecipes()
+        .map((x) => x.id)
+        .filter(Boolean)
+        .sort();
+      const hint =
+        known.length > 0
+          ? ` Known ids: ${known.join(', ')}.`
+          : ' Did you call defineRecipes(..., import.meta.url)?';
+      throw new Error(`[untestutils] unknown recipe id "${input}".${hint}`);
+    }
     return r;
   }
   return input;
