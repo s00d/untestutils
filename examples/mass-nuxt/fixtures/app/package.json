@@ -1,0 +1,14 @@
+{
+  "name": "@untestutils/example-mass-nuxt-app",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "postinstall": "nuxt prepare",
+    "build": "nuxt build",
+    "dev": "nuxt dev"
+  },
+  "dependencies": {
+    "nuxt": "catalog:",
+    "vue": "catalog:"
+  }
+}

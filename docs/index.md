@@ -16,6 +16,9 @@ hero:
       text: Get started
       link: /guide/getting-started
     - theme: alt
+      text: See the demo
+      link: /guide/demo
+    - theme: alt
       text: Why
       link: /why
     - theme: alt

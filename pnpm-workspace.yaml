@@ -4,6 +4,8 @@ packages:
   - 'playground'
   - 'playground/fixtures/*'
   - 'playground/packages/*'
+  - 'examples/*'
+  - 'examples/mass-nuxt/fixtures/*'
 
 catalog:
   # build / tooling

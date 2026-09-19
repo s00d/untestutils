@@ -15,6 +15,12 @@ Published packages are **scoped** `@untestutils/*` plus the thin facade `untestu
 
 Site: `docs/` (`pnpm run docs:dev` / `docs:build`). Keep pages short; why/speed only in `docs/why.md`; release path in `docs/roadmap.md`.
 
+Demo page (`docs/guide/demo.md`) shows measured shared vs naive Nuxt browser e2e (`examples/mass-nuxt`). After changing that example, refresh artifacts:
+
+```bash
+pnpm run demo:capture   # runs shared + naive, writes docs/public/demo/* — not part of preflight
+```
+
 ## Release
 
 Canonical version: root `package.json`. `tsx scripts/release.ts` runs `bumpp -r`, syncs nested facade env shims + exact scoped peers, regenerates `CHANGELOG.md` via changelogen, then `pnpm -r publish` (pnpm rewrites `workspace:*` on pack). Tag format: `vX.Y.Z`. Always create a GitHub Release for the tag.

@@ -1,0 +1,25 @@
+{
+  "name": "@untestutils/example-mass-nuxt",
+  "private": true,
+  "type": "module",
+  "description": "Docs demo: ~150 live Nuxt browser e2e — shared prepare vs naive per-file prepare",
+  "scripts": {
+    "generate:e2e": "node scripts/generate-e2e.mjs",
+    "test": "vitest run --config vitest.config.ts",
+    "test:shared": "vitest run --config vitest.config.ts",
+    "test:naive": "vitest run --config vitest.naive.config.ts",
+    "test:e2e": "vitest run --config vitest.config.ts"
+  },
+  "dependencies": {
+    "nuxt": "catalog:",
+    "vue": "catalog:"
+  },
+  "devDependencies": {
+    "@playwright/test": "catalog:",
+    "@untestutils/nuxt": "workspace:*",
+    "playwright-core": "catalog:",
+    "typescript": "catalog:",
+    "untestutils": "workspace:*",
+    "vitest": "catalog:"
+  }
+}

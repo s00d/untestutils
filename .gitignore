@@ -4,6 +4,8 @@ dist-override
 !tests/dist/
 !tests/dist/**
 .untestutils
+examples/**/.untestutils
+examples/**/.untestutils-*
 .nuxt
 .output
 .astro

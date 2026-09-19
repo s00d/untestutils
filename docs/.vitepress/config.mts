@@ -17,6 +17,7 @@ export default withMermaid(
     base: docsBase,
 
     head: [
+      ['link', { rel: 'icon', href: `${docsBase}favicon.ico`, sizes: 'any' }],
       ['link', { rel: 'icon', href: `${docsBase}favicon.svg`, type: 'image/svg+xml' }],
       ['link', { rel: 'icon', href: `${docsBase}favicon.png`, type: 'image/png' }],
       ['link', { rel: 'apple-touch-icon', href: `${docsBase}apple-touch-icon.png` }],
@@ -26,6 +27,22 @@ export default withMermaid(
       ['meta', { property: 'og:image', content: `${docsBase}og-image.png` }],
       ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
     ],
+
+    // pnpm (shamefully-hoist=false): mermaid transitive deps must be direct
+    // so vitepress-plugin-mermaid optimizeDeps.include can resolve them.
+    vite: {
+      optimizeDeps: {
+        include: [
+          'mermaid',
+          'dayjs',
+          'debug',
+          'cytoscape',
+          'cytoscape-cose-bilkent',
+          '@braintree/sanitize-url',
+          'fastdom',
+        ],
+      },
+    },
 
     themeConfig: {
       logo: '/logo.svg',
@@ -38,6 +55,7 @@ export default withMermaid(
       },
       nav: [
         { text: 'Guide', link: '/guide/getting-started' },
+        { text: 'Demo', link: '/guide/demo' },
         { text: 'Why', link: '/why' },
         { text: 'Roadmap', link: '/roadmap' },
         { text: 'Migration', link: '/migration/from-nuxt-test-utils' },
@@ -50,6 +68,7 @@ export default withMermaid(
             text: 'Guide',
             items: [
               { text: 'Getting started', link: '/guide/getting-started' },
+              { text: 'Demo — mass Nuxt e2e', link: '/guide/demo' },
               { text: 'How it works', link: '/guide/how-it-works' },
               { text: 'Vitest', link: '/guide/vitest' },
               { text: 'Playwright', link: '/guide/playwright' },
@@ -76,6 +95,7 @@ export default withMermaid(
             text: 'Why',
             items: [
               { text: 'Why untestutils', link: '/why' },
+              { text: 'Demo — mass Nuxt e2e', link: '/guide/demo' },
               { text: 'Roadmap', link: '/roadmap' },
             ],
           },

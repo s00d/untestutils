@@ -32,6 +32,7 @@
     "test:ai": "vitest run --config vitest.ai.config.ts",
     "test:pack": "tsx scripts/pack-test.ts",
     "test:cli-dogfood": "tsx scripts/cli-dogfood.ts",
+    "demo:capture": "tsx scripts/capture-demo-logs.ts",
     "publint": "pnpm -r --filter './packages/**' run --if-present publint",
     "api:surface": "tsx scripts/api-surface.ts",
     "api:surface:update": "tsx scripts/api-surface.ts --update",

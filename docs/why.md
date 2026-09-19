@@ -53,6 +53,7 @@ Clean break, not a drop-in. Keep Vitest/Playwright skills; change how apps are p
 
 ## Next
 
+- [Demo — mass Nuxt e2e](/guide/demo) — ~200 live assertions, one shared prepare
 - [Getting started](/guide/getting-started)
 - [How it works](/guide/how-it-works)
 - [Roadmap](/roadmap) — path to 1.0
