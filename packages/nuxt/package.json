@@ -1,6 +1,6 @@
 {
   "name": "@untestutils/nuxt",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Nuxt recipes + in-process unit runtime, config, module, and Vitest environment",
   "homepage": "https://s00d.github.io/untestutils/",
   "license": "MIT",
