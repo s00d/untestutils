@@ -65,6 +65,18 @@ Ship **1.0.0** with the matrix above, changelog that states stable vs optional, 
 - Live-LLM AI smoke (mock stays CI default)
 - Perf dogfood job when thresholds have an owner
 
+## Explore (pre-release — maybe skip)
+
+Not committed work. Before a major cut, **spike once** whether any of these belong as optional adapters / drivers. Likely outcome: document “out of scope” and move on.
+
+| Project | Stars (approx.) | Notes |
+|---------|-----------------|--------|
+| [Astral](https://github.com/lino-levan/astral) | Deno ~354⭐ | High-level browser automation for Deno |
+| [Thirtyfour](https://github.com/stevepryde/thirtyfour) | Rust ~1.4k⭐ | Selenium WebDriver client |
+| [Chromiumoxide](https://github.com/mattsse/chromiumoxide) | Rust ~1.4k⭐ | CDP / Chromium control |
+
+Check fit vs Playwright (primary), maintenance cost, and whether a thin recipe `start`/`URL` bridge is enough. **Do not** block 1.0 on shipping them.
+
 ## Not goals for 1.0
 
 - Replacing Vitest or Playwright
