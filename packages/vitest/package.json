@@ -62,7 +62,7 @@
   "peerDependencies": {
     "@playwright/test": "catalog:",
     "playwright-core": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "^4.0.0 || ^5.0.0"
   },
   "peerDependenciesMeta": {
     "@playwright/test": {
