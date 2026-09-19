@@ -47,3 +47,7 @@ catalog:
   '@ai-sdk/anthropic': ^4.0.57
   '@ai-sdk/google': ^4.0.75
   '@ai-sdk/xai': ^5.0.3
+  # optional perf load tools (exact — Artillery private runner lock)
+  artillery: 2.0.34
+  autocannon: 8.0.0
+  '@types/autocannon': 7.12.7

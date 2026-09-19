@@ -38,14 +38,17 @@
     "pathe": "catalog:"
   },
   "devDependencies": {
+    "@types/autocannon": "catalog:",
     "@types/node": "catalog:",
+    "artillery": "catalog:",
+    "autocannon": "catalog:",
     "obuild": "catalog:",
     "publint": "catalog:",
     "typescript": "catalog:"
   },
   "peerDependencies": {
-    "artillery": "*",
-    "autocannon": "*"
+    "artillery": "2.0.34",
+    "autocannon": "8.0.0"
   },
   "peerDependenciesMeta": {
     "autocannon": {

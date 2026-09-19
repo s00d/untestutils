@@ -1,38 +1,16 @@
-import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'pathe';
+import type { Result as AutocannonRawResult } from 'autocannon';
 import type { AutocannonResult } from '../types';
 
-type AutocannonFn = (opts: {
-  url: string;
-  connections?: number;
-  duration?: number;
-  renderProgressBar?: boolean;
-  renderResultsTable?: boolean;
-  renderLatencyTable?: boolean;
-}) => Promise<{
-  requests: { average: number; mean?: number; total?: number };
-  latency: {
-    average: number;
-    mean?: number;
-    min: number;
-    max: number;
-    p50?: number;
-    p97_5?: number;
-    p99?: number;
-  };
-  throughput: { average: number };
-  errors?: number;
-  totalCompletedRequests?: number;
-  totalRequests?: number;
-}>;
+export const AUTOCANNON_PINNED_VERSION = '8.0.0';
 
-function normalize(raw: Awaited<ReturnType<AutocannonFn>>): AutocannonResult {
+function normalize(raw: AutocannonRawResult): AutocannonResult {
   return {
     requests: {
       average: raw.requests.average,
       mean: raw.requests.mean ?? raw.requests.average,
-      total: raw.requests.total ?? raw.totalCompletedRequests ?? raw.totalRequests ?? 0,
+      total: raw.requests.total ?? raw.requests.sent ?? 0,
     },
     latency: {
       average: raw.latency.average,
@@ -48,73 +26,7 @@ function normalize(raw: Awaited<ReturnType<AutocannonFn>>): AutocannonResult {
   };
 }
 
-async function viaApi(opts: {
-  url: string;
-  connections: number;
-  duration: number;
-}): Promise<AutocannonResult | null> {
-  try {
-    // @ts-expect-error optional peer
-    const mod = (await import('autocannon')) as { default?: AutocannonFn } & AutocannonFn;
-    const run = (mod.default ?? mod) as AutocannonFn;
-    const raw = await run({
-      url: opts.url,
-      connections: opts.connections,
-      duration: opts.duration,
-      renderProgressBar: false,
-      renderResultsTable: false,
-      renderLatencyTable: false,
-    });
-    return normalize(raw);
-  } catch {
-    return null;
-  }
-}
-
-function viaNpx(opts: {
-  url: string;
-  connections: number;
-  duration: number;
-}): Promise<AutocannonResult> {
-  return new Promise((resolve, reject) => {
-    const child = spawn(
-      'npx',
-      [
-        '--yes',
-        'autocannon',
-        '-c',
-        String(opts.connections),
-        '-d',
-        String(opts.duration),
-        '-j',
-        opts.url,
-      ],
-      { stdio: ['ignore', 'pipe', 'pipe'] },
-    );
-    let stdout = '';
-    let stderr = '';
-    child.stdout?.on('data', (c: Buffer) => {
-      stdout += c.toString();
-    });
-    child.stderr?.on('data', (c: Buffer) => {
-      stderr += c.toString();
-    });
-    child.on('error', reject);
-    child.on('close', (code) => {
-      if (code !== 0 && !stdout) {
-        reject(new Error(`autocannon exited ${code}: ${stderr.slice(0, 400)}`));
-        return;
-      }
-      try {
-        resolve(normalize(JSON.parse(stdout) as Awaited<ReturnType<AutocannonFn>>));
-      } catch (e) {
-        reject(e);
-      }
-    });
-  });
-}
-
-/** Prefer programmatic peer; fall back to `npx autocannon`. */
+/** Programmatic peer only (`autocannon()`). No CLI / npx. */
 export async function runAutocannon(opts: {
   url: string;
   connections?: number;
@@ -126,9 +38,26 @@ export async function runAutocannon(opts: {
   const duration = opts.durationSec ?? 10;
   mkdirSync(opts.artifactsDir, { recursive: true });
 
-  const result =
-    (await viaApi({ url: opts.url, connections, duration })) ??
-    (await viaNpx({ url: opts.url, connections, duration }));
+  let run: (options: {
+    url: string;
+    connections?: number;
+    duration?: number;
+  }) => Promise<AutocannonRawResult>;
+  try {
+    const mod = await import('autocannon');
+    run = mod.default;
+  } catch {
+    throw new Error(
+      `@untestutils/perf: autocannon@${AUTOCANNON_PINNED_VERSION} is required for load.autocannon (optional peer). Install it in the project.`,
+    );
+  }
+
+  const raw = await run({
+    url: opts.url,
+    connections,
+    duration,
+  });
+  const result = normalize(raw);
 
   writeFileSync(
     join(opts.artifactsDir, `autocannon-${opts.name}.json`),

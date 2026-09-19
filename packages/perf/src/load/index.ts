@@ -1,5 +1,5 @@
 import type { StartedTarget } from '../start';
-import type { LoadMetrics, PerfTarget } from '../types';
+import type { ArtilleryResult, AutocannonResult, LoadMetrics, PerfTarget } from '../types';
 import { runArtillery } from './artillery';
 import { runAutocannon } from './autocannon';
 
@@ -12,7 +12,7 @@ export async function runLoadPhase(opts: {
   const load = target.load;
   if (!load) return started.takeProcessMetrics();
 
-  let autocannon;
+  let autocannon: AutocannonResult | undefined;
   if (load.autocannon) {
     const ac = load.autocannon === true ? {} : load.autocannon;
     console.log(
@@ -27,16 +27,27 @@ export async function runLoadPhase(opts: {
     });
   }
 
-  let artillery;
-  if (load.artillery?.config) {
-    console.log(`  → artillery ${load.artillery.config}`);
-    artillery = await runArtillery({
-      configPath: load.artillery.config,
-      artifactsDir,
-      name: target.id,
-      cwd: target.root,
-      targetUrl: started.url,
-    });
+  let artillery: ArtilleryResult | undefined;
+  if (load.artillery) {
+    if ('script' in load.artillery) {
+      console.log('  → artillery inline script');
+      artillery = await runArtillery({
+        script: load.artillery.script,
+        artifactsDir,
+        name: target.id,
+        cwd: target.root,
+        targetUrl: started.url,
+      });
+    } else {
+      console.log(`  → artillery ${load.artillery.config}`);
+      artillery = await runArtillery({
+        configPath: load.artillery.config,
+        artifactsDir,
+        name: target.id,
+        cwd: target.root,
+        targetUrl: started.url,
+      });
+    }
   }
 
   // After load tools finish — sampling ran throughout autocannon/artillery.

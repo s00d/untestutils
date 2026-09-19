@@ -28,7 +28,11 @@ export const recipes = defineRecipes(
       id: 'viteSpaOverride',
       root: join(root, 'fixtures/vite-spa'),
       run: 'preview',
-      viteConfig: { define: { __UT_MARK__: JSON.stringify('ut-mark-override') } },
+      viteConfig: {
+        define: { __UT_MARK__: JSON.stringify('ut-mark-override') },
+        // Separate outDir so shared-root recipes do not clobber each other's dist.
+        build: { outDir: 'dist-override' },
+      },
     }),
     nextStatic: next({
       id: 'nextStatic',

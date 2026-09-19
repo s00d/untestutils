@@ -39,4 +39,4 @@ untestutils perf --config ./perf.config.ts
 untestutils perf --config ./perf.config.ts --only app --skip-load
 ```
 
-Optional peers: `autocannon` / `artillery` (else `npx` fallback). Custom reporters: `onStart` / `onTarget` / `onEnd`.
+Optional peers (exact): `autocannon@8.0.0` (programmatic API) and `artillery@2.0.34` (in-process private core runner — version-locked). No `npx`/CLI fallback. Inline Artillery scripts: `load.artillery.script` (prefer `import type { TestScript } from 'artillery'` at the call site). Custom reporters: `onStart` / `onTarget` / `onEnd`.

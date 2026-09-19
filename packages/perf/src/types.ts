@@ -47,6 +47,7 @@ export type ArtillerySummary = {
   p999: number;
 };
 
+/** Artillery report JSON (same shape as CLI `--output`; filled from in-process SSMS). */
 export type ArtilleryResult = {
   aggregate: {
     counters: Record<string, number | undefined>;
@@ -63,6 +64,23 @@ export type ArtilleryResult = {
     summaries?: Record<string, ArtillerySummary>;
     histograms?: Record<string, ArtillerySummary>;
   }>;
+};
+
+/**
+ * Inline Artillery test script.
+ * Prefer `import type { TestScript } from 'artillery'` at call sites when the
+ * optional peer is installed — assignability holds for normal scripts.
+ */
+export type ArtilleryScript = {
+  config?: {
+    target?: string;
+    phases?: Array<Record<string, unknown>>;
+    [key: string]: unknown;
+  };
+  scenarios?: Array<Record<string, unknown>>;
+  before?: Record<string, unknown>;
+  after?: Record<string, unknown>;
+  [key: string]: unknown;
 };
 
 export type BuildMetrics = ProcessMetrics & {
@@ -115,7 +133,11 @@ export type PerfTargetLoad = {
   paths?: string[];
   /** `true` = defaults; object = overrides. Omitted = skip autocannon. */
   autocannon?: boolean | { connections?: number; durationSec?: number };
-  artillery?: { config: string };
+  /**
+   * Artillery load. Prefer a file path, or pass an inline script object
+   * (type as `import('artillery').TestScript` when the peer is installed).
+   */
+  artillery?: { config: string } | { script: ArtilleryScript };
 };
 
 export type PerfTargetBundle = {

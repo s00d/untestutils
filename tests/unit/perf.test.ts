@@ -125,6 +125,72 @@ describe('perf/parse', () => {
     });
     expect(parseArtilleryJson(raw).aggregate.rates['http.request_rate']).toBe(5);
   });
+
+  test('packArtilleryReport summarizes sketches like CLI --output', async () => {
+    const { packArtilleryReport } = await import('../../packages/perf/src/load/artillery');
+    const sketch = {
+      min: 1,
+      max: 10,
+      count: 2,
+      sum: 11,
+      getValueAtQuantile: (q: number) => (q < 0.9 ? 4 : 9),
+    };
+    const report = packArtilleryReport(
+      {
+        counters: { 'http.requests': 2 },
+        rates: { 'http.request_rate': 1 },
+        firstMetricAt: 100,
+        lastMetricAt: 1100,
+        histograms: { 'http.response_time': sketch },
+      },
+      [
+        {
+          period: 1000,
+          counters: { 'http.requests': 2 },
+          rates: {},
+          histograms: { 'http.response_time': sketch },
+        },
+      ],
+      (h) => ({
+        min: h.min,
+        max: h.max,
+        count: h.count,
+        mean: h.sum / h.count,
+        p50: h.getValueAtQuantile(0.5),
+        median: h.getValueAtQuantile(0.5),
+        p75: h.getValueAtQuantile(0.75),
+        p90: h.getValueAtQuantile(0.9),
+        p95: h.getValueAtQuantile(0.95),
+        p99: h.getValueAtQuantile(0.99),
+        p999: h.getValueAtQuantile(0.999),
+      }),
+    );
+    expect(report.aggregate.summaries['http.response_time']?.mean).toBe(5.5);
+    expect(report.aggregate.histograms['http.response_time']?.p90).toBe(9);
+    expect(report.intermediate?.[0]?.summaries?.['http.response_time']?.min).toBe(1);
+  });
+
+  test('runArtillery in-process stops cleanly', async () => {
+    const { runArtillery } = await import('../../packages/perf/src/load/artillery');
+    const dir = await mkdtemp(join(tmpdir(), 'ut-artillery-'));
+    try {
+      const result = await runArtillery({
+        name: 'smoke',
+        artifactsDir: dir,
+        script: {
+          config: {
+            target: 'http://127.0.0.1:9',
+            phases: [{ duration: 1, arrivalCount: 1 }],
+          },
+          scenarios: [{ flow: [{ get: { url: '/' } }] }],
+        },
+      });
+      expect(result.aggregate.counters['http.requests']).toBeGreaterThanOrEqual(1);
+      expect(result.aggregate.firstMetricAt).toBeDefined();
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  }, 20_000);
 });
 
 describe('perf/thresholds', () => {
