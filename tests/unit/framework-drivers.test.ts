@@ -2,13 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { mkdtemp, writeFile, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'pathe';
-import {
-  assertAppRoot,
-  resolveBin,
-  frameworkRoots,
-  nodeEntry,
-  staticDir,
-} from '@untestutils/core';
+import { assertAppRoot, resolveBin, frameworkRoots, nodeEntry, staticDir } from '@untestutils/core';
 import { vite } from '@untestutils/vite';
 import { next } from '@untestutils/next';
 import { astro } from '@untestutils/astro';

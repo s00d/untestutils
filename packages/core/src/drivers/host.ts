@@ -1,4 +1,7 @@
-import { defineRecipe, normalizeBaseUrl, waitForHttpReady, type Recipe } from '..';
+import { defineRecipe } from '../recipes';
+import { normalizeBaseUrl } from '../paths';
+import { waitForHttpReady } from '../ready';
+import type { Recipe } from '../types';
 import { defineDriver, type Driver } from './define-driver';
 
 export interface HostOptions {

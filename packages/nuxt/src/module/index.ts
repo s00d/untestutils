@@ -83,7 +83,10 @@ const createMockPlugin = (ctx: MockPluginContext) =>
                   '',
                 );
               };
-              const parseMockImportTarget = (importTarget: Expression | SpreadElement, helperName: string): {
+              const parseMockImportTarget = (
+                importTarget: Expression | SpreadElement,
+                helperName: string,
+              ): {
                 name: string;
                 importItem?: Import;
               } => {
@@ -272,7 +275,8 @@ function findLastIndex<T>(arr: T[], predicate: (v: T) => boolean): number {
   for (let i = arr.length - 1; i >= 0; i--) if (predicate(arr[i])) return i;
   return -1;
 }
-const isImportDeclaration = (node: Node): node is ImportDeclaration => node.type === 'ImportDeclaration';
+const isImportDeclaration = (node: Node): node is ImportDeclaration =>
+  node.type === 'ImportDeclaration';
 const isImportSpecifier = (node: Node): node is ImportSpecifier => node.type === 'ImportSpecifier';
 const isCallExpression = (node: Node): node is CallExpression => node.type === 'CallExpression';
 const isIdentifier = (node: Node): node is Identifier => node.type === 'Identifier';
@@ -282,7 +286,11 @@ const isExpressionStatement = (node: Node | null): node is ExpressionStatement =
 const startOf = (node: Node): number =>
   'range' in node && node.range ? node.range[0] : 'start' in node ? (node.start as number) : 0;
 const endOf = (node: Node): number =>
-  'range' in node && node.range ? node.range[1] : 'end' in node ? (node.end as number) : startOf(node);
+  'range' in node && node.range
+    ? node.range[1]
+    : 'end' in node
+      ? (node.end as number)
+      : startOf(node);
 function mapGroupBy<T, K>(items: T[], keySelector: (item: T) => K): Map<K, T[]> {
   const map = new Map<K, T[]>();
   for (const item of items) {
@@ -311,7 +319,8 @@ async function setupImportMocking(nuxt: Nuxt): Promise<void> {
   });
   nuxt.hook('imports:sources', (presets) => {
     const idx = presets.findIndex(
-      (p) => typeof p === 'object' && p !== null && 'imports' in p && p.imports?.includes('setInterval'),
+      (p) =>
+        typeof p === 'object' && p !== null && 'imports' in p && p.imports?.includes('setInterval'),
     );
     if (idx !== -1) presets.splice(idx, 1);
   });

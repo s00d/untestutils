@@ -5,13 +5,11 @@ import { deepCopy, loadKit, applyEnv } from './utils';
 import { createDefu, defu } from 'defu';
 import { resolveModulePath } from 'exsolve';
 import process from 'node:process';
-import { version } from 'vitest/node';
-import { setupDotenv } from 'c12';
+import { setupDotenv, type DotenvOptions } from 'c12';
 import { getPackageInfoSync } from 'local-pkg';
 import { fileURLToPath } from 'node:url';
 import type { Nuxt, NuxtConfig, ViteConfig as NuxtViteConfig } from '@nuxt/schema';
-import type { DotenvOptions } from 'c12';
-import type { InlineConfig as VitestConfig } from 'vitest/node';
+import { version, type InlineConfig as VitestConfig } from 'vitest/node';
 import type { Plugin, UserConfig as ViteUserConfig, ResolvedConfig } from 'vite';
 
 /** Absolute path to a sibling runtime emit file (`.mjs` after build). */
@@ -50,9 +48,7 @@ function isNamedPlugin(plugin: unknown): plugin is Plugin {
 
 function warnIfE2ePluginMixed(config: ResolvedVitestConfig): void {
   const plugins = config.plugins || [];
-  const hasE2e = plugins.some(
-    (p) => isNamedPlugin(p) && p.name === 'untestutils',
-  );
+  const hasE2e = plugins.some((p) => isNamedPlugin(p) && p.name === 'untestutils');
   const env = config.test?.environment;
   if (hasE2e && isUnitEnvironmentName(env)) {
     console.warn(
@@ -64,7 +60,9 @@ function warnIfE2ePluginMixed(config: ResolvedVitestConfig): void {
 const PLUGIN_NAME = 'untestutils:vitest:environment-options';
 const STUB_ID = 'untestutils-vitest-environment-options';
 
-function NuxtVitestEnvironmentOptionsPlugin(environmentOptions: Record<string, unknown> = {}): Plugin {
+function NuxtVitestEnvironmentOptionsPlugin(
+  environmentOptions: Record<string, unknown> = {},
+): Plugin {
   return {
     name: PLUGIN_NAME,
     enforce: 'pre' as const,
@@ -77,7 +75,9 @@ function NuxtVitestEnvironmentOptionsPlugin(environmentOptions: Record<string, u
   };
 }
 
-const DISABLE_NITRO_ENVIRONMENT = { experimental: { nitroViteEnvironment: false } } as Partial<NuxtConfig>;
+const DISABLE_NITRO_ENVIRONMENT = {
+  experimental: { nitroViteEnvironment: false },
+} as Partial<NuxtConfig>;
 
 async function startNuxtAndGetViteConfig(
   rootDir = process.cwd(),
@@ -114,7 +114,7 @@ async function startNuxtAndGetViteConfig(
     (nuxt.hook as (name: 'nitro:init', callback: (instance: NitroRef['current']) => void) => void)(
       'nitro:init',
       (instance) => {
-      nitro.current = instance;
+        nitro.current = instance;
       },
     );
   return new Promise<LoadedNuxtViteConfig>((resolve, reject) => {
@@ -183,7 +183,7 @@ export async function getVitestConfigFromNuxt(
     ...options.viteConfig,
     root: undefined,
     plugins: [...(options.viteConfig.plugins || [])].filter(
-    (p) => !isNamedPlugin(p) || !excludedPlugins.includes(p.name),
+      (p) => !isNamedPlugin(p) || !excludedPlugins.includes(p.name),
     ),
   };
   const nuxtServerIntegration = getPackageInfoSync('@nuxt/nitro-server', {
@@ -326,14 +326,20 @@ export async function getVitestConfigFromNuxt(
 const vitestMajor = Number(version.split('.')[0]);
 const UNIT_ENVIRONMENT = 'untestutils';
 
-export async function defineVitestProject(config?: DefineVitestConfigInput): Promise<ResolvedVitestConfig> {
-  const resolvedConfig = await resolveConfig(defu({ test: { environment: UNIT_ENVIRONMENT } }, config));
+export async function defineVitestProject(
+  config?: DefineVitestConfigInput,
+): Promise<ResolvedVitestConfig> {
+  const resolvedConfig = await resolveConfig(
+    defu({ test: { environment: UNIT_ENVIRONMENT } }, config),
+  );
   resolvedConfig.extends ??= false;
   warnIfE2ePluginMixed(resolvedConfig);
   return resolvedConfig;
 }
 
-export function defineVitestConfig(config: DefineVitestConfigInput = {}): () => Promise<ResolvedVitestConfig> {
+export function defineVitestConfig(
+  config: DefineVitestConfigInput = {},
+): () => Promise<ResolvedVitestConfig> {
   return async () => {
     const resolvedConfig = await resolveConfig(config);
     if (resolvedConfig.test.browser?.enabled) return resolvedConfig;
@@ -458,7 +464,9 @@ async function resolveConfig(config: DefineVitestConfigInput): Promise<ResolvedV
 }
 
 function normalizeSetupFiles(setupFiles: string | string[] | undefined): string[] {
-  return Array.isArray(setupFiles) ? setupFiles : [setupFiles].filter((file): file is string => Boolean(file));
+  return Array.isArray(setupFiles)
+    ? setupFiles
+    : [setupFiles].filter((file): file is string => Boolean(file));
 }
 
 function isObjectRecord(value: unknown): value is Record<string, unknown> {

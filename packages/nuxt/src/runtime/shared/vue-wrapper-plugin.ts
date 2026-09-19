@@ -15,7 +15,8 @@ type VueWrapperPluginOptions = {
 function getVueWrapperPlugin(): Pick<VueWrapperPluginOptions, 'hasNuxtPage'> {
   if (!config) return { hasNuxtPage: () => false };
   const installed = config.plugins.VueWrapper.installedPlugins.find(
-    ({ options }) => (options as Partial<VueWrapperPluginOptions> | undefined)?._name === PLUGIN_NAME,
+    ({ options }) =>
+      (options as Partial<VueWrapperPluginOptions> | undefined)?._name === PLUGIN_NAME,
   );
   if (installed) return installed.options as VueWrapperPluginOptions;
   const options = createPluginOptions();

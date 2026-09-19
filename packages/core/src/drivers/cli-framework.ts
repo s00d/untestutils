@@ -1,17 +1,11 @@
 import { createRequire } from 'node:module';
 import { existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'pathe';
-import {
-  defineRecipe,
-  loopbackUrl,
-  waitForHttpReady,
-  spawnManaged,
-  runCommand,
-  type Recipe,
-  type PrepareCtx,
-  type StartCtx,
-  type SharePolicy,
-} from '..';
+import { defineRecipe } from '../recipes';
+import { loopbackUrl } from '../paths';
+import { waitForHttpReady } from '../ready';
+import { spawnManaged, runCommand } from '../process';
+import type { Recipe, PrepareCtx, StartCtx, SharePolicy } from '../types';
 
 export interface ResolveBinOptions {
   roots: string[];

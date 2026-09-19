@@ -1,4 +1,3 @@
-/// <reference path="../../types/nuxt-env.d.ts" />
 import { Suspense, defineComponent, h, onErrorCaptured, provide, type VNode } from 'vue';
 import { isNuxtError, useNuxtApp, useRoute } from '#imports';
 import { PageRouteSymbol } from '#app/components/injections';
@@ -21,13 +20,17 @@ function reportVueErrorHook(
 ): void {
   const result = nuxtApp.hooks.callHook('vue:error', err, target, info);
   if (result === null || result === undefined || typeof result.then !== 'function') return;
-  result.catch((hookError: unknown) => console.error('[nuxt] Error in `vue:error` hook', hookError));
+  result.catch((hookError: unknown) =>
+    console.error('[nuxt] Error in `vue:error` hook', hookError),
+  );
 }
 
 function isFatalOrUnhandledNuxtError(err: unknown): err is NuxtErrorWithFlags {
   if (!isNuxtError(err)) return false;
-  return ('fatal' in err && Boolean((err as NuxtErrorWithFlags).fatal)) ||
-    ('unhandled' in err && Boolean((err as NuxtErrorWithFlags).unhandled));
+  return (
+    ('fatal' in err && Boolean((err as NuxtErrorWithFlags).fatal)) ||
+    ('unhandled' in err && Boolean((err as NuxtErrorWithFlags).unhandled))
+  );
 }
 
 //#region src/runtime/nuxt-root.ts

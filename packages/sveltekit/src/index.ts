@@ -1,9 +1,9 @@
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'pathe';
-import { loopbackUrl } from '@untestutils/core';
 import {
   cliFrameworkRecipe,
   frameworkRoots,
+  loopbackUrl,
   resolveBin,
   type FrameworkBaseOptions,
   type Recipe,

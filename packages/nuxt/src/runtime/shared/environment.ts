@@ -15,22 +15,25 @@ type RuntimeConfig = {
   };
   [key: string]: unknown;
 };
-export type NuxtRuntimeWindow = Window & typeof globalThis & {
-  URLSearchParams: typeof globalThis.URLSearchParams;
-  Request: typeof globalThis.Request;
-  Headers: typeof globalThis.Headers;
-  IntersectionObserver?: typeof IntersectionObserver;
-  indexedDB?: IDBFactory;
-  __NUXT_VITEST_ENVIRONMENT__?: boolean;
-  __NUXT__?: {
-    serverRendered: boolean;
-    config: RuntimeConfig;
-    data: Record<string, unknown>;
-    state: Record<string, unknown>;
+export type NuxtRuntimeWindow = Window &
+  typeof globalThis & {
+    URLSearchParams: typeof globalThis.URLSearchParams;
+    Request: typeof globalThis.Request;
+    Headers: typeof globalThis.Headers;
+    IntersectionObserver?: typeof IntersectionObserver;
+    indexedDB?: IDBFactory;
+    __NUXT_VITEST_ENVIRONMENT__?: boolean;
+    __NUXT__?: {
+      serverRendered: boolean;
+      config: RuntimeConfig;
+      data: Record<string, unknown>;
+      state: Record<string, unknown>;
+    };
+    __registry?: Set<string>;
+    __app?:
+      | Awaited<ReturnType<typeof createFetchForH3V1>>['h3App']
+      | Awaited<ReturnType<typeof createFetchForH3V2>>['h3App'];
   };
-  __registry?: Set<string>;
-  __app?: Awaited<ReturnType<typeof createFetchForH3V1>>['h3App'] | Awaited<ReturnType<typeof createFetchForH3V2>>['h3App'];
-};
 export type EnvironmentOptions = {
   nuxtRuntimeConfig?: RuntimeConfig;
   nuxtAppConfig?: {

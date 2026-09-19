@@ -65,8 +65,7 @@ const jsdomEnvironment: DomEnvironmentFactory = async (global, { jsdom = {} }) =
     console: false,
     cookieJar: false,
   });
-  const virtualConsole =
-    jsdomOptions.console && global.console ? new VirtualConsole() : undefined;
+  const virtualConsole = jsdomOptions.console && global.console ? new VirtualConsole() : undefined;
   const forwardConsole = virtualConsole
     ? forwardVirtualConsole(virtualConsole, global.console)
     : undefined;

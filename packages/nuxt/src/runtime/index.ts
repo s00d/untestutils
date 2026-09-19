@@ -9,10 +9,8 @@
  * `suspended` is loaded dynamically because it imports Nuxt virtual modules
  * (`#imports`, `#build/root-component.mjs`) that only resolve inside the test environment.
  */
-import { h, nextTick } from 'vue';
-import { mount } from '@vue/test-utils';
-import type { Component, VNode } from 'vue';
-import type { MountingOptions, VueWrapper } from '@vue/test-utils';
+import { h, nextTick, type Component, type VNode } from 'vue';
+import { mount, type MountingOptions, type VueWrapper } from '@vue/test-utils';
 import type { render as testingLibraryRender } from '@testing-library/vue';
 
 interface NuxtTestWindow extends Window {
@@ -54,7 +52,7 @@ type MountSuspendedOptions<T extends Component> = MountingOptions<T> & {
 type TestingLibraryRender = typeof testingLibraryRender;
 type RenderSuspendedOptions<T extends Component> = Parameters<TestingLibraryRender>[1] &
   MountSuspendedOptions<T>;
-type RenderSuspendedResult<T extends Component> = ReturnType<TestingLibraryRender> & {
+type RenderSuspendedResult<_T extends Component = Component> = ReturnType<TestingLibraryRender> & {
   rerender: (props?: Record<string, unknown>) => Promise<void>;
 };
 type MountedWrapper = VueWrapper & { setupState: Record<string, unknown> };
@@ -241,10 +239,10 @@ export async function mountSuspended<T extends Component>(
     component,
     options as MountSuspendedOptions<Component>,
     {
-    wrapperFn: (component, options) =>
-      mount(component, options as Parameters<typeof mount>[1]) as MountedWrapper,
-    suspendedHelperName,
-    clonedComponentName,
+      wrapperFn: (component, options) =>
+        mount(component, options as Parameters<typeof mount>[1]) as MountedWrapper,
+      suspendedHelperName,
+      clonedComponentName,
     },
   );
   patchWrapperSetProps(wrapper, setProps);
@@ -310,15 +308,15 @@ export async function renderSuspended<T extends Component>(
     component,
     options as RenderSuspendedOptions<Component>,
     {
-    wrapperFn: (component, options) =>
-      wrapperFn(component, options as Parameters<TestingLibraryRender>[1]),
-    wrappedRender: (render: () => VNode) => () =>
-      h({
-        inheritAttrs: false,
-        render: () => h('div', { id: wrapperId }, render()),
-      }),
-    suspendedHelperName,
-    clonedComponentName,
+      wrapperFn: (component, options) =>
+        wrapperFn(component, options as Parameters<TestingLibraryRender>[1]),
+      wrappedRender: (render: () => VNode) => () =>
+        h({
+          inheritAttrs: false,
+          render: () => h('div', { id: wrapperId }, render()),
+        }),
+      suspendedHelperName,
+      clonedComponentName,
     },
   );
   const renderResult = wrapper as RenderSuspendedResult<T>;

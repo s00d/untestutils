@@ -2,8 +2,8 @@
   "name": "@untestutils/core",
   "version": "0.5.1",
   "description": "Recipe harness core — locks, registry, orchestrator, drivers",
-  "license": "MIT",
   "homepage": "https://s00d.github.io/untestutils/",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/s00d/untestutils.git",
@@ -29,14 +29,14 @@
     },
     "./package.json": "./package.json"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "build": "obuild && tsc -p tsconfig.build.json",
     "prepack": "pnpm build",
     "publint": "publint --strict"
-  },
-  "publishConfig": {
-    "access": "public"
   },
   "dependencies": {
     "consola": "catalog:",

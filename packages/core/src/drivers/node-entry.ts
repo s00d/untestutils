@@ -1,12 +1,10 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'pathe';
-import {
-  defineRecipe,
-  loopbackUrl,
-  waitForHttpReady,
-  spawnManaged,
-  type Recipe,
-} from '..';
+import { defineRecipe } from '../recipes';
+import { loopbackUrl } from '../paths';
+import { waitForHttpReady } from '../ready';
+import { spawnManaged } from '../process';
+import type { Recipe } from '../types';
 
 export interface NodeEntryOptions {
   id: string;

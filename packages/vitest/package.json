@@ -1,6 +1,13 @@
 {
   "name": "@untestutils/vitest",
   "version": "0.5.1",
+  "homepage": "https://s00d.github.io/untestutils/",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/s00d/untestutils.git",
+    "directory": "packages/vitest"
+  },
   "files": [
     "dist"
   ],
@@ -8,6 +15,8 @@
   "sideEffects": [
     "./dist/setup-file.mjs"
   ],
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -31,6 +40,9 @@
     },
     "./package.json": "./package.json"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "obuild && tsc -p tsconfig.build.json",
     "prepack": "pnpm build",
@@ -42,10 +54,10 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "obuild": "catalog:",
     "publint": "catalog:",
     "typescript": "catalog:",
-    "vitest": "catalog:",
-    "obuild": "catalog:"
+    "vitest": "catalog:"
   },
   "peerDependencies": {
     "@playwright/test": "catalog:",
@@ -65,17 +77,5 @@
   },
   "engines": {
     "node": ">=20"
-  },
-  "license": "MIT",
-  "homepage": "https://s00d.github.io/untestutils/",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/s00d/untestutils.git",
-    "directory": "packages/vitest"
-  },
-  "main": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
-  "publishConfig": {
-    "access": "public"
   }
 }

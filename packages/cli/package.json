@@ -2,8 +2,8 @@
   "name": "@untestutils/cli",
   "version": "0.5.1",
   "description": "CLI for untestutils: init, convert, ai, doctor, and monorepo commands",
-  "license": "MIT",
   "homepage": "https://s00d.github.io/untestutils/",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/s00d/untestutils.git",
@@ -30,13 +30,13 @@
     "./bin.mjs": "./bin.mjs",
     "./package.json": "./package.json"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "cli": "tsx ./src/run.ts",
     "build": "node -e \"console.log('[@untestutils/cli] src+tsx — no emit')\"",
     "publint": "publint --strict"
-  },
-  "publishConfig": {
-    "access": "public"
   },
   "dependencies": {
     "@untestutils/ai": "workspace:*",

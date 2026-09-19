@@ -1,4 +1,3 @@
-/// <reference path="../../types/nuxt-env.d.ts" />
 import {
   Suspense,
   effectScope,
@@ -21,7 +20,9 @@ import NuxtRoot from '#build/root-component.mjs';
 
 type SetupState = Record<string, unknown>;
 type Cleanup = () => void;
-type MountGlobalOptions = NonNullable<import('@vue/test-utils').MountingOptions<Component>['global']>;
+type MountGlobalOptions = NonNullable<
+  import('@vue/test-utils').MountingOptions<Component>['global']
+>;
 type MountingLikeOptions = import('@vue/test-utils').MountingOptions<Component> & {
   route?: import('vue-router').RouteLocationRaw | false;
   scoped?: boolean;
@@ -43,10 +44,7 @@ type WrapperSuspendedResult<TWrapper> = {
 type VueAppWithInternals = App<Element> & Record<string, unknown>;
 type ComponentWithSetup = ComponentOptions & {
   __cssModules?: Record<string, unknown>;
-  setup?: (
-    props: Record<string, unknown>,
-    ctx: SetupContext,
-  ) => Promise<unknown> | unknown;
+  setup?: (props: Record<string, unknown>, ctx: SetupContext) => Promise<unknown> | unknown;
 };
 type NuxtUnctx = {
   get: (name: 'nuxt-app') => { tryUse: () => { vueApp: VueAppWithInternals } };
@@ -63,15 +61,15 @@ declare global {
 }
 
 //#region src/runtime-utils/components/RouterLink.ts
-function getUseLink(
-  nuxtApp: ReturnType<typeof useNuxtApp>,
-): ((props: Record<string, unknown>) => {
-  route: { value: { href: string } };
-  href: { value: string };
-  isActive: { value: boolean };
-  isExactActive: { value: boolean };
-  navigate: (event?: MouseEvent) => Promise<void> | void;
-}) | undefined {
+function getUseLink(nuxtApp: ReturnType<typeof useNuxtApp>):
+  | ((props: Record<string, unknown>) => {
+      route: { value: { href: string } };
+      href: { value: string };
+      isActive: { value: boolean };
+      isExactActive: { value: boolean };
+      navigate: (event?: MouseEvent) => Promise<void> | void;
+    })
+  | undefined {
   const linkComponent = nuxtApp.vueApp._context.components.RouterLink;
   if (!linkComponent || typeof linkComponent !== 'object') return void 0;
   if (typeof linkComponent.useLink !== 'function') return void 0;
@@ -146,7 +144,8 @@ const RouterLink = defineComponent({
 //#endregion
 //#region src/runtime-utils/utils/suspended.ts
 function resolveVueApp(): VueAppWithInternals {
-  return (tryUseNuxtApp()?.vueApp || globalThis.__unctx__.get('nuxt-app').tryUse().vueApp) as VueAppWithInternals;
+  return (tryUseNuxtApp()?.vueApp ||
+    globalThis.__unctx__.get('nuxt-app').tryUse().vueApp) as VueAppWithInternals;
 }
 /**
  * `wrapper.setProps` delegates to this `@vue/test-utils` internal when the wrapper is the mount
@@ -268,7 +267,9 @@ function wrapperSuspended<TWrapper>(
           setupContext = ctx;
           const nuxtRootSetupResult = runEffectScope(
             () =>
-              typeof NuxtRoot === 'object' && 'setup' in NuxtRoot && typeof NuxtRoot.setup === 'function'
+              typeof NuxtRoot === 'object' &&
+              'setup' in NuxtRoot &&
+              typeof NuxtRoot.setup === 'function'
                 ? NuxtRoot.setup(props, {
                     ...ctx,
                     expose: () => {},
@@ -377,9 +378,7 @@ function mergeComponentMountingGlobalOptions(
     },
   };
 }
-function makeAllPropertiesEnumerable(
-  target: Record<string, unknown>,
-): Record<string, unknown> {
+function makeAllPropertiesEnumerable(target: Record<string, unknown>): Record<string, unknown> {
   return {
     ...target,
     ...Object.fromEntries(Object.getOwnPropertyNames(target).map((key) => [key, target[key]])),

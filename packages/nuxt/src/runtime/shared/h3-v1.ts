@@ -1,5 +1,5 @@
 type H3V1FetchResult = {
-  h3App: Awaited<ReturnType<typeof import('h3')['createApp']>>;
+  h3App: Awaited<ReturnType<(typeof import('h3'))['createApp']>>;
   registry: Set<string>;
   fetch: typeof fetch;
 };

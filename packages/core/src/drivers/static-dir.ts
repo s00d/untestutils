@@ -2,7 +2,10 @@ import { createServer } from 'node:http';
 import { existsSync } from 'node:fs';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize, resolve, sep } from 'pathe';
-import { defineRecipe, loopbackUrl, waitForHttpReady, type Recipe } from '..';
+import { defineRecipe } from '../recipes';
+import { loopbackUrl } from '../paths';
+import { waitForHttpReady } from '../ready';
+import type { Recipe } from '../types';
 
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',

@@ -5,7 +5,13 @@ import { join } from 'pathe';
 import { contentHash, sha1, hashString } from '../../packages/core/src/hash';
 import { TargetRegistry } from '../../packages/core/src/target-registry';
 import { ArtifactStore } from '../../packages/core/src/artifact-store';
-import { LOOPBACK_HOST, normalizeBaseUrl, loopbackUrl, resolveBindHost, resolveProbeHost } from '../../packages/core/src/paths';
+import {
+  LOOPBACK_HOST,
+  normalizeBaseUrl,
+  loopbackUrl,
+  resolveBindHost,
+  resolveProbeHost,
+} from '../../packages/core/src/paths';
 import { defineRecipes, clearRegisteredRecipes } from '../../packages/core/src/recipes';
 import { resetRecipeBindings } from '../../packages/core/src/identity';
 import { defineRecipe } from '../../packages/core/src/recipes';

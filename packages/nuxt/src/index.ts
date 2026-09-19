@@ -4,14 +4,15 @@ import { readdir } from 'node:fs/promises';
 import { dirname, join, resolve } from 'pathe';
 import { pathToFileURL } from 'node:url';
 import {
+  assertAppRoot,
   defineRecipe,
   loopbackUrl,
-  waitForHttpReady,
   spawnManaged,
+  staticDir,
+  waitForHttpReady,
   withQuietLogger,
   type Recipe,
 } from '@untestutils/core';
-import { assertAppRoot, staticDir } from '@untestutils/core';
 
 type RecipeWithRoot = Recipe & { root?: string };
 type NuxtBuildHandle = { close: () => Promise<void> };
@@ -176,7 +177,9 @@ async function buildNuxtApp(
   ssr = true,
 ): Promise<void> {
   return withQuietLogger(async () => {
-    const kit = (await import(pathToFileURL(_internals.resolveKit(rootDir)).href)) as NuxtKitRuntime;
+    const kit = (await import(
+      pathToFileURL(_internals.resolveKit(rootDir)).href
+    )) as NuxtKitRuntime;
     const nuxt = await kit.loadNuxt({
       cwd: rootDir,
       dev: false,
@@ -210,7 +213,9 @@ async function generateNuxtApp(
   nuxtConfig?: Record<string, unknown>,
 ): Promise<void> {
   return withQuietLogger(async () => {
-    const kit = (await import(pathToFileURL(_internals.resolveKit(rootDir)).href)) as NuxtKitRuntime;
+    const kit = (await import(
+      pathToFileURL(_internals.resolveKit(rootDir)).href
+    )) as NuxtKitRuntime;
     const nuxt = await kit.loadNuxt({
       cwd: rootDir,
       dev: false,

@@ -1,4 +1,3 @@
-/// <reference path="../../../types/nuxt-env.d.ts" />
 import { getVueWrapperPlugin } from './vue-wrapper-plugin';
 import type { NuxtApp } from 'nuxt/app';
 

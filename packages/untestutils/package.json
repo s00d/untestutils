@@ -191,14 +191,27 @@
     "@untestutils/vitest": "workspace:*",
     "vitest-environment-untestutils": "workspace:*"
   },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@untestutils/astro": "workspace:*",
+    "@untestutils/next": "workspace:*",
+    "@untestutils/nuxt": "workspace:*",
+    "@untestutils/remix": "workspace:*",
+    "@untestutils/solidstart": "workspace:*",
+    "@untestutils/sveltekit": "workspace:*",
+    "@untestutils/vite": "workspace:*",
+    "obuild": "catalog:",
+    "publint": "catalog:",
+    "typescript": "catalog:"
+  },
   "peerDependencies": {
+    "@playwright/test": "^1.63.0",
     "@untestutils/astro": "0.5.1",
     "@untestutils/next": "0.5.1",
     "@untestutils/remix": "0.5.1",
     "@untestutils/solidstart": "0.5.1",
     "@untestutils/sveltekit": "0.5.1",
     "@untestutils/vite": "0.5.1",
-    "@playwright/test": "^1.63.0",
     "playwright-core": "^1.63.0",
     "vitest": "^4.0.0 || ^5.0.0"
   },
@@ -230,19 +243,6 @@
     "vitest": {
       "optional": true
     }
-  },
-  "devDependencies": {
-    "@types/node": "catalog:",
-    "@untestutils/astro": "workspace:*",
-    "@untestutils/next": "workspace:*",
-    "@untestutils/nuxt": "workspace:*",
-    "@untestutils/remix": "workspace:*",
-    "@untestutils/solidstart": "workspace:*",
-    "@untestutils/sveltekit": "workspace:*",
-    "@untestutils/vite": "workspace:*",
-    "obuild": "catalog:",
-    "publint": "catalog:",
-    "typescript": "catalog:"
   },
   "engines": {
     "node": ">=20"

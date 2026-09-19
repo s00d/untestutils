@@ -2,17 +2,17 @@
   "name": "vitest-environment-untestutils",
   "version": "0.5.1",
   "description": "Vitest environment shim → @untestutils/nuxt/environment",
-  "license": "MIT",
   "homepage": "https://s00d.github.io/untestutils/",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/s00d/untestutils.git",
     "directory": "packages/vitest-environment-untestutils"
   },
-  "type": "module",
   "files": [
     "index.mjs"
   ],
+  "type": "module",
   "exports": {
     ".": "./index.mjs",
     "./package.json": "./package.json"

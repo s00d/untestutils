@@ -1,5 +1,5 @@
 type H3V2FetchResult = {
-  h3App: InstanceType<typeof import('h3-next/generic')['H3']>;
+  h3App: InstanceType<(typeof import('h3-next/generic'))['H3']>;
   registry: Set<string>;
   fetch: typeof fetch;
 };

@@ -3,12 +3,14 @@ import { join, resolve } from 'pathe';
 import {
   assertAppRoot,
   cliFrameworkRecipe,
+  defineRecipe,
   frameworkRoots,
   resolveBin,
+  runCommand,
   staticDir,
   type FrameworkBaseOptions,
+  type Recipe,
 } from '@untestutils/core';
-import { defineRecipe, runCommand, type Recipe } from '@untestutils/core';
 
 export type NextRun = 'server' | 'dev' | 'static';
 

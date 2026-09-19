@@ -45,7 +45,10 @@ export function applyEnv(
  * Deep-copy plain objects and arrays, passing anything else through by reference.
  * `structuredClone` throws on proxies/functions common in `nuxt.options`.
  */
-export function deepCopy<T>(input: T, seen: WeakMap<object, unknown> = new WeakMap<object, unknown>()): T {
+export function deepCopy<T>(
+  input: T,
+  seen: WeakMap<object, unknown> = new WeakMap<object, unknown>(),
+): T {
   if (typeof input !== 'object' || input === null) return input;
   const proto = Object.getPrototypeOf(input);
   if (proto !== Object.prototype && proto !== Array.prototype && proto !== null) return input;
