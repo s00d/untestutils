@@ -27,13 +27,22 @@ export const recipes = defineRecipes({
 
 `Running`: `{ kind: 'url', url, stop }` and/or `{ kind: 'dir', dir }`.
 
-## useHarness
+## useHarness / leaseTarget / withHarness
 
 ```ts
 const app = await useHarness('site')
 // app.url, app.dir, app.$fetch, app.files.*
+
+const leased = await leaseTarget('site')
+await leased.release()
+
+await withHarness('site', async (app) => {
+  /* … */
+})
 ```
 
-Also: `getCurrentHarness()`, `ensurePrepared()`, `stopAllTargets()`, `resolveArtifactsRoot()`, `waitForHttpReady()`, `TargetRegistry`, `SCHEMA_VERSION`.
+`prepareOnce(id)` returns the prepared target without ALS bookkeeping.
+
+Also: `getCurrentHarness()`, `ensurePrepared()`, `stopAllTargets()`, `resolveArtifactsRoot()`, `resolveSessionArtifactsRoot()`, `sanitizeSession()`, `waitForHttpReady()`, `TargetRegistry`, `SCHEMA_VERSION`.
 
 See [How it works](/guide/how-it-works) · [Drivers API](/api/drivers).

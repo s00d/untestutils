@@ -54,6 +54,7 @@ export default withMermaid(
               { text: 'Vitest', link: '/guide/vitest' },
               { text: 'Playwright', link: '/guide/playwright' },
               { text: 'Drivers', link: '/guide/drivers' },
+              { text: 'Support matrix', link: '/guide/support-matrix' },
               { text: 'Utils', link: '/guide/utils' },
               { text: 'Troubleshooting', link: '/guide/troubleshooting' },
             ],
@@ -62,6 +63,8 @@ export default withMermaid(
             text: 'Advanced',
             collapsed: true,
             items: [
+              { text: 'Vitest Browser Mode', link: '/guide/browser-mode' },
+              { text: 'Explore browsers', link: '/guide/explore-browsers' },
               { text: 'Perf suite', link: '/guide/perf' },
               { text: 'AI codegen', link: '/guide/ai' },
               { text: 'Extending', link: '/guide/extending' },

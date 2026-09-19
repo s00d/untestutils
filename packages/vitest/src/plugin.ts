@@ -2,13 +2,23 @@ import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'pathe';
-import { ensureRecipes, debug, getRecipesModulePath, type RecipeRegistry } from '@untestutils/core';
+import {
+  ensureRecipes,
+  debug,
+  getRecipesModulePath,
+  resolveSessionArtifactsRoot,
+  sanitizeSession,
+  type RecipeRegistry,
+} from '@untestutils/core';
 import {
   createCoverageConfig,
   type CreateCoverageConfigOptions,
   type UntestutilsCoverageConfig,
 } from './coverage';
 import { type HarnessBrowserName, normalizeHarnessBrowsers } from './browsers';
+import { providedContextAugmentation, type UntestutilsProvidedSession } from './provided-context';
+
+void providedContextAugmentation;
 
 export type {
   CreateCoverageConfigOptions,
@@ -26,6 +36,7 @@ export {
   normalizeHarnessBrowsers,
   resolveHarnessBrowserName,
 } from './browsers';
+export type { UntestutilsProvidedSession } from './provided-context';
 
 export interface UntestutilsPluginOptions {
   /**
@@ -43,9 +54,14 @@ export interface UntestutilsPluginOptions {
   /** Artifacts directory (sets `UNTESTUTILS_ARTIFACTS_DIR`). */
   artifactsRoot?: string;
   /**
+   * Isolate TargetRegistry / locks under `.untestutils/sessions/<session>/`
+   * so parallel Vitest + Playwright runs do not tear down each other's servers.
+   */
+  session?: string;
+  /**
    * Playwright engines for the `page` / `goto` fixtures.
-   * Default `['chromium']`. First entry sets `UNTESTUTILS_BROWSER` for workers;
-   * run multiple engines via separate Vitest projects / env overrides.
+   * Default `['chromium']`. Multiple engines inject one Vitest project per browser
+   * via `injectTestProjects` (each provides `untestutilsBrowser`).
    */
   browsers?: HarnessBrowserName[];
   /**
@@ -55,18 +71,32 @@ export interface UntestutilsPluginOptions {
   coverage?: boolean | CreateCoverageConfigOptions;
 }
 
+type VitestConfigBag = Record<string, unknown> & {
+  sequence?: { setupFiles?: string };
+  globalSetup?: string | string[];
+  setupFiles?: string | string[];
+  coverage?: UntestutilsCoverageConfig | Record<string, unknown>;
+  environment?: string;
+  provide?: Record<string, unknown>;
+  name?: string;
+};
+
+interface VitestPluginContextLike {
+  vitest: {
+    config: { project?: string | string[] };
+    projects: Array<{ name: string }>;
+  };
+  project: {
+    name: string;
+    config: VitestConfigBag;
+    provide: (key: string, value: unknown) => void;
+  };
+  injectTestProjects: (config: unknown | unknown[]) => Promise<Array<{ name: string }>>;
+}
+
 interface VitestPlugin {
   name: string;
-  configureVitest?: (ctx: {
-    project: {
-      config: Record<string, unknown> & {
-        sequence?: { setupFiles?: string };
-        globalSetup?: string | string[];
-        setupFiles?: string | string[];
-        coverage?: UntestutilsCoverageConfig | Record<string, unknown>;
-      };
-    };
-  }) => void;
+  configureVitest?: (ctx: VitestPluginContextLike) => void | Promise<void>;
 }
 
 /**
@@ -114,6 +144,75 @@ export function resolveCompanion(name: 'global-setup' | 'setup-file'): string {
   throw new Error(`[untestutils] missing companion ${name}`);
 }
 
+function wireProjectConfig(
+  config: VitestConfigBag,
+  options: UntestutilsPluginOptions,
+  browsers: HarnessBrowserName[],
+  resolvedRoot: string,
+  recipesModule: string | undefined,
+): void {
+  const env = config.environment;
+  if (env === 'untestutils' || env === 'nuxt') {
+    throw new Error(
+      "[untestutils] Do not mix `untestutils/vitest/plugin` (e2e) with `environment: 'untestutils'` (unit). Use separate Vitest projects.",
+    );
+  }
+
+  config.sequence ??= {};
+  config.sequence.setupFiles = 'list';
+  config.globalSetup = [...asArray(config.globalSetup), companion('global-setup')];
+  config.setupFiles = [...asArray(config.setupFiles), companion('setup-file')];
+
+  if (options.coverage) {
+    const next =
+      options.coverage === true ? createCoverageConfig() : createCoverageConfig(options.coverage);
+    config.coverage = {
+      ...(typeof config.coverage === 'object' && config.coverage ? config.coverage : {}),
+      ...next,
+      exclude: [
+        ...((config.coverage as UntestutilsCoverageConfig | undefined)?.exclude ?? []),
+        ...next.exclude,
+      ],
+      include: next.include,
+      thresholds: {
+        ...((config.coverage as UntestutilsCoverageConfig | undefined)?.thresholds ?? {}),
+        ...next.thresholds,
+      },
+    };
+  }
+
+  process.env.UNTESTUTILS_PREWARM = JSON.stringify(options.prewarm ?? []);
+  process.env.UNTESTUTILS_BROWSERS = JSON.stringify(browsers);
+  if (!process.env.UNTESTUTILS_BROWSER) {
+    process.env.UNTESTUTILS_BROWSER = browsers[0];
+  }
+  process.env.UNTESTUTILS_ARTIFACTS_DIR = resolvedRoot;
+  if (options.session) process.env.UNTESTUTILS_SESSION = sanitizeSession(options.session);
+  if (recipesModule) {
+    process.env.UNTESTUTILS_RECIPES_MODULE = recipesModule;
+  } else if ((options.prewarm ?? []).length) {
+    debug(
+      'vitest',
+      'prewarm set but recipes module path unknown — pass recipes from defineRecipes(..., import.meta.url)',
+    );
+  }
+}
+
+function sessionPayload(
+  browsers: HarnessBrowserName[],
+  resolvedRoot: string,
+  recipesModule: string | undefined,
+  session: string | undefined,
+): UntestutilsProvidedSession {
+  return {
+    recipesModule,
+    artifactsRoot: resolvedRoot,
+    session: session ? sanitizeSession(session) : undefined,
+    browsers,
+    urls: {},
+  };
+}
+
 /**
  * Vitest/Vite plugin — import from `untestutils/vitest/plugin` in vitest.config.
  */
@@ -122,59 +221,103 @@ export function untestutils(options: UntestutilsPluginOptions = {}): VitestPlugi
     ensureRecipes(options.recipes);
   }
 
-  const artifactsRoot = options.artifactsRoot;
-  const prewarm = options.prewarm ?? [];
-  const recipesModule = options.recipesModule ?? getRecipesModulePath();
   const browsers = normalizeHarnessBrowsers(options.browsers);
+  const recipesModule = options.recipesModule ?? getRecipesModulePath();
+  const resolvedRoot = resolveSessionArtifactsRoot({
+    artifactsRoot: options.artifactsRoot,
+    session: options.session,
+  });
 
   return {
     name: 'untestutils',
-    configureVitest({ project }) {
+    async configureVitest(ctx) {
+      const { project, vitest, injectTestProjects } = ctx;
       const config = project.config;
-      config.sequence ??= {};
-      config.sequence.setupFiles = 'list';
+      wireProjectConfig(config, options, browsers, resolvedRoot, recipesModule);
 
-      config.globalSetup = [...asArray(config.globalSetup), companion('global-setup')];
-      config.setupFiles = [...asArray(config.setupFiles), companion('setup-file')];
+      const payload = sessionPayload(browsers, resolvedRoot, recipesModule, options.session);
+      project.provide('untestutils', payload);
+      project.provide('untestutilsBrowser', browsers[0]);
 
-      if (options.coverage) {
-        const next =
-          options.coverage === true
-            ? createCoverageConfig()
-            : createCoverageConfig(options.coverage);
-        config.coverage = {
-          ...(typeof config.coverage === 'object' && config.coverage ? config.coverage : {}),
-          ...next,
-          exclude: [
-            ...((config.coverage as UntestutilsCoverageConfig | undefined)?.exclude ?? []),
-            ...next.exclude,
-          ],
-          include: next.include,
-          thresholds: {
-            ...((config.coverage as UntestutilsCoverageConfig | undefined)?.thresholds ?? {}),
-            ...next.thresholds,
-          },
-        };
-      }
-
-      process.env.UNTESTUTILS_PREWARM = JSON.stringify(prewarm);
-      process.env.UNTESTUTILS_BROWSERS = JSON.stringify(browsers);
-      if (!process.env.UNTESTUTILS_BROWSER) {
-        process.env.UNTESTUTILS_BROWSER = browsers[0];
-      }
-      if (artifactsRoot) process.env.UNTESTUTILS_ARTIFACTS_DIR = artifactsRoot;
-      if (recipesModule) {
-        process.env.UNTESTUTILS_RECIPES_MODULE = recipesModule;
-      } else if (prewarm.length) {
-        debug(
-          'vitest',
-          'prewarm set but recipes module path unknown — pass recipes from defineRecipes(..., import.meta.url)',
+      if (browsers.length > 1 && typeof injectTestProjects === 'function') {
+        const extras = browsers.slice(1);
+        for (const browser of extras) {
+          const name = `untestutils-${browser}`;
+          const filter = vitest.config.project;
+          if (Array.isArray(filter) && !filter.includes(name)) {
+            filter.push(name);
+          }
+        }
+        await injectTestProjects(
+          extras.map((browser) => ({
+            test: {
+              name: `untestutils-${browser}`,
+              provide: {
+                untestutils: payload,
+                untestutilsBrowser: browser,
+              },
+            },
+          })),
         );
       }
 
-      debug('vitest', 'configured globalSetup + setupFiles');
+      debug('vitest', 'configured globalSetup + setupFiles + provide session');
     },
   };
+}
+
+/**
+ * Build separate Vitest project configs for e2e (recipe plugin) and Nuxt unit.
+ * Mixing both in one project throws — use this helper instead.
+ */
+export function createVitestProjects(opts: {
+  e2e?: Record<string, unknown>;
+  unit?: Record<string, unknown>;
+}): Array<Record<string, unknown>> {
+  const projects: Array<Record<string, unknown>> = [];
+  if (opts.e2e) {
+    const test = (opts.e2e.test as Record<string, unknown> | undefined) ?? {};
+    if (test.environment === 'untestutils' || test.environment === 'nuxt') {
+      throw new Error(
+        "[untestutils] createVitestProjects({ e2e }) must not set environment: 'untestutils'. Put unit under { unit }.",
+      );
+    }
+    projects.push({
+      ...opts.e2e,
+      test: {
+        name: 'e2e',
+        ...test,
+      },
+    });
+  }
+  if (opts.unit) {
+    const test = (opts.unit.test as Record<string, unknown> | undefined) ?? {};
+    const plugins = (opts.unit.plugins as unknown[] | undefined) ?? [];
+    const hasE2e = plugins.some(
+      (p) =>
+        typeof p === 'object' &&
+        p !== null &&
+        'name' in p &&
+        (p as { name: string }).name === 'untestutils',
+    );
+    if (hasE2e) {
+      throw new Error(
+        '[untestutils] createVitestProjects({ unit }) must not include the e2e `untestutils()` plugin.',
+      );
+    }
+    projects.push({
+      ...opts.unit,
+      test: {
+        name: 'unit',
+        environment: 'untestutils',
+        ...test,
+      },
+    });
+  }
+  if (!projects.length) {
+    throw new Error('[untestutils] createVitestProjects requires at least one of { e2e, unit }');
+  }
+  return projects;
 }
 
 function asArray(v: string | string[] | undefined): string[] {

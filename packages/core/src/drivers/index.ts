@@ -21,3 +21,26 @@ export type {
   CliFrameworkRecipeOptions,
   FrameworkBaseOptions,
 } from './cli-framework';
+export {
+  matrixRecipe,
+  findWorkspaceRoot,
+  workspacePackageSrcDirs,
+  shouldIncludeWorkspaceDeps,
+  appendWorkspaceHashInputs,
+} from './matrix';
+export type { MatrixCapableOptions, MatrixRecipeOptions } from './matrix';
+export {
+  installEphemeralFile,
+  withEphemeralFile,
+  withMergedConfigOverride,
+  installMergedConfigOverride,
+  writeEphemeralConfig,
+  serializeDefaultExport,
+  serializeMergedDefaultExport,
+  serializeViteMergeConfigModule,
+  serializeAstroMergeConfigModule,
+  findFirstExistingConfig,
+  readTextIfExists,
+  configOverrideHashInput,
+  deepMergePlain,
+} from './config-override';

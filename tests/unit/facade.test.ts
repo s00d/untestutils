@@ -6,12 +6,24 @@ describe('untestutils facade', () => {
   test('core + drivers surface', () => {
     expect(typeof facade.defineRecipes).toBe('function');
     expect(typeof facade.useHarness).toBe('function');
+    expect(typeof facade.leaseTarget).toBe('function');
+    expect(typeof facade.prepareOnce).toBe('function');
+    expect(typeof facade.withHarness).toBe('function');
+    expect(typeof facade.sanitizeSession).toBe('function');
+    expect(typeof facade.resolveSessionArtifactsRoot).toBe('function');
     expect(typeof facade.staticDir).toBe('function');
     expect(typeof facade.command).toBe('function');
     expect(typeof facade.host).toBe('function');
     expect(typeof facade.nodeEntry).toBe('function');
     expect(typeof facade.defineDriver).toBe('function');
+    expect(typeof facade.matrixRecipe).toBe('function');
     expect(typeof cmdFromSubpath).toBe('function');
+  });
+
+  test('vitest subpath exports createVitestProjects and lease helpers', async () => {
+    const vitest = await import('../../packages/untestutils/src/vitest');
+    expect(typeof (vitest as any).createVitestProjects).toBe('function');
+    expect(typeof (vitest as any).leaseTarget).toBe('function');
   });
 
   test('subpath barrel files export something', async () => {

@@ -8,6 +8,8 @@ outline: deep
 
 Core stays framework-free. New frameworks = Driver packages + facade re-export.
 
+`defineDriver` wraps your factory so every recipe gets a non-empty `id` and a valid `share` (`always` by default when omitted).
+
 ```ts
 import { defineDriver, defineRecipe } from 'untestutils'
 

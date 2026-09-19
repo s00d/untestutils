@@ -39,6 +39,7 @@ const HELPER_MOCK_IMPORT = 'mockNuxtImport';
 const HELPER_UNMOCK_IMPORT = 'unmockNuxtImport';
 const HELPER_MOCK_COMPONENT = 'mockComponent';
 const HELPER_MOCK_HOIST = '__NUXT_VITEST_MOCKS';
+const HELPER_MOCK_HOIST_FNS = '__NUXT_VITEST_MOCK_FNS';
 const HELPER_MOCK_HOIST_ORIGINAL = '__NUXT_VITEST_MOCKS_ORIGINAL';
 const HELPER_MOCK_HOIST_PREVIOUS = '__NUXT_VITEST_MOCKS_PREVIOUS';
 const HELPERS_NAME = [HELPER_MOCK_IMPORT, HELPER_UNMOCK_IMPORT, HELPER_MOCK_COMPONENT];
@@ -48,9 +49,16 @@ interface MockPluginContext {
   components: Component[];
 }
 
-type MockImport = { name: string; import: Import; factory?: string };
 type MockComponent = { path: string; factory: string };
 
+/**
+ * Rewrite mockNuxtImport / unmockNuxtImport to runtime registry mutations.
+ *
+ * Upstream bakes factories into a hoisted `vi.mock` and emits `vi.unmock` for
+ * restores. That cancels the mock for the whole file, so mock+unmock cannot
+ * coexist in one spec. We keep a mutable `globalThis` export object and apply
+ * / restore per call site instead — no `vi.unmock`.
+ */
 const createMockPlugin = (ctx: MockPluginContext) =>
   createUnplugin(() => {
     return {
@@ -69,13 +77,20 @@ const createMockPlugin = (ctx: MockPluginContext) =>
           let insertionPoint = 0;
           let hasViImport = false;
           const s = new MagicString(code);
-          const mocksImport: MockImport[] = [];
-          const unmocksFrom = new Set<string>();
+          const mockModules = new Set<string>();
           const mocksComponent: MockComponent[] = [];
           const importPathsList = new Set<string>();
+          let touchedImportHelpers = false;
           // @ts-expect-error mismatch between acorn/estree types
           walk(ast, {
             enter: (node: Node, parent: Node | null) => {
+              const overwriteCall = (replacement: string): void => {
+                s.overwrite(
+                  isExpressionStatement(parent) ? startOf(parent) : startOf(node),
+                  isExpressionStatement(parent) ? endOf(parent) : endOf(node),
+                  replacement,
+                );
+              };
               const removeCallExpression = (start: Node, end: Node = start): void => {
                 s.overwrite(
                   isExpressionStatement(parent) ? startOf(parent) : startOf(start),
@@ -135,12 +150,31 @@ const createMockPlugin = (ctx: MockPluginContext) =>
                   HELPER_MOCK_IMPORT,
                 );
                 if (!importItem) return this.error(`Cannot find import "${name}" to mock`);
-                removeCallExpression(node.arguments[0], node.arguments[1]);
-                mocksImport.push({
-                  name,
-                  import: importItem,
-                  factory: code.slice(startOf(node.arguments[1]), endOf(node.arguments[1])),
-                });
+                const factoryCode = code.slice(
+                  startOf(node.arguments[1]),
+                  endOf(node.arguments[1]),
+                );
+                const quotedFrom = JSON.stringify(importItem.from);
+                const quotedName = JSON.stringify(importItem.name);
+                overwriteCall(
+                  `(() => {` +
+                    ` const __from = ${quotedFrom};` +
+                    ` const __name = ${quotedName};` +
+                    ` const __factory = (${factoryCode});` +
+                    ` globalThis.${HELPER_MOCK_HOIST_FNS} ??= {};` +
+                    ` (globalThis.${HELPER_MOCK_HOIST_FNS}[__from] ??= {})[__name] = __factory;` +
+                    ` const __entry = globalThis.${HELPER_MOCK_HOIST}?.[__from];` +
+                    ` if (__entry) {` +
+                    `   const __value = __factory(__entry.${HELPER_MOCK_HOIST_ORIGINAL}[__name]);` +
+                    `   if (__value != null && typeof __value.then === 'function')` +
+                    `     throw new Error('mockNuxtImport() factory must be synchronous once the import module is loaded');` +
+                    `   __entry[__name] = __value;` +
+                    `   __entry.${HELPER_MOCK_HOIST_PREVIOUS}[__name] = __value;` +
+                    ` }` +
+                    ` })()`,
+                );
+                mockModules.add(importItem.from);
+                touchedImportHelpers = true;
               }
               if (isIdentifier(node.callee) && node.callee.name === HELPER_UNMOCK_IMPORT) {
                 if (node.arguments.length !== 1)
@@ -153,9 +187,22 @@ const createMockPlugin = (ctx: MockPluginContext) =>
                   HELPER_UNMOCK_IMPORT,
                 );
                 if (!importItem) return this.error(`Cannot find import "${name}" to unmock`);
-                removeCallExpression(node.arguments[0]);
-                unmocksFrom.add(importItem.from);
-                mocksImport.push({ name, import: importItem, factory: undefined });
+                const quotedFrom = JSON.stringify(importItem.from);
+                const quotedName = JSON.stringify(importItem.name);
+                overwriteCall(
+                  `(() => {` +
+                    ` const __from = ${quotedFrom};` +
+                    ` const __name = ${quotedName};` +
+                    ` globalThis.${HELPER_MOCK_HOIST_FNS} ??= {};` +
+                    ` (globalThis.${HELPER_MOCK_HOIST_FNS}[__from] ??= {})[__name] = null;` +
+                    ` const __entry = globalThis.${HELPER_MOCK_HOIST}?.[__from];` +
+                    ` if (__entry) {` +
+                    `   __entry[__name] = __entry.${HELPER_MOCK_HOIST_ORIGINAL}[__name];` +
+                    `   delete __entry.${HELPER_MOCK_HOIST_PREVIOUS}[__name];` +
+                    ` }` +
+                    ` })()`,
+                );
+                touchedImportHelpers = true;
               }
               if (isIdentifier(node.callee) && node.callee.name === HELPER_MOCK_COMPONENT) {
                 if (node.arguments.length !== 2)
@@ -184,39 +231,37 @@ const createMockPlugin = (ctx: MockPluginContext) =>
               }
             },
           });
-          if (mocksImport.length === 0 && mocksComponent.length === 0) return;
+          if (!touchedImportHelpers && mocksComponent.length === 0) return;
           const mockLines: string[] = [];
-          for (const from of unmocksFrom) mockLines.push(`vi.unmock(${JSON.stringify(from)});`);
-          for (const [from, mocks] of mapGroupBy(mocksImport, (mock) => mock.import.from)) {
+          for (const from of mockModules) {
             importPathsList.add(from);
             const quotedFrom = JSON.stringify(from);
             const mockModuleEntry = `globalThis.${HELPER_MOCK_HOIST}[${quotedFrom}]`;
+            const fnsEntry = `globalThis.${HELPER_MOCK_HOIST_FNS}?.[${quotedFrom}]`;
             mockLines.push(
               `vi.mock(${quotedFrom}, async (importOriginal) => {`,
-              `  if (!${mockModuleEntry} || ${unmocksFrom.has(from)}) {`,
+              `  if (!${mockModuleEntry}) {`,
               `    const original = await importOriginal()`,
-              `    const previous = (${mockModuleEntry} ?? {}).${HELPER_MOCK_HOIST_PREVIOUS} ?? {}`,
+              `    const previous = {}`,
               `    ${mockModuleEntry} = { ...original, ...previous }`,
               `    ${mockModuleEntry}.${HELPER_MOCK_HOIST_ORIGINAL} = { ...original }`,
               `    ${mockModuleEntry}.${HELPER_MOCK_HOIST_PREVIOUS} = { ...previous }`,
               `  }`,
+              `  const __fns = ${fnsEntry} ?? {}`,
+              `  for (const __name of Object.keys(__fns)) {`,
+              `    const __factory = __fns[__name]`,
+              `    const __original = ${mockModuleEntry}.${HELPER_MOCK_HOIST_ORIGINAL}[__name]`,
+              `    if (__factory == null) {`,
+              `      ${mockModuleEntry}[__name] = __original`,
+              `      delete ${mockModuleEntry}.${HELPER_MOCK_HOIST_PREVIOUS}[__name]`,
+              `    } else {`,
+              `      ${mockModuleEntry}[__name] = await __factory(__original)`,
+              `      ${mockModuleEntry}.${HELPER_MOCK_HOIST_PREVIOUS}[__name] = ${mockModuleEntry}[__name]`,
+              `    }`,
+              `  }`,
+              `  return ${mockModuleEntry}`,
+              `});`,
             );
-            for (const mock of mocks) {
-              const quotedName = JSON.stringify(mock.import.name);
-              const original = `${mockModuleEntry}.${HELPER_MOCK_HOIST_ORIGINAL}[${quotedName}]`;
-              if (mock.factory === undefined)
-                mockLines.push(
-                  `  ${mockModuleEntry}[${quotedName}] = ${original}`,
-                  `  delete ${mockModuleEntry}.${HELPER_MOCK_HOIST_PREVIOUS}[${quotedName}]`,
-                );
-              else
-                mockLines.push(
-                  `  ${mockModuleEntry}[${quotedName}] = await (${mock.factory})(${original})`,
-                  `  ${mockModuleEntry}.${HELPER_MOCK_HOIST_PREVIOUS}[${quotedName}] = ${mockModuleEntry}[${quotedName}]`,
-                );
-            }
-            mockLines.push(`  return ${mockModuleEntry}`);
-            mockLines.push(`});`);
           }
           if (mocksComponent.length)
             mockLines.push(
@@ -230,7 +275,7 @@ const createMockPlugin = (ctx: MockPluginContext) =>
                 ];
               }),
             );
-          if (!mockLines.length) return;
+          if (!mockLines.length && !touchedImportHelpers) return;
           s.appendLeft(
             insertionPoint,
             [
@@ -239,12 +284,15 @@ const createMockPlugin = (ctx: MockPluginContext) =>
               `  if(!globalThis.${HELPER_MOCK_HOIST}){`,
               `    vi.stubGlobal(${JSON.stringify(HELPER_MOCK_HOIST)}, {})`,
               `  }`,
+              `  if(!globalThis.${HELPER_MOCK_HOIST_FNS}){`,
+              `    vi.stubGlobal(${JSON.stringify(HELPER_MOCK_HOIST_FNS)}, {})`,
+              `  }`,
               `});`,
               ``,
             ].join('\n'),
           );
           if (!hasViImport) s.prepend(`import {vi} from "vitest";\n`);
-          s.appendLeft(insertionPoint, '\n' + mockLines.join('\n') + '\n');
+          if (mockLines.length) s.appendLeft(insertionPoint, '\n' + mockLines.join('\n') + '\n');
           importPathsList.forEach((p) => {
             s.append(`\n import ${JSON.stringify(p)};`);
           });
@@ -291,15 +339,6 @@ const endOf = (node: Node): number =>
     : 'end' in node
       ? (node.end as number)
       : startOf(node);
-function mapGroupBy<T, K>(items: T[], keySelector: (item: T) => K): Map<K, T[]> {
-  const map = new Map<K, T[]>();
-  for (const item of items) {
-    const key = keySelector(item);
-    if (!map.has(key)) map.set(key, []);
-    map.get(key)!.push(item);
-  }
-  return map;
-}
 //#endregion
 
 //#region import mocking setup

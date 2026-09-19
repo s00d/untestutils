@@ -10,6 +10,9 @@ import {
   TargetRegistry,
   progress,
 } from '@untestutils/core';
+import { providedContextAugmentation, type UntestutilsProvidedSession } from './provided-context';
+
+void providedContextAugmentation;
 
 async function loadRecipesModule(): Promise<void> {
   const mod = process.env.UNTESTUTILS_RECIPES_MODULE;
@@ -17,7 +20,16 @@ async function loadRecipesModule(): Promise<void> {
   await import(pathToFileURL(mod).href);
 }
 
-export default async function globalSetup(_project: TestProject): Promise<() => Promise<void>> {
+function readRegistryUrls(artifactsRoot: string, map: Awaited<ReturnType<TargetRegistry['read']>>) {
+  const urls: Record<string, string> = {};
+  for (const [id, entry] of Object.entries(map)) {
+    if (entry?.url) urls[id] = entry.url;
+  }
+  void artifactsRoot;
+  return urls;
+}
+
+export default async function globalSetup(project: TestProject): Promise<() => Promise<void>> {
   await loadRecipesModule();
 
   const artifactsRoot = resolveArtifactsRoot();
@@ -47,10 +59,25 @@ export default async function globalSetup(_project: TestProject): Promise<() => 
     }
     progress.waveReady();
     progress.massRun();
-  } else {
-    const registry = new TargetRegistry(artifactsRoot);
-    const map = await registry.read();
-    registry.applyAllToEnv(map);
+  }
+
+  const registry = new TargetRegistry(artifactsRoot);
+  const map = await registry.read();
+  registry.applyAllToEnv(map);
+  const urls = readRegistryUrls(artifactsRoot, map);
+
+  const browsers = JSON.parse(
+    process.env.UNTESTUTILS_BROWSERS || '["chromium"]',
+  ) as UntestutilsProvidedSession['browsers'];
+  const payload: UntestutilsProvidedSession = {
+    recipesModule: process.env.UNTESTUTILS_RECIPES_MODULE,
+    artifactsRoot,
+    session: process.env.UNTESTUTILS_SESSION,
+    browsers,
+    urls,
+  };
+  if (typeof project?.provide === 'function') {
+    project.provide('untestutils', payload);
   }
 
   void listRegisteredRecipes();

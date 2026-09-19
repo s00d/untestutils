@@ -6,6 +6,7 @@ import { loopbackUrl } from '../paths';
 import { waitForHttpReady } from '../ready';
 import { spawnManaged, runCommand } from '../process';
 import type { Recipe, PrepareCtx, StartCtx, SharePolicy } from '../types';
+import { appendWorkspaceHashInputs } from './matrix';
 
 export interface ResolveBinOptions {
   roots: string[];
@@ -17,6 +18,9 @@ export interface ResolveBinOptions {
 
 /**
  * Resolve a CLI entry from the app under test (or cwd).
+ *
+ * Prefer filesystem paths under `node_modules/` first — packages with tight
+ * `exports` (e.g. vinxi) reject `require.resolve('pkg/bin/…')` / `pkg/package.json`.
  */
 export function resolveBin(opts: ResolveBinOptions): string {
   const seen = new Set<string>();
@@ -26,6 +30,20 @@ export function resolveBin(opts: ResolveBinOptions): string {
     seen.add(key);
     const pkgPath = join(key, 'package.json');
     if (!existsSync(pkgPath)) continue;
+
+    for (const id of opts.directIds ?? []) {
+      const fsPath = join(key, 'node_modules', id);
+      if (existsSync(fsPath)) return fsPath;
+    }
+    for (const pkgId of opts.packageJsonIds ?? []) {
+      const pkgName = pkgId.replace(/\/package\.json$/, '');
+      const pkgRoot = join(key, 'node_modules', pkgName);
+      for (const rel of opts.binRelative ?? []) {
+        const bin = join(pkgRoot, rel);
+        if (existsSync(bin)) return bin;
+      }
+    }
+
     let req: NodeRequire;
     try {
       req = createRequire(pkgPath);
@@ -71,9 +89,13 @@ export interface CliFrameworkRecipeOptions {
   hashInputs?: string[];
   readyPath?: string;
   readyTimeoutMs?: number;
+  /** See {@link FrameworkBaseOptions.workspaceDeps}. */
+  workspaceDeps?: boolean | 'auto';
   prepare?: (ctx: PrepareCtx & { root: string }) => Promise<SpawnSpec | void> | SpawnSpec | void;
   start: (ctx: StartCtx & { root: string }) => SpawnSpec | Promise<SpawnSpec>;
   verifyAfterPrepare?: (ctx: PrepareCtx & { root: string }) => Promise<void>;
+  /** Called after the managed process stops (e.g. restore ephemeral next.config). */
+  afterStop?: () => Promise<void> | void;
 }
 
 export type FrameworkBaseOptions = {
@@ -83,6 +105,13 @@ export type FrameworkBaseOptions = {
   hashInputs?: string[];
   readyPath?: string;
   readyTimeoutMs?: number;
+  /**
+   * Include monorepo package src dirs in prepare hash.
+   * - true — always
+   * - auto — when a pnpm workspace is detected above root
+   * - omit / false — off (default for CLI adapters)
+   */
+  workspaceDeps?: boolean | 'auto';
 };
 
 export function frameworkRoots(root: string): string[] {
@@ -121,10 +150,11 @@ export function cliFrameworkRecipe(opts: CliFrameworkRecipeOptions): Recipe {
     id: opts.id,
     share: opts.share ?? (opts.prepare ? 'always' : 'never'),
     hashInputs: async () => {
-      const inputs = [...(opts.hashInputs ?? [root])];
+      let inputs = [...(opts.hashInputs ?? [root])];
       if (opts.env && Object.keys(opts.env).length) {
         inputs.push(`env:${JSON.stringify(opts.env)}`);
       }
+      inputs = await appendWorkspaceHashInputs(inputs, root, opts.workspaceDeps);
       return inputs;
     },
     ready: async () => {},
@@ -178,7 +208,10 @@ export function cliFrameworkRecipe(opts: CliFrameworkRecipeOptions): Recipe {
         kind: 'url+dir',
         url,
         dir: ctx.outDir,
-        stop: managed.stop,
+        stop: async () => {
+          await managed.stop();
+          if (opts.afterStop) await opts.afterStop();
+        },
         pid: managed.pid,
       };
     },

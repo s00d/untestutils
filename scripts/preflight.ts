@@ -19,6 +19,7 @@ const STEPS = [
   'pnpm run test:dist',
   'pnpm run api:surface',
   'pnpm run test:playground',
+  'pnpm run test:playground:unit',
   'pnpm run test:pack',
   'pnpm run test:ai',
 ];

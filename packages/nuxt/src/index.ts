@@ -1,16 +1,21 @@
 import { createRequire } from 'node:module';
 import { existsSync } from 'node:fs';
-import { readdir } from 'node:fs/promises';
 import { dirname, join, resolve } from 'pathe';
 import { pathToFileURL } from 'node:url';
+import type { NuxtConfig } from '@nuxt/schema';
 import {
   assertAppRoot,
+  defineDriver,
   defineRecipe,
+  findWorkspaceRoot,
   loopbackUrl,
+  matrixRecipe,
   spawnManaged,
   staticDir,
   waitForHttpReady,
   withQuietLogger,
+  workspacePackageSrcDirs,
+  type Driver,
   type Recipe,
 } from '@untestutils/core';
 
@@ -23,11 +28,17 @@ type NuxtKitRuntime = {
 
 export type NuxtRun = 'server' | 'static' | 'dev';
 
+/** User overrides for `loadNuxt({ overrides })` — includes Nitro fields Nuxt schema omits at the top level. */
+export type NuxtConfigOverride = Partial<NuxtConfig> & {
+  nitro?: Record<string, unknown>;
+};
+
 export interface NuxtOptions {
   id?: string;
   root: string;
   run?: NuxtRun;
-  nuxtConfig?: Record<string, unknown>;
+  /** Nuxt config overrides merged into `loadNuxt({ overrides })`. */
+  nuxtConfig?: NuxtConfigOverride;
   hashInputs?: string[];
   /** Include nearby monorepo package src dirs in prepare hash (auto when workspace exists). */
   workspaceDeps?: boolean | 'auto';
@@ -89,39 +100,10 @@ function resolveNuxiEntry(rootDir: string): string {
   );
 }
 
-function findWorkspaceRoot(from: string): string | undefined {
-  let dir = resolve(from);
-  for (let i = 0; i < 12; i++) {
-    if (
-      existsSync(join(dir, 'pnpm-workspace.yaml')) ||
-      existsSync(join(dir, 'pnpm-workspace.yml'))
-    ) {
-      return dir;
-    }
-    const parent = dirname(dir);
-    if (parent === dir) break;
-    dir = parent;
-  }
-  return undefined;
-}
-
-async function workspacePackageSrcDirs(from: string): Promise<string[]> {
-  const ws = findWorkspaceRoot(from);
-  if (!ws) return [];
-  const packagesDir = join(ws, 'packages');
-  if (!existsSync(packagesDir)) return [];
-  const names = await readdir(packagesDir, { withFileTypes: true }).catch(() => []);
-  const out: string[] = [];
-  for (const e of names) {
-    if (!e.isDirectory()) continue;
-    const src = join(packagesDir, e.name, 'src');
-    if (existsSync(src)) out.push(src);
-  }
-  return out;
-}
-
 async function resolveHashInputs(opts: NuxtOptions, root: string): Promise<string[]> {
   const inputs = [...(opts.hashInputs ?? [root])];
+  // Nuxt default: auto-include workspace package src when a workspace exists
+  // (unless explicitly disabled with workspaceDeps: false).
   const wantWs =
     opts.workspaceDeps === true ||
     (opts.workspaceDeps !== false && Boolean(findWorkspaceRoot(root)));
@@ -140,11 +122,11 @@ async function resolveHashInputs(opts: NuxtOptions, root: string): Promise<strin
   return inputs;
 }
 
-function mergeNuxtConfig(opts: NuxtOptions): Record<string, unknown> {
-  const base = { ...(opts.nuxtConfig ?? {}) };
+function mergeNuxtConfig(opts: NuxtOptions): NuxtConfigOverride {
+  const base: NuxtConfigOverride = { ...(opts.nuxtConfig ?? {}) };
   if (!opts.preset) return base;
   const nitro = {
-    ...((base.nitro as Record<string, unknown> | undefined) ?? {}),
+    ...(base.nitro ?? {}),
     preset: opts.preset,
   };
   return { ...base, nitro };
@@ -173,7 +155,7 @@ async function withEnv<T>(
 async function buildNuxtApp(
   rootDir: string,
   outDir: string,
-  nuxtConfig?: Record<string, unknown>,
+  nuxtConfig?: NuxtConfigOverride,
   ssr = true,
 ): Promise<void> {
   return withQuietLogger(async () => {
@@ -192,7 +174,7 @@ async function buildNuxtApp(
         nitro: {
           output: { dir: join(outDir, 'output') },
           minify: false,
-          ...((nuxtConfig?.nitro as Record<string, unknown> | undefined) ?? {}),
+          ...(nuxtConfig?.nitro ?? {}),
         },
       },
     });
@@ -210,7 +192,7 @@ async function buildNuxtApp(
 async function generateNuxtApp(
   rootDir: string,
   outDir: string,
-  nuxtConfig?: Record<string, unknown>,
+  nuxtConfig?: NuxtConfigOverride,
 ): Promise<void> {
   return withQuietLogger(async () => {
     const kit = (await import(
@@ -227,7 +209,7 @@ async function generateNuxtApp(
           output: { dir: join(outDir, 'output') },
           static: true,
           prerender: { crawlLinks: true },
-          ...((nuxtConfig?.nitro as Record<string, unknown> | undefined) ?? {}),
+          ...(nuxtConfig?.nitro ?? {}),
         },
       },
     });
@@ -291,7 +273,7 @@ export const _internals: NuxtInternals = {
  * `run: 'static'` — generate + static file server
  * `run: 'dev'` — nuxi `_dev` only (HMR fixtures; never shared). Default path is still build → nitro.
  */
-export function nuxt(opts: NuxtOptions): Recipe {
+export const nuxt: Driver<NuxtOptions> = defineDriver((opts: NuxtOptions): Recipe => {
   const root = resolve(opts.root);
   const runMode: NuxtRun = opts.run ?? 'server';
   const id = opts.id ?? `nuxt-${runMode}-${root.split('/').pop()}`;
@@ -404,7 +386,7 @@ export function nuxt(opts: NuxtOptions): Recipe {
   }) as RecipeWithRoot;
   recipe.root = root;
   return recipe;
-}
+});
 
 export { waitForHttpReady };
 
@@ -418,42 +400,35 @@ export type MatrixVariant = Partial<
 /**
  * Expand one Nuxt recipe base into many recipes with distinct ids / identity.
  * Variant key `default` keeps `base.id`; other keys become `${baseId}__${key}`.
+ * Nitro-aware merge of `nuxtConfig` (generic `matrixRecipe` lives in `@untestutils/core`).
  */
 export function matrix(
   base: NuxtOptions,
   variants: Record<string, MatrixVariant>,
 ): Record<string, Recipe> {
-  if (!base.root) {
-    throw new Error('[untestutils/nuxt] matrix() requires base.root');
-  }
-  const baseId = base.id ?? `nuxt-${base.run ?? 'server'}`;
-  const out: Record<string, Recipe> = {};
-  for (const [name, patch] of Object.entries(variants)) {
-    const id = name === 'default' ? baseId : `${baseId}__${name}`;
-    if (out[id]) {
-      throw new Error(`[untestutils/nuxt] matrix() duplicate id "${id}"`);
-    }
-    const baseNitro = (base.nuxtConfig?.nitro as Record<string, unknown> | undefined) ?? {};
-    const patchNitro = (patch.nuxtConfig?.nitro as Record<string, unknown> | undefined) ?? {};
-    const merged: NuxtOptions = {
-      ...base,
-      ...patch,
-      id,
-      env: { ...(base.env ?? {}), ...(patch.env ?? {}) },
-      nuxtConfig: {
-        ...(base.nuxtConfig ?? {}),
-        ...(patch.nuxtConfig ?? {}),
-        nitro: { ...baseNitro, ...patchNitro },
-      },
-      hashInputs: [
-        ...(base.hashInputs ?? [base.root]),
-        ...(patch.hashInputs ?? []),
-        `variant:${name}`,
-      ],
-    };
-    out[id] = nuxt(merged);
-  }
-  return out;
+  const withId: NuxtOptions = {
+    ...base,
+    id: base.id ?? `nuxt-${base.run ?? 'server'}`,
+  };
+  return matrixRecipe(nuxt, withId, variants, {
+    label: 'nuxt',
+    merge: (b, patch, id, name) => {
+      const baseNitro = b.nuxtConfig?.nitro ?? {};
+      const patchNitro = patch.nuxtConfig?.nitro ?? {};
+      return {
+        ...b,
+        ...patch,
+        id,
+        env: { ...(b.env ?? {}), ...(patch.env ?? {}) },
+        nuxtConfig: {
+          ...(b.nuxtConfig ?? {}),
+          ...(patch.nuxtConfig ?? {}),
+          nitro: { ...baseNitro, ...patchNitro },
+        },
+        hashInputs: [...(b.hashInputs ?? [b.root]), ...(patch.hashInputs ?? []), `variant:${name}`],
+      };
+    },
+  });
 }
 
 /** Nuxt-aware goto wait helpers are provided by vitest/playwright runners via playwright page. */

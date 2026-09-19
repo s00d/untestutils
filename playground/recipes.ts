@@ -3,6 +3,8 @@ import { vite } from 'untestutils/vite';
 import { next } from 'untestutils/next';
 import { astro } from 'untestutils/astro';
 import { sveltekit } from 'untestutils/sveltekit';
+import { remix } from 'untestutils/remix';
+import { solidstart } from 'untestutils/solidstart';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'pathe';
 
@@ -34,6 +36,16 @@ export const recipes = defineRecipes(
     sveltekitApp: sveltekit({
       id: 'sveltekitApp',
       root: join(root, 'fixtures/sveltekit-app'),
+      run: 'preview',
+    }),
+    remixApp: remix({
+      id: 'remixApp',
+      root: join(root, 'fixtures/remix-app'),
+      run: 'server',
+    }),
+    solidApp: solidstart({
+      id: 'solidApp',
+      root: join(root, 'fixtures/solid-app'),
       run: 'preview',
     }),
     ...(remoteUrl

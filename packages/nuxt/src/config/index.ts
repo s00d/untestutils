@@ -46,13 +46,17 @@ function isNamedPlugin(plugin: unknown): plugin is Plugin {
   return typeof plugin === 'object' && plugin !== null && 'name' in plugin;
 }
 
-function warnIfE2ePluginMixed(config: ResolvedVitestConfig): void {
+/** Reject e2e plugin + unit environment in the same Vitest project. */
+export function assertNoE2ePluginMixed(config: {
+  plugins?: unknown[];
+  test?: { environment?: unknown };
+}): void {
   const plugins = config.plugins || [];
   const hasE2e = plugins.some((p) => isNamedPlugin(p) && p.name === 'untestutils');
   const env = config.test?.environment;
   if (hasE2e && isUnitEnvironmentName(env)) {
-    console.warn(
-      "[untestutils] Do not mix `untestutils/vitest/plugin` (e2e) with `environment: 'untestutils'` (unit). Use separate projects.",
+    throw new Error(
+      "[untestutils] Do not mix `untestutils/vitest/plugin` (e2e) with `environment: 'untestutils'` (unit). Use separate Vitest projects.",
     );
   }
 }
@@ -333,7 +337,7 @@ export async function defineVitestProject(
     defu({ test: { environment: UNIT_ENVIRONMENT } }, config),
   );
   resolvedConfig.extends ??= false;
-  warnIfE2ePluginMixed(resolvedConfig);
+  assertNoE2ePluginMixed(resolvedConfig);
   return resolvedConfig;
 }
 
@@ -405,7 +409,7 @@ export function defineVitestConfig(
     } else {
       resolvedConfig.test.environment = UNIT_ENVIRONMENT;
     }
-    warnIfE2ePluginMixed(resolvedConfig);
+    assertNoE2ePluginMixed(resolvedConfig);
     return resolvedConfig;
   };
 }

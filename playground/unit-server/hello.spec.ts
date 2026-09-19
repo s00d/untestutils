@@ -21,4 +21,9 @@ describe('server unit dogfood', () => {
     const result = await handler({} as any);
     expect(result).toMatchObject({ ok: true, from: 'api-hello' });
   });
+
+  it('can register an additional server mock alongside real handlers', async () => {
+    registerEndpoint('/api/extra', () => ({ extra: true }));
+    expect(await $fetch('/api/extra')).toEqual({ extra: true });
+  });
 });

@@ -12,11 +12,61 @@ import { resetRecipeBindings } from '@untestutils/core';
 import { getFreePort } from '@untestutils/core';
 
 describe('defineDriver', () => {
-  test('returns same implementation', () => {
+  test('normalizes id and default share', () => {
     const impl = (opts: { id: string }) =>
-      defineRecipe({ id: opts.id, start: async () => ({ kind: 'dir', dir: '/tmp' }) });
+      defineRecipe({
+        id: `  ${opts.id}  `,
+        start: async () => ({ kind: 'dir', dir: '/tmp' }),
+      });
     const d = defineDriver(impl);
-    expect(d).toBe(impl);
+    const recipe = d({ id: 'x' });
+    expect(recipe.id).toBe('x');
+    expect(recipe.share).toBe('always');
+  });
+
+  test('preserves explicit share', () => {
+    const d = defineDriver(() =>
+      defineRecipe({
+        id: 's',
+        share: 'never',
+        start: async () => ({ kind: 'dir', dir: '/tmp' }),
+      }),
+    );
+    expect(d({}).share).toBe('never');
+  });
+
+  test('rejects missing id', () => {
+    const impl = () =>
+      defineRecipe({
+        id: '   ',
+        start: async () => ({ kind: 'dir', dir: '/tmp' }),
+      });
+    expect(() => defineDriver(impl)({})).toThrow(/recipe\.id is required/);
+  });
+
+  test('rejects non-object return', () => {
+    const d = defineDriver((() => null) as any);
+    expect(() => d({})).toThrow(/must return a Recipe/);
+  });
+
+  test('rejects invalid share', () => {
+    const d = defineDriver((() => ({
+      id: 'bad',
+      share: 'sometimes',
+      start: async () => ({ kind: 'dir', dir: '/tmp' }),
+    })) as any);
+    expect(() => d({})).toThrow(/invalid share/);
+  });
+
+  test('accepts prepare-only share', () => {
+    const d = defineDriver(() =>
+      defineRecipe({
+        id: 'p',
+        share: 'prepare-only',
+        start: async () => ({ kind: 'dir', dir: '/tmp' }),
+      }),
+    );
+    expect(d({}).share).toBe('prepare-only');
   });
 });
 

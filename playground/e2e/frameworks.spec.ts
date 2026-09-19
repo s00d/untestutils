@@ -36,3 +36,19 @@ describe('sveltekit preview', () => {
     expect(html).toContain('sveltekit-app ok');
   });
 });
+
+describe('remix server', () => {
+  test('serves built app', async () => {
+    const app = await useHarness('remixApp');
+    const html = await app.$fetch('/');
+    expect(html).toContain('remix-app ok');
+  });
+});
+
+describe('solidstart preview', () => {
+  test('serves built app', async () => {
+    const app = await useHarness('solidApp');
+    const html = await app.$fetch('/');
+    expect(html).toContain('solid-app ok');
+  });
+});

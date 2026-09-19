@@ -49,6 +49,11 @@ describe('playwright package', () => {
     expect(process.env.UNTESTUTILS_ARTIFACTS_DIR).toBe('/tmp/a');
   });
 
+  test('sanitizePlaywrightSession delegates to core sanitizeSession', () => {
+    expect(sanitizePlaywrightSession('My Session!')).toBe('My-Session');
+    expect(() => sanitizePlaywrightSession('@@@')).toThrow(/non-empty/);
+  });
+
   test('createPlaywrightConfig session nests artifacts root', async () => {
     const base = await mkdtemp(join(tmpdir(), 'ut-pw-session-base-'));
     delete process.env.UNTESTUTILS_ARTIFACTS_DIR;
@@ -63,13 +68,16 @@ describe('playwright package', () => {
     expect(cfg.fullyParallel).toBe(true);
     expect(process.env.UNTESTUTILS_SESSION).toBe('ci-a');
     expect(process.env.UNTESTUTILS_ARTIFACTS_DIR).toBe(join(base, 'sessions', 'ci-a'));
+    await rm(base, { recursive: true, force: true });
+  });
 
+  test('resolvePlaywrightArtifactsRoot matches core session helper', async () => {
+    const base = await mkdtemp(join(tmpdir(), 'ut-pw-ra-'));
+    expect(resolvePlaywrightArtifactsRoot({ artifactsRoot: base, session: 'x' })).toBe(base);
+    expect(resolvePlaywrightArtifactsRoot({ artifactsRoot: base })).toBe(base);
     delete process.env.UNTESTUTILS_ARTIFACTS_DIR;
     process.env.UNTESTUTILS_ARTIFACTS_DIR = base;
-    expect(resolvePlaywrightArtifactsRoot({ session: 'ci-b' })).toBe(
-      join(base, 'sessions', 'ci-b'),
-    );
-    expect(sanitizePlaywrightSession('My Session!')).toBe('My-Session');
+    expect(resolvePlaywrightArtifactsRoot({ session: 's1' })).toBe(join(base, 'sessions', 's1'));
     await rm(base, { recursive: true, force: true });
   });
 

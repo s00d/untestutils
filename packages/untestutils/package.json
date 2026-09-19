@@ -181,11 +181,9 @@
     "publint": "publint --strict"
   },
   "dependencies": {
-    "@untestutils/ai": "workspace:*",
     "@untestutils/cli": "workspace:*",
     "@untestutils/core": "workspace:*",
     "@untestutils/nuxt": "workspace:*",
-    "@untestutils/perf": "workspace:*",
     "@untestutils/playwright": "workspace:*",
     "@untestutils/utils": "workspace:*",
     "@untestutils/vitest": "workspace:*",
@@ -193,9 +191,11 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "@untestutils/ai": "workspace:*",
     "@untestutils/astro": "workspace:*",
     "@untestutils/next": "workspace:*",
     "@untestutils/nuxt": "workspace:*",
+    "@untestutils/perf": "workspace:*",
     "@untestutils/remix": "workspace:*",
     "@untestutils/solidstart": "workspace:*",
     "@untestutils/sveltekit": "workspace:*",
@@ -206,8 +206,10 @@
   },
   "peerDependencies": {
     "@playwright/test": "^1.63.0",
+    "@untestutils/ai": "0.5.2",
     "@untestutils/astro": "0.5.2",
     "@untestutils/next": "0.5.2",
+    "@untestutils/perf": "0.5.2",
     "@untestutils/remix": "0.5.2",
     "@untestutils/solidstart": "0.5.2",
     "@untestutils/sveltekit": "0.5.2",
@@ -216,10 +218,16 @@
     "vitest": "^4.0.0 || ^5.0.0"
   },
   "peerDependenciesMeta": {
+    "@untestutils/ai": {
+      "optional": true
+    },
     "@untestutils/astro": {
       "optional": true
     },
     "@untestutils/next": {
+      "optional": true
+    },
+    "@untestutils/perf": {
       "optional": true
     },
     "@untestutils/remix": {

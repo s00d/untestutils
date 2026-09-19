@@ -22,11 +22,11 @@ Packages are **lockstep-versioned**. Prefer scoped imports; the `untestutils` fa
 | `untestutils/vitest` / `@untestutils/vitest` | Specs: `test`, `useHarness`, fixtures |
 | `untestutils/vitest/plugin` / `@untestutils/vitest/plugin` | Vitest config plugin |
 | `untestutils/playwright` / `@untestutils/playwright` | Config helpers + `test` |
-| `untestutils/nuxt` / `@untestutils/nuxt` | `nuxt({ run })`, `matrix` |
+| `untestutils/nuxt` / `@untestutils/nuxt` | `nuxt({ run })`, `matrix` (nitro-aware) |
 | `untestutils/utils` / `@untestutils/utils` | Cookies, SEO, poll, … |
-| `untestutils/perf` / `@untestutils/perf` | Build/load suite |
-| `untestutils/ai` / `@untestutils/ai` | Codegen |
-| `untestutils/vite` \| `next` \| `astro` \| … | Framework factories (`@untestutils/<name>`) |
+| `untestutils/perf` / `@untestutils/perf` | Build/load suite (**optional peer**) |
+| `untestutils/ai` / `@untestutils/ai` | Codegen (**optional peer**) |
+| `untestutils/vite` \| `next` \| `astro` \| … | Framework factories + `matrix` (`@untestutils/<name>`) |
 | `untestutils/config` / `@untestutils/nuxt/config` | Nuxt unit Vitest helpers |
 | `untestutils/runtime` / `@untestutils/nuxt/runtime` | `mountSuspended`, mocks, … |
 | `untestutils/module` / `@untestutils/nuxt/module` | Nuxt module for unit env |

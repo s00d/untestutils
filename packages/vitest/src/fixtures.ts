@@ -5,11 +5,15 @@ import {
   beforeAll,
   beforeEach,
   describe,
+  inject,
   test as base,
   type TestAPI,
 } from 'vitest';
 import { getCurrentHarness, normalizeBaseUrl, useHarness, type Recipe } from '@untestutils/core';
 import { type HarnessBrowserName, resolveHarnessBrowserName } from './browsers';
+import { providedContextAugmentation } from './provided-context';
+
+void providedContextAugmentation;
 
 export { afterAll, afterEach, beforeAll, beforeEach, describe };
 export type { HarnessBrowserName } from './browsers';
@@ -22,15 +26,15 @@ export {
 export interface HarnessFixtures {
   /** Recipe id or Recipe — set via `test.override({ harness: 'site' })`. */
   harness: string | Recipe | undefined;
-  /** Playwright engine — from `UNTESTUTILS_BROWSER` or plugin `browsers`. */
+  /** Playwright engine — from inject / `UNTESTUTILS_BROWSER` / plugin `browsers`. */
   browserName: HarnessBrowserName;
+  /** Worker-scoped Playwright browser (one launch per worker). */
+  browser: Browser;
   page: Page;
   goto: (path: string, options?: Record<string, unknown>) => Promise<Response | null>;
   baseURL: string;
   request: APIRequestContext;
 }
-
-const browserPromises = new Map<HarnessBrowserName, Promise<Browser>>();
 
 /** @internal */
 export const browserApi: {
@@ -47,20 +51,14 @@ export const browserApi: {
   },
 };
 
-/** @internal */
-export function getBrowser(name?: HarnessBrowserName): Promise<Browser> {
-  const browserName = name ?? resolveHarnessBrowserName();
-  let p = browserPromises.get(browserName);
-  if (!p) {
-    p = browserApi.launch(browserName);
-    browserPromises.set(browserName, p);
+function resolveBrowserNameFromInject(): HarnessBrowserName {
+  try {
+    const injected = inject('untestutilsBrowser');
+    if (injected) return injected;
+  } catch {
+    /* provide not set */
   }
-  return p;
-}
-
-/** @internal reset for tests */
-export function resetBrowserPromise(): void {
-  browserPromises.clear();
+  return resolveHarnessBrowserName();
 }
 
 /** @internal */
@@ -142,12 +140,13 @@ export async function usePageFixture(
   baseURL: string,
   use: (page: Page) => Promise<void>,
 ): Promise<void> {
-  const browser = await getBrowser();
+  const browser = await browserApi.launch();
   const context = await browser.newContext({ baseURL });
   patchContextCookies(context, baseURL);
   const page = await context.newPage();
   await use(page);
   await context.close().catch(() => {});
+  await browser.close().catch(() => {});
 }
 
 /** @internal */
@@ -191,13 +190,24 @@ export { expect } from '@playwright/test';
  */
 export const test: TestAPI<HarnessFixtures> = base
   .extend('harness', undefined as string | Recipe | undefined)
-  .extend('browserName', () => resolveHarnessBrowserName())
+  .extend('browserName', () => resolveBrowserNameFromInject())
+  .extend(
+    'browser',
+    { scope: 'worker' },
+    // Vitest requires `{}` destructure when a worker fixture has no deps.
+    // oxlint-disable-next-line no-empty-pattern
+    async ({}, { onCleanup }) => {
+      const browserName = resolveBrowserNameFromInject();
+      const browser = await browserApi.launch(browserName);
+      onCleanup(() => browser.close().catch(() => {}));
+      return browser;
+    },
+  )
   .extend('baseURL', async ({ harness }) => {
     if (harness) await useHarness(harness);
     return resolveBaseURL();
   })
-  .extend('page', async ({ baseURL, browserName }, { onCleanup }) => {
-    const browser = await getBrowser(browserName);
+  .extend('page', async ({ baseURL, browser }, { onCleanup }) => {
     const context = await browser.newContext({ baseURL });
     patchContextCookies(context, baseURL);
     const page = await context.newPage();
@@ -210,4 +220,4 @@ export const test: TestAPI<HarnessFixtures> = base
     const ctx = await requestApi.newContext({ baseURL });
     onCleanup(() => ctx.dispose().catch(() => {}));
     return ctx;
-  }) as TestAPI<HarnessFixtures>;
+  }) as unknown as TestAPI<HarnessFixtures>;

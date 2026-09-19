@@ -20,7 +20,16 @@ export {
   listRegisteredRecipes,
   clearRegisteredRecipes,
 } from './recipes';
-export { useHarness, getCurrentHarness, getHarness } from './harness';
+export {
+  useHarness,
+  getCurrentHarness,
+  getHarness,
+  leaseTarget,
+  prepareOnce,
+  withHarness,
+} from './harness';
+export type { LeaseOptions, LeasedTarget } from './harness';
+export { sanitizeSession, resolveSessionArtifactsRoot } from './session';
 export {
   ensurePrepared,
   stopAllTargets,
@@ -87,3 +96,26 @@ export type {
   CliFrameworkRecipeOptions,
   FrameworkBaseOptions,
 } from './drivers/cli-framework';
+export {
+  matrixRecipe,
+  findWorkspaceRoot,
+  workspacePackageSrcDirs,
+  shouldIncludeWorkspaceDeps,
+  appendWorkspaceHashInputs,
+} from './drivers/matrix';
+export type { MatrixCapableOptions, MatrixRecipeOptions } from './drivers/matrix';
+export {
+  installEphemeralFile,
+  withEphemeralFile,
+  withMergedConfigOverride,
+  installMergedConfigOverride,
+  writeEphemeralConfig,
+  serializeDefaultExport,
+  serializeMergedDefaultExport,
+  serializeViteMergeConfigModule,
+  serializeAstroMergeConfigModule,
+  findFirstExistingConfig,
+  readTextIfExists,
+  configOverrideHashInput,
+  deepMergePlain,
+} from './drivers/config-override';

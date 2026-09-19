@@ -8,6 +8,7 @@ dist
 .astro
 .next
 .svelte-kit
+.vinxi
 coverage
 test-results
 *.log

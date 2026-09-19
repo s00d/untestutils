@@ -7,6 +7,9 @@ export {
   useHarness,
   getCurrentHarness,
   getHarness,
+  leaseTarget,
+  prepareOnce,
+  withHarness,
   ensurePrepared,
   stopAllTargets,
   SCHEMA_VERSION,
@@ -14,6 +17,8 @@ export {
   loopbackUrl,
   normalizeBaseUrl,
   resolveArtifactsRoot,
+  resolveSessionArtifactsRoot,
+  sanitizeSession,
   resolveBindHost,
   resolveProbeHost,
   getFreePort,
@@ -32,6 +37,7 @@ export type {
   RecipeRegistry,
   Running,
   HarnessHandle,
+  LeasedTarget,
   SharePolicy,
   PrepareCtx,
   StartCtx,
@@ -39,7 +45,7 @@ export type {
   UseHarnessOptions,
 } from '@untestutils/core';
 
-export { command, staticDir, nodeEntry, host, defineDriver } from '@untestutils/core';
+export { command, staticDir, nodeEntry, host, defineDriver, matrixRecipe } from '@untestutils/core';
 
 export type {
   CommandOptions,
@@ -47,4 +53,7 @@ export type {
   NodeEntryOptions,
   HostOptions,
   Driver,
+  MatrixCapableOptions,
+  MatrixRecipeOptions,
+  FrameworkBaseOptions,
 } from '@untestutils/core';

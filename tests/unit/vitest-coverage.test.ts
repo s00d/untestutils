@@ -28,7 +28,7 @@ describe('coverage config', () => {
     expect(UNTESTUTILS_WORKSPACE_PACKAGES).toContain('core');
   });
 
-  test('plugin merges coverage into vitest config', () => {
+  test('plugin merges coverage into vitest config', async () => {
     const plugin = untestutils({ coverage: { thresholds: { lines: 90 } } });
     const config: {
       sequence?: { setupFiles?: string };
@@ -36,7 +36,11 @@ describe('coverage config', () => {
       setupFiles?: string[];
       coverage?: { thresholds?: { lines?: number }; include?: string[] };
     } = {};
-    plugin.configureVitest?.({ project: { config } });
+    await plugin.configureVitest?.({
+      project: { name: 't', config, provide: () => {} },
+      vitest: { config: {}, projects: [] },
+      injectTestProjects: async () => [],
+    });
     expect(config.coverage?.thresholds?.lines).toBe(90);
     expect(config.coverage?.include?.[0]).toMatch(/^src\//);
   });

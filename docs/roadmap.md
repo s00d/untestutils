@@ -1,47 +1,40 @@
 ---
 title: Roadmap
-description: Path from 0.4 to a honest 1.0 — what is stable, what is missing, what stays optional.
+description: Path from 0.5 to a honest 1.0 — what is stable, what is missing, what stays optional.
 outline: deep
 ---
 
 # Roadmap
 
-Current line: **0.4.x** (pre-1.0). The core harness works in production dogfood (e.g. large Nuxt e2e suites). **1.0** means a clear support matrix and no silent gaps between docs and CI.
+Current line: **0.5.x** (pre-1.0). The core harness works in production dogfood (e.g. large Nuxt e2e suites). **1.0** means a clear [support matrix](/guide/support-matrix) and no silent gaps between docs and CI.
 
-## Stable now (0.4)
+## Stable now (0.5)
 
 - Recipe contract: prepare → start → URL/dir, shared identity cache under `.untestutils`
 - Vitest plugin + Playwright `createPlaywrightConfig`, same `recipes.ts`
 - Drivers: `staticDir`, `command`, `nodeEntry`, `host`, `nuxt({ run })`
-- Framework dogfood in CI: Vite, Next, Astro, SvelteKit (+ static)
+- Framework dogfood in CI: Vite, Next, Astro, SvelteKit, Remix, SolidStart (+ static)
+- Nuxt unit (`environment: 'untestutils'`) in playground CI (`test:playground:unit`)
 - Utils for live checks (cookies, SEO, redirects, poll)
+- Scoped emit-only publish: `@untestutils/*` + thin `untestutils` facade; lockstep semver
 - Docs site (this)
-
-## Packaging (toward 0.5)
-
-- **Scoped emit-only publish**: `@untestutils/*` + thin `untestutils` facade (no Vite bundle)
-- **Lockstep versions**: root + every package share one semver; scoped peers are exact (no `*`)
-- **Nuxt unit** lives under `@untestutils/nuxt` (`./runtime`, `./config`, `./module`, `./environment`); drivers live in `@untestutils/core`
-- Framework adapters stay separate (`@untestutils/vite`, `next`, …) — install only what you need
-- Release: `bumpp -r` + changelogen + `pnpm -r publish` (`tsx scripts/release.ts`)
 
 Use the **same version** for facade and any `@untestutils/*` adapter you install.
 
 ## Before 1.0
 
-Ordered by impact.
+Ordered by impact. Full table: [Support matrix](/guide/support-matrix).
 
 ### 1. Support matrix (docs + CI)
 
-Explicit **stable** vs **experimental** vs **not in CI**.
+Keep **stable** vs **experimental** vs **optional** honest as features land.
 
 | Area | Today | 1.0 bar |
 |------|--------|---------|
 | Vitest / Playwright e2e | Stable, in CI | Keep |
-| Nuxt server recipes | Stable, dogfood’d | Keep |
-| Vite / Next / Astro / SvelteKit | Dogfood in playground CI | Keep |
-| Remix / SolidStart | Exports exist; fixtures thin; not in playground e2e | Full fixtures + e2e **or** mark experimental / demote |
-| Nuxt unit (`environment: 'untestutils'`) | Documented; `test:playground:unit` not in CI | Wire into CI **or** label experimental |
+| Nuxt server recipes | Stable, unit/driver covered | Keep |
+| Vite / Next / Astro / SvelteKit / Remix / SolidStart | Dogfood in playground CI | Keep |
+| Nuxt unit | Documented + `test:playground:unit` in CI | Keep |
 | AI codegen | Optional, mock in CI | Stay optional (labeled) |
 | Perf suite | Unit coverage; no CI dogfood | Stay optional (labeled) |
 
@@ -49,6 +42,7 @@ Explicit **stable** vs **experimental** vs **not in CI**.
 
 - Node floor: smoke Node 20 or raise `engines` to match CI (22)
 - Clearer peer signal for Vitest as primary consumer
+- Slimmer facade (optional peers for nuxt / ai / perf) where practical
 
 ### 3. Typecheck surface
 
@@ -64,18 +58,21 @@ Ship **1.0.0** with the matrix above, changelog that states stable vs optional, 
 - Richer framework fixtures as demand appears
 - Live-LLM AI smoke (mock stays CI default)
 - Perf dogfood job when thresholds have an owner
+- Vitest Browser Mode as a separate optional track (not recipe-e2e)
 
-## Explore (pre-release — maybe skip)
+## Explore (pre-release — decided)
 
-Not committed work. Before a major cut, **spike once** whether any of these belong as optional adapters / drivers. Likely outcome: document “out of scope” and move on.
+Spike: **faster** browser backends for mass recipe e2e. Out of scope for 1.0 — details: [Explore — alternate browsers](/guide/explore-browsers).
 
-| Project | Stars (approx.) | Notes |
-|---------|-----------------|--------|
-| [Astral](https://github.com/lino-levan/astral) | Deno ~354⭐ | High-level browser automation for Deno |
-| [Thirtyfour](https://github.com/stevepryde/thirtyfour) | Rust ~1.4k⭐ | Selenium WebDriver client |
-| [Chromiumoxide](https://github.com/mattsse/chromiumoxide) | Rust ~1.4k⭐ | CDP / Chromium control |
+| Project | Verdict |
+|---------|---------|
+| Astral | Skip for 1.0 — Deno-only; no Node/Vitest path |
+| Thirtyfour | Skip for 1.0 — WebDriver + Node bridge; unclear perf win |
+| Chromiumoxide | Skip for 1.0 — Rust CDP is the interesting perf bet; deferred for integration cost (not “Playwright already does CDP”) |
 
-Check fit vs Playwright (primary), maintenance cost, and whether a thin recipe `start`/`URL` bridge is enough. **Do not** block 1.0 on shipping them.
+Vitest Browser Mode is a **separate** optional track — not recipe-e2e. See [Browser Mode](/guide/browser-mode).
+
+`@nuxt/test-utils` extras (`$fetchComponent`, full browser render API) stay deferred until real dogfood — not 1.0 goals.
 
 ## Not goals for 1.0
 
@@ -86,6 +83,7 @@ Check fit vs Playwright (primary), maintenance cost, and whether a thin recipe `
 
 ## Next
 
+- [Support matrix](/guide/support-matrix)
 - [Why](/why)
 - [Getting started](/guide/getting-started)
 - [CONTRIBUTING](https://github.com/s00d/untestutils/blob/master/CONTRIBUTING.md)

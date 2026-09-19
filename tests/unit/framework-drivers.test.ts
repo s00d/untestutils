@@ -3,12 +3,12 @@ import { mkdtemp, writeFile, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'pathe';
 import { assertAppRoot, resolveBin, frameworkRoots, nodeEntry, staticDir } from '@untestutils/core';
-import { vite } from '@untestutils/vite';
-import { next } from '@untestutils/next';
-import { astro } from '@untestutils/astro';
-import { sveltekit } from '@untestutils/sveltekit';
-import { remix } from '@untestutils/remix';
-import { solidstart } from '@untestutils/solidstart';
+import { vite, matrix as viteMatrix } from '@untestutils/vite';
+import { next, matrix as nextMatrix } from '@untestutils/next';
+import { astro, matrix as astroMatrix } from '@untestutils/astro';
+import { sveltekit, matrix as sveltekitMatrix } from '@untestutils/sveltekit';
+import { remix, matrix as remixMatrix } from '@untestutils/remix';
+import { solidstart, matrix as solidstartMatrix } from '@untestutils/solidstart';
 import { nuxt } from '@untestutils/nuxt';
 
 describe('framework Recipe factories', () => {
@@ -28,6 +28,28 @@ describe('framework Recipe factories', () => {
     expect(r.share).toBe(share);
     expect(typeof r.start).toBe('function');
     expect(typeof r.hashInputs).toBe('function');
+  });
+
+  test.each([
+    ['vite', viteMatrix],
+    ['next', nextMatrix],
+    ['astro', astroMatrix],
+    ['sveltekit', sveltekitMatrix],
+    ['remix', remixMatrix],
+    ['solidstart', solidstartMatrix],
+  ] as const)('%s matrix() expands ids and diverges hash', async (_name, matrixFn) => {
+    const recipes = matrixFn(
+      { id: 'fw', root: process.cwd(), env: { A: '1' } },
+      {
+        default: { env: { STRATEGY: 'prefix' } },
+        alt: { env: { B: '2' } },
+      },
+    );
+    expect(Object.keys(recipes).sort()).toEqual(['fw', 'fw__alt']);
+    const a = await recipes.fw.hashInputs!();
+    const b = await recipes.fw__alt.hashInputs!();
+    expect(a).not.toEqual(b);
+    expect(a.some((x) => String(x).includes('variant:default'))).toBe(true);
   });
 
   test('resolveBin finds package bin', async () => {
@@ -54,6 +76,32 @@ describe('framework Recipe factories', () => {
     expect(resolved.endsWith('bin/cli.js')).toBe(true);
   });
 
+  test('resolveBin finds CLI when package exports block subpaths', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'ut-bin-exports-'));
+    await writeFile(join(dir, 'package.json'), JSON.stringify({ name: 'app' }));
+    const fake = join(dir, 'node_modules', 'tight-cli');
+    await mkdir(join(fake, 'bin'), { recursive: true });
+    await writeFile(
+      join(fake, 'package.json'),
+      JSON.stringify({
+        name: 'tight-cli',
+        version: '1.0.0',
+        exports: { '.': './index.js' },
+      }),
+    );
+    await writeFile(join(fake, 'index.js'), 'export {}\n');
+    const binPath = join(fake, 'bin', 'cli.mjs');
+    await writeFile(binPath, '#!/usr/bin/env node\n');
+    const resolved = resolveBin({
+      label: 'test',
+      roots: [dir],
+      directIds: ['tight-cli/bin/cli.mjs'],
+      packageJsonIds: ['tight-cli/package.json'],
+      binRelative: ['bin/cli.mjs'],
+    });
+    expect(resolved).toBe(binPath);
+  });
+
   test('hashInputs diverge by run mode', async () => {
     const a = await vite({ id: 'a', root: '/tmp/x', run: 'preview' }).hashInputs!({
       outDir: '',
@@ -64,6 +112,67 @@ describe('framework Recipe factories', () => {
       artifactsRoot: '',
     });
     expect(a).not.toEqual(b);
+  });
+
+  test('config overrides diverge hashInputs', async () => {
+    const ctx = { outDir: '', artifactsRoot: '' };
+    const bare = await vite({ id: 'v0', root: '/tmp/x', run: 'preview' }).hashInputs!(ctx);
+    const withCfg = await vite({
+      id: 'v1',
+      root: '/tmp/x',
+      run: 'preview',
+      viteConfig: { define: { __UT__: '"1"' } },
+    }).hashInputs!(ctx);
+    expect(withCfg).not.toEqual(bare);
+    expect(withCfg.some((x) => String(x).startsWith('viteConfig:'))).toBe(true);
+
+    const nextBare = await next({ id: 'n0', root: '/tmp/x', run: 'server' }).hashInputs!(ctx);
+    const nextCfg = await next({
+      id: 'n1',
+      root: '/tmp/x',
+      run: 'server',
+      nextConfig: { env: { UT: '1' } },
+    }).hashInputs!(ctx);
+    expect(nextCfg).not.toEqual(nextBare);
+    expect(nextCfg.some((x) => String(x).startsWith('nextConfig:'))).toBe(true);
+
+    const astroCfg = await astro({
+      id: 'a1',
+      root: '/tmp/x',
+      run: 'preview',
+      astroConfig: { trailingSlash: 'always' },
+    }).hashInputs!(ctx);
+    expect(astroCfg.some((x) => String(x).startsWith('astroConfig:'))).toBe(true);
+
+    const solidCfg = await solidstart({
+      id: 's1',
+      root: '/tmp/x',
+      run: 'preview',
+      appConfig: { server: { preset: 'node-server' } },
+    }).hashInputs!(ctx);
+    expect(solidCfg.some((x) => String(x).startsWith('appConfig:'))).toBe(true);
+  });
+
+  test('matrix deep-merges typed config overrides', async () => {
+    const recipes = viteMatrix(
+      {
+        id: 'spa',
+        root: '/tmp/x',
+        viteConfig: { define: { A: '1' }, server: { port: 1 } },
+      },
+      {
+        default: {},
+        patched: { viteConfig: { define: { B: '2' }, server: { strictPort: true } } },
+      },
+    );
+    const a = await recipes.spa.hashInputs!({ outDir: '', artifactsRoot: '' });
+    const b = await recipes.spa__patched.hashInputs!({ outDir: '', artifactsRoot: '' });
+    expect(a).not.toEqual(b);
+    const patchedFrag = b.find((x) => String(x).startsWith('viteConfig:'));
+    expect(patchedFrag).toBeTruthy();
+    expect(String(patchedFrag)).toContain('"A":"1"');
+    expect(String(patchedFrag)).toContain('"B":"2"');
+    expect(String(patchedFrag)).toContain('"strictPort":true');
   });
 
   test('assertAppRoot explains missing fixture', () => {

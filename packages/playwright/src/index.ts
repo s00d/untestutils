@@ -5,6 +5,8 @@ import {
   ensurePrepared,
   stopAllTargets,
   resolveArtifactsRoot,
+  resolveSessionArtifactsRoot,
+  sanitizeSession,
   progress,
   TargetRegistry,
   type Recipe,
@@ -13,7 +15,7 @@ import {
 import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { dirname, join, resolve } from 'pathe';
+import { dirname, join } from 'pathe';
 
 export interface PlaywrightHarnessOptions {
   /** Recipe map from `defineRecipes(...)` — import and pass it. */
@@ -45,15 +47,12 @@ type PWConfig = Record<string, unknown> & {
   globalTeardown?: string;
   workers?: number;
   fullyParallel?: boolean;
+  projects?: unknown;
 };
 
-/** Sanitize session segment for filesystem / env use. */
+/** @deprecated Use `sanitizeSession` from `@untestutils/core`. */
 export function sanitizePlaywrightSession(session: string): string {
-  const s = session.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '');
-  if (!s) {
-    throw new Error('[untestutils/playwright] session must be a non-empty identifier');
-  }
-  return s;
+  return sanitizeSession(session);
 }
 
 /**
@@ -68,12 +67,7 @@ export function resolvePlaywrightArtifactsRoot(
     cwd?: string;
   } = {},
 ): string {
-  const cwd = opts.cwd ?? process.cwd();
-  if (opts.artifactsRoot) return resolve(cwd, opts.artifactsRoot);
-  const base = resolveArtifactsRoot(cwd);
-  const session = opts.session ?? process.env.UNTESTUTILS_SESSION;
-  if (session) return join(base, 'sessions', sanitizePlaywrightSession(session));
-  return base;
+  return resolveSessionArtifactsRoot(opts);
 }
 
 /**

@@ -543,7 +543,7 @@ importers:
     dependencies:
       '@remix-run/dev':
         specifier: '*'
-        version: 2.17.5(@remix-run/react@2.17.5(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@6.0.3))(@remix-run/serve@2.17.5(typescript@6.0.3))(@types/node@26.6.1)(lightningcss@1.33.0)(terser@5.51.2)(typescript@6.0.3)(vite@6.4.3(@types/node@26.6.1)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1))
+        version: 2.17.5(@remix-run/react@2.17.5(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@6.0.3))(@remix-run/serve@2.17.5(typescript@6.0.3))(@types/node@26.6.1)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(tsx@4.23.13)(typescript@6.0.3)(vite@6.4.3(@types/node@26.6.1)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1))(yaml@2.9.1)
       '@remix-run/node':
         specifier: '*'
         version: 2.17.5(typescript@6.0.3)
@@ -628,9 +628,6 @@ importers:
       '@playwright/test':
         specifier: ^1.63.0
         version: 1.63.0
-      '@untestutils/ai':
-        specifier: workspace:*
-        version: link:../ai
       '@untestutils/cli':
         specifier: workspace:*
         version: link:../cli
@@ -640,9 +637,6 @@ importers:
       '@untestutils/nuxt':
         specifier: workspace:*
         version: link:../nuxt
-      '@untestutils/perf':
-        specifier: workspace:*
-        version: link:../perf
       '@untestutils/playwright':
         specifier: workspace:*
         version: link:../playwright
@@ -665,12 +659,18 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 26.6.1
+      '@untestutils/ai':
+        specifier: workspace:*
+        version: link:../ai
       '@untestutils/astro':
         specifier: workspace:*
         version: link:../astro
       '@untestutils/next':
         specifier: workspace:*
         version: link:../next
+      '@untestutils/perf':
+        specifier: workspace:*
+        version: link:../perf
       '@untestutils/remix':
         specifier: workspace:*
         version: link:../remix
@@ -839,13 +839,16 @@ importers:
     devDependencies:
       '@remix-run/dev':
         specifier: ^2.16.0
-        version: 2.17.5(@remix-run/react@2.17.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3))(@remix-run/serve@2.17.5(typescript@5.9.3))(@types/node@26.6.1)(lightningcss@1.33.0)(terser@5.51.2)(typescript@5.9.3)(vite@8.3.0(@types/node@26.6.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1))
+        version: 2.17.5(@remix-run/react@2.17.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3))(@remix-run/serve@2.17.5(typescript@5.9.3))(@types/node@26.6.1)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(tsx@4.23.13)(typescript@5.9.3)(vite@6.4.3(@types/node@26.6.1)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1))(yaml@2.9.1)
       vite:
-        specifier: 'catalog:'
-        version: 8.3.0(@types/node@26.6.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1)
+        specifier: ^6.0.0
+        version: 6.4.3(@types/node@26.6.1)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1)
 
   playground/fixtures/solid-app:
     dependencies:
+      '@solidjs/router':
+        specifier: ^0.15.0
+        version: 0.15.4(solid-js@1.9.15)
       '@solidjs/start':
         specifier: ^1.1.0
         version: 1.3.2(solid-js@1.9.15)(vinxi@0.5.11(@azure/identity@4.13.3)(@azure/storage-blob@12.33.0)(@parcel/watcher@2.6.0)(@types/node@26.6.1)(@upstash/redis@1.38.4)(db0@0.3.4)(ioredis@5.11.1)(jiti@2.7.0)(lightningcss@1.33.0)(rolldown@1.2.9)(srvx@0.11.22)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1))(vite@8.3.0(@types/node@26.6.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1))
@@ -4011,6 +4014,11 @@ packages:
 
   '@socket.io/component-emitter@3.1.2':
     resolution: {integrity: sha512-9BCxFwvbGg/RsZK9tjXd8s4UcwR0MWeFQ1XEKIQVVvAGJyINdrqKMcTRyLoK8Rse1GjzLV9cwjWV1olXRWEXVA==}
+
+  '@solidjs/router@0.15.4':
+    resolution: {integrity: sha512-WOpgg9a9T638cR+5FGbFi/IV4l2FpmBs1GpIMSPa0Ce9vyJN7Wts+X2PqMf9IYn0zUj2MlSJtm1gp7/HI/n5TQ==}
+    peerDependencies:
+      solid-js: ^1.8.6
 
   '@solidjs/start@1.3.2':
     resolution: {integrity: sha512-tasDl3utVbtP0rr4InB3ntBIFV2upvEiFrOOCkRrAA3yBfjx9elpxnc94sJQXo65PNYdAAAkPIC6h93vLrtwHg==}
@@ -13473,7 +13481,7 @@ snapshots:
     dependencies:
       tinyexec: 1.3.1
 
-  '@remix-run/dev@2.17.5(@remix-run/react@2.17.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3))(@remix-run/serve@2.17.5(typescript@5.9.3))(@types/node@26.6.1)(lightningcss@1.33.0)(terser@5.51.2)(typescript@5.9.3)(vite@8.3.0(@types/node@26.6.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1))':
+  '@remix-run/dev@2.17.5(@remix-run/react@2.17.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3))(@remix-run/serve@2.17.5(typescript@5.9.3))(@types/node@26.6.1)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(tsx@4.23.13)(typescript@5.9.3)(vite@6.4.3(@types/node@26.6.1)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1))(yaml@2.9.1)':
     dependencies:
       '@babel/core': 7.29.7
       '@babel/generator': 7.29.8
@@ -13530,17 +13538,18 @@ snapshots:
       tar-fs: 2.1.5
       tsconfig-paths: 4.2.0
       valibot: 1.5.0(typescript@5.9.3)
-      vite-node: 3.2.4(@types/node@26.6.1)(lightningcss@1.33.0)(terser@5.51.2)
+      vite-node: 3.2.4(@types/node@26.6.1)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1)
       ws: 7.5.13
     optionalDependencies:
       '@remix-run/serve': 2.17.5(typescript@5.9.3)
       typescript: 5.9.3
-      vite: 8.3.0(@types/node@26.6.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1)
+      vite: 6.4.3(@types/node@26.6.1)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1)
     transitivePeerDependencies:
       - '@types/node'
       - babel-plugin-macros
       - bluebird
       - bufferutil
+      - jiti
       - less
       - lightningcss
       - sass
@@ -13550,9 +13559,11 @@ snapshots:
       - supports-color
       - terser
       - ts-node
+      - tsx
       - utf-8-validate
+      - yaml
 
-  '@remix-run/dev@2.17.5(@remix-run/react@2.17.5(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@6.0.3))(@remix-run/serve@2.17.5(typescript@6.0.3))(@types/node@26.6.1)(lightningcss@1.33.0)(terser@5.51.2)(typescript@6.0.3)(vite@6.4.3(@types/node@26.6.1)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1))':
+  '@remix-run/dev@2.17.5(@remix-run/react@2.17.5(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@6.0.3))(@remix-run/serve@2.17.5(typescript@6.0.3))(@types/node@26.6.1)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(tsx@4.23.13)(typescript@6.0.3)(vite@6.4.3(@types/node@26.6.1)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1))(yaml@2.9.1)':
     dependencies:
       '@babel/core': 7.29.7
       '@babel/generator': 7.29.8
@@ -13609,7 +13620,7 @@ snapshots:
       tar-fs: 2.1.5
       tsconfig-paths: 4.2.0
       valibot: 1.5.0(typescript@6.0.3)
-      vite-node: 3.2.4(@types/node@26.6.1)(lightningcss@1.33.0)(terser@5.51.2)
+      vite-node: 3.2.4(@types/node@26.6.1)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1)
       ws: 7.5.13
     optionalDependencies:
       '@remix-run/serve': 2.17.5(typescript@6.0.3)
@@ -13620,6 +13631,7 @@ snapshots:
       - babel-plugin-macros
       - bluebird
       - bufferutil
+      - jiti
       - less
       - lightningcss
       - sass
@@ -13629,7 +13641,9 @@ snapshots:
       - supports-color
       - terser
       - ts-node
+      - tsx
       - utf-8-validate
+      - yaml
 
   '@remix-run/express@2.17.5(express@4.22.3)(typescript@5.9.3)':
     dependencies:
@@ -14125,6 +14139,10 @@ snapshots:
       tslib: 2.8.1
 
   '@socket.io/component-emitter@3.1.2': {}
+
+  '@solidjs/router@0.15.4(solid-js@1.9.15)':
+    dependencies:
+      solid-js: 1.9.15
 
   '@solidjs/start@1.3.2(solid-js@1.9.15)(vinxi@0.5.11(@azure/identity@4.13.3)(@azure/storage-blob@12.33.0)(@parcel/watcher@2.6.0)(@types/node@26.6.1)(@upstash/redis@1.38.4)(db0@0.3.4)(ioredis@5.11.1)(jiti@2.7.0)(lightningcss@1.33.0)(rolldown@1.2.9)(srvx@0.11.22)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1))(vite@8.3.0(@types/node@26.6.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1))':
     dependencies:
@@ -22061,15 +22079,16 @@ snapshots:
       - supports-color
       - terser
 
-  vite-node@3.2.4(@types/node@26.6.1)(lightningcss@1.33.0)(terser@5.51.2):
+  vite-node@3.2.4(@types/node@26.6.1)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1):
     dependencies:
       cac: 6.7.14
       debug: 4.4.3(supports-color@8.1.1)
       es-module-lexer: 1.7.0
       pathe: 2.0.3
-      vite: 5.4.21(@types/node@26.6.1)(lightningcss@1.33.0)(terser@5.51.2)
+      vite: 6.4.3(@types/node@26.6.1)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1)
     transitivePeerDependencies:
       - '@types/node'
+      - jiti
       - less
       - lightningcss
       - sass
@@ -22078,6 +22097,8 @@ snapshots:
       - sugarss
       - supports-color
       - terser
+      - tsx
+      - yaml
 
   vite-node@6.0.0(@types/node@26.6.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1):
     dependencies:

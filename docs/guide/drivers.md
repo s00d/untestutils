@@ -78,16 +78,53 @@ nuxt({
 })
 ```
 
-Prefer `run: 'server'` for shared e2e builds. `matrix(base, variants)` expands one fixture into many recipe ids.
+Prefer `run: 'server'` for shared e2e builds. `matrix(base, variants)` expands one fixture into many recipe ids (Nuxt merges `nuxtConfig.nitro`).
 
 ## Other frameworks
 
 | Export | Status |
 |--------|--------|
-| `untestutils/vite` \| `next` \| `astro` \| `sveltekit` | Dogfood’d in CI |
-| `untestutils/remix` \| `solidstart` | Available; not CI-stable yet — see [Roadmap](/roadmap) |
+| `untestutils/vite` \| `next` \| `astro` \| `sveltekit` \| `remix` \| `solidstart` | Dogfood’d in CI |
 
-Same Recipe idea. Options: [API: Drivers](/api/drivers).
+Same Recipe idea. Each package exports `matrix()` (merges `env` / `hashInputs` / `run`, and **deep-merges** typed config overrides). Optional `workspaceDeps: true \| 'auto'` adds monorepo `packages/*/src` to the prepare hash.
+
+### Typed config overrides
+
+Same role as Nuxt [`nuxtConfig`](/api/nuxt): JSON-serializable patches hashed into prepare identity.
+
+| Adapter | Option | How applied |
+|---------|--------|-------------|
+| `vite` / `sveltekit` / `remix` | `viteConfig` | Ephemeral `vite.untestutils.mjs` + `vite --config` (`mergeConfig`) |
+| `astro` | `astroConfig` | Ephemeral `--config` + Astro `mergeConfig` |
+| `solidstart` | `appConfig` | `withEphemeralFile` on `app.config.*` (TS-safe; vinxi discovers root config) |
+| `next` | `nextConfig` | `withEphemeralFile` on `next.config.*` (backup → merge wrapper → restore; Next has no `--config`) |
+
+```ts
+import { vite } from 'untestutils/vite'
+
+vite({
+  id: 'spa',
+  root: resolve('./fixtures/vite-spa'),
+  run: 'preview',
+  viteConfig: { define: { __UT_MARK__: JSON.stringify('1') } },
+})
+```
+
+```ts
+import { matrix } from 'untestutils/vite'
+
+export const recipes = defineRecipes({
+  ...matrix(
+    { id: 'spa', root: resolve('./fixtures/vite-spa'), run: 'preview' },
+    {
+      default: { env: { FIXTURE: 'a' } },
+      alt: { env: { FIXTURE: 'b' } },
+    },
+  ),
+}, import.meta.url)
+```
+
+Core also exports `matrixRecipe` / `defineDriver` for custom adapters. Options: [API: Drivers](/api/drivers).
 
 ## defineRecipes
 

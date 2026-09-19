@@ -20,29 +20,35 @@ New here? Read [Why](/why) first (one page).
 
 Always install facade / adapters at the **same version** (lockstep).
 
+`untestutils` pulls **core + vitest + playwright + nuxt + utils + cli**. Framework adapters (`vite` / `next` / …) and **AI / Perf** are optional peers.
+
 ::: code-group
 
 ```bash [pnpm]
-pnpm add -D untestutils @untestutils/vitest vitest
-# Nuxt recipes:
-pnpm add -D @untestutils/nuxt
-# Playwright:
-pnpm add -D @untestutils/playwright @playwright/test playwright-core
+pnpm add -D untestutils vitest
+# Optional peers when needed:
+pnpm add -D @untestutils/vite          # or next / astro / …
+pnpm add -D @untestutils/ai            # codegen
+pnpm add -D @untestutils/perf          # build/load suite
+pnpm add -D @playwright/test playwright-core
 ```
 
 ```bash [npm]
-npm install -D untestutils @untestutils/vitest vitest
+npm install -D untestutils vitest
 ```
 
 :::
 
-| Need | Packages |
-|------|----------|
-| Core + Vitest e2e | `untestutils`, `@untestutils/vitest` |
-| Playwright | `@untestutils/playwright` (+ Playwright peers) |
-| Nuxt / Vite / Next / … | `@untestutils/<framework>` only for that stack |
+| Need | Comes with `untestutils`? | Extra install |
+|------|---------------------------|---------------|
+| Core recipes + drivers | Yes | — |
+| Vitest e2e plugin / fixtures | Yes | `vitest` peer |
+| Playwright config | Yes | Playwright peers |
+| Nuxt recipes + unit | Yes | `nuxt` when building apps |
+| Vite / Next / Astro / … | No | `@untestutils/<name>` |
+| AI / Perf | No (optional) | `@untestutils/ai` / `@untestutils/perf` |
 
-Preferred imports: `@untestutils/vitest/plugin`, `@untestutils/nuxt`. Facade subpaths (`untestutils/vitest/plugin`, …) still work when peers are installed.
+See [Support matrix](/guide/support-matrix).
 
 Scaffold:
 

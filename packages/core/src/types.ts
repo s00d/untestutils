@@ -100,8 +100,10 @@ export interface HarnessHandle {
   dispose?: () => Promise<void>;
 }
 
+/** Options for `useHarness` / `leaseTarget` (orchestrator path). */
 export interface UseHarnessOptions {
-  browser?: boolean;
+  artifactsRoot?: string;
+  cwd?: string;
 }
 
 export const SCHEMA_VERSION = 1 as const;

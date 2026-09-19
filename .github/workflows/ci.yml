@@ -35,6 +35,7 @@ jobs:
       - run: pnpm run test:dist
       - run: pnpm run api:surface
       - run: pnpm run test:playground
+      - run: pnpm run test:playground:unit
       - run: pnpm run test:pack
       - run: pnpm exec playwright install --with-deps chromium firefox
       - run: pnpm run test:playwright

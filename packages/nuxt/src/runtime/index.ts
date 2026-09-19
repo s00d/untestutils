@@ -189,8 +189,9 @@ function registerGlobalHandler(app: RuntimeH3App): boolean {
 
 //#region mock macros
 /**
- * `mockNuxtImport` mocks Nuxt's auto-import functionality. This is a macro that
- * is transformed to `vi.mock()` by `untestutils/module`.
+ * `mockNuxtImport` mocks a Nuxt auto-import. `untestutils/module` rewrites the
+ * call to a runtime registry mutation on top of a hoisted `vi.mock`, so mock
+ * and `unmockNuxtImport` can be used in the same file (even across tests).
  */
 export function mockNuxtImport<T = unknown>(
   _target: string | T,
@@ -202,8 +203,9 @@ export function mockNuxtImport<T = unknown>(
 }
 
 /**
- * `unmockNuxtImport` reverts a previous `mockNuxtImport`. This is a macro that
- * is transformed by `untestutils/module`.
+ * `unmockNuxtImport` restores a previously mocked Nuxt auto-import. Safe to
+ * call in the same file as `mockNuxtImport` — it mutates the shared mock
+ * registry instead of emitting `vi.unmock`.
  */
 export function unmockNuxtImport<T = unknown>(_target: string | T): void {
   throw new Error(
