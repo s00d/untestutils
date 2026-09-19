@@ -35,6 +35,7 @@ export const doctorCommand: CommandDef<typeof doctorArgs> = defineCommand({
     const cwd = resolve(String(args.cwd));
     const checks: Check[] = [];
     const mono = findMonorepoRoot(cwd);
+    const inMono = Boolean(mono && (cwd === mono || cwd.startsWith(`${mono}/`)));
 
     const major = Number(process.versions.node.split('.')[0]);
     checks.push({
@@ -45,14 +46,14 @@ export const doctorCommand: CommandDef<typeof doctorArgs> = defineCommand({
 
     for (const id of ['untestutils', 'vitest'] as const) {
       checks.push({
-        ok: canResolve(id, cwd) || Boolean(mono),
+        ok: canResolve(id, cwd) || inMono,
         label: `package ${id}`,
         hint: `pnpm add -D ${id}`,
       });
     }
 
     for (const id of ['@playwright/test', 'playwright-core', 'nuxt'] as const) {
-      const ok = canResolve(id, cwd) || (Boolean(mono) && id !== 'nuxt');
+      const ok = canResolve(id, cwd) || (inMono && id !== 'nuxt');
       checks.push({
         ok,
         optional: true,
@@ -69,7 +70,7 @@ export const doctorCommand: CommandDef<typeof doctorArgs> = defineCommand({
       'playwright.config.mts',
       'vitest.unit.config.ts',
     ];
-    const hasConfig = Boolean(mono) || configCandidates.some((f) => existsSync(join(cwd, f)));
+    const hasConfig = inMono || configCandidates.some((f) => existsSync(join(cwd, f)));
     checks.push({
       ok: hasConfig,
       label: 'vitest/playwright config',
@@ -77,7 +78,7 @@ export const doctorCommand: CommandDef<typeof doctorArgs> = defineCommand({
     });
 
     const hasRecipes =
-      Boolean(mono) ||
+      inMono ||
       existsSync(join(cwd, 'recipes.ts')) ||
       existsSync(join(cwd, 'tests/recipes.ts')) ||
       existsSync(join(cwd, 'e2e/recipes.ts'));

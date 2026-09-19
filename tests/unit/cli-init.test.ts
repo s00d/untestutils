@@ -24,6 +24,21 @@ describe('cli templates', () => {
       expect(cfg).toContain('untestutils/vitest/plugin');
       const smoke = await readFile(join(dir, 'tests/e2e/smoke.test.ts'), 'utf8');
       expect(smoke).toContain('useHarness');
+      const fixture = await readFile(join(dir, 'fixtures/basic/index.html'), 'utf8');
+      expect(fixture).toContain('<html');
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test('applyPreset playwright scopes to *.spec.ts', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'untestutils-init-pw-'));
+    try {
+      await applyPreset(dir, 'playwright', { force: true });
+      const cfg = await readFile(join(dir, 'playwright.config.ts'), 'utf8');
+      expect(cfg).toContain("testMatch: '**/*.spec.ts'");
+      const fixture = await readFile(join(dir, 'fixtures/basic/index.html'), 'utf8');
+      expect(fixture).toContain('<html');
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

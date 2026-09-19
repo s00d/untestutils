@@ -7,20 +7,26 @@ export type InitPreset = 'vitest' | 'playwright' | 'nuxt' | 'full';
 
 /** Relative template paths under src/templates */
 const PRESET_FILES: Record<InitPreset, string[]> = {
-  vitest: ['vitest/vitest.config.ts', 'vitest/recipes.ts', 'vitest/tests/e2e/smoke.test.ts'],
+  vitest: [
+    'vitest/vitest.config.ts',
+    'vitest/recipes.ts',
+    'vitest/tests/e2e/smoke.test.ts',
+    'vitest/fixtures/basic/index.html',
+  ],
   playwright: [
     'playwright/playwright.config.ts',
     'playwright/recipes.ts',
     'playwright/tests/e2e/smoke.spec.ts',
+    'vitest/fixtures/basic/index.html',
   ],
   nuxt: ['nuxt/vitest.config.ts', 'nuxt/recipes.ts', 'nuxt/tests/e2e/smoke.test.ts'],
   full: [
     'vitest/vitest.config.ts',
     'playwright/playwright.config.ts',
-    'nuxt/recipes.ts',
+    'vitest/recipes.ts',
     'vitest/tests/e2e/smoke.test.ts',
     'playwright/tests/e2e/smoke.spec.ts',
-    'nuxt/tests/e2e/nuxt-smoke.test.ts',
+    'vitest/fixtures/basic/index.html',
   ],
 };
 

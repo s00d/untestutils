@@ -10,6 +10,7 @@ export default defineConfig(
     workers: 2,
     fullyParallel: true,
     testDir: './tests/e2e',
+    testMatch: '**/*.spec.ts',
     use: {
       headless: true,
     },

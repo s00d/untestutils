@@ -56,7 +56,16 @@ export const initCommand: CommandDef<typeof initArgs> = defineCommand({
       const deps = peersForPreset(preset);
       consola.start(`Installing dependencies: ${deps.join(', ')}`);
       try {
-        await addDependency(deps, { cwd, silent: false });
+        // Fresh projects often have no lockfile — nypm cannot auto-detect. Prefer
+        // detected PM, else pnpm (matches engines/docs), always as -D.
+        const { detectPackageManager } = await import('nypm');
+        const detected = await detectPackageManager(cwd, { includeParentDirs: false });
+        await addDependency(deps, {
+          cwd,
+          silent: false,
+          packageManager: detected?.name ?? 'pnpm',
+          dev: true,
+        });
         consola.success('Dependencies installed');
       } catch (e) {
         consola.warn(`Could not install automatically: ${e}`);
