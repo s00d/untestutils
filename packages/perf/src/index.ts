@@ -15,6 +15,12 @@ export { runLoadPhase } from './load';
 export { runArtillery, packArtilleryReport, ARTILLERY_PINNED_VERSION } from './load/artillery';
 export type { RunArtilleryOpts } from './load/artillery';
 export { runAutocannon, AUTOCANNON_PINNED_VERSION } from './load/autocannon';
+export {
+  buildArtilleryScript,
+  describeArtilleryLoad,
+  isArtilleryKnobs,
+  ARTILLERY_LOAD_DEFAULTS,
+} from './load/script';
 export { parseAutocannonJson, parseArtilleryJson } from './load/parse';
 export { averageTargetResults, averageBuildMetrics, averageLoadMetrics } from './average';
 export { checkThresholds } from './thresholds';

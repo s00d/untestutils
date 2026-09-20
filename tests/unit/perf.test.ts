@@ -100,6 +100,30 @@ describe('perf/parse', () => {
     expect(parseAutocannonJson(raw).durationSec).toBe(5);
   });
 
+  test('buildArtilleryScript builds phases without YAML', async () => {
+    const { buildArtilleryScript, ARTILLERY_LOAD_DEFAULTS } = await import(
+      '../../packages/perf/src/load/script'
+    );
+    const script = buildArtilleryScript({
+      paths: ['/', '/ru'],
+      warmUpSec: 1,
+      warmUpArrivalRate: 6,
+      durationSec: 3,
+      arrivalRate: 8,
+      maxVusers: 8,
+    });
+    expect(script.config?.phases).toEqual([
+      { name: 'warm-up', duration: 1, arrivalRate: 6, maxVusers: 6 },
+      { name: 'main', duration: 3, arrivalRate: 8, maxVusers: 8 },
+    ]);
+    expect(script.scenarios?.[0]).toMatchObject({
+      'parallel-requests': 2,
+    });
+    expect(buildArtilleryScript().config?.phases?.at(-1)).toMatchObject({
+      duration: ARTILLERY_LOAD_DEFAULTS.durationSec,
+    });
+  });
+
   test('parses artillery json', () => {
     const raw = JSON.stringify({
       aggregate: {

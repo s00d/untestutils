@@ -10,10 +10,19 @@ outline: deep
 This is **build/load benchmarking** (`untestutils/perf`), not the e2e shared-prepare story. **Optional peer** — unit tests run on every PR; a tiny dogfood job is available via CI `workflow_dispatch` (`run_perf`). Not part of the 1.0 stability bar — see [Roadmap](/roadmap). For CI speed of tests, see [Why](/why).
 :::
 
-One load configuration for everyone (defaults: autocannon **10c × 5s** after [calibration](/guide/perf-calibration)). Builds reuse `.output` when the **content hash** of `hashInputs` (default: target root) matches — same idea as prepare cache, not a manual skip flag.
+Builds reuse `.output` when the **content hash** of `hashInputs` (default: target root) matches — same idea as prepare cache.
+
+## Load
+
+Prefer **programmatic Artillery knobs** (no YAML). Autocannon remains available for single-URL saturation.
 
 ```ts
-import { definePerfSuite, consoleReporter, jsonReporter } from 'untestutils/perf'
+import {
+  definePerfSuite,
+  consoleReporter,
+  jsonReporter,
+  buildArtilleryScript,
+} from 'untestutils/perf'
 
 export default definePerfSuite({
   runs: 1,
@@ -25,33 +34,36 @@ export default definePerfSuite({
     {
       id: 'app',
       root: './playground',
-      build: {
-        command: 'pnpm',
-        args: ['exec', 'nuxi', 'build'],
-        // optional: hashInputs: ['./playground', '../packages/foo/src'],
-      },
+      build: { command: 'pnpm', args: ['exec', 'nuxi', 'build'] },
       start: {
         command: 'node',
         args: ['.output/server/index.mjs'],
         port: 10000,
       },
-      load: { autocannon: { connections: 10, durationSec: 5 } },
+      load: {
+        // Knobs → in-process Artillery script (paths, phases, maxVU)
+        artillery: {
+          durationSec: 10,
+          arrivalRate: 40,
+          maxVusers: 40,
+          warmUpSec: 2,
+          paths: ['/', '/page', '/ru'],
+        },
+        // Optional single-URL hammer:
+        // autocannon: { connections: 10, durationSec: 5 },
+      },
     },
   ],
   thresholds: { buildTimeSec: 120, responseTimeP95: 500 },
 })
 ```
 
+`artillery: true` uses defaults. `{ script }` for a full inline TestScript. `{ config: 'file.yml' }` still works but is legacy.
+
 ```bash
 untestutils perf --config ./perf.config.ts
 untestutils perf --config ./perf.config.ts --only app --skip-load
 untestutils perf --config ./perf.config.ts --force-build
-untestutils perf --config ./perf.config.ts --runs 3 --json
 ```
 
-- Build cache: sources unchanged → skip rebuild, still report bundle sizes (`build.cached: true`).
-- `--force-build` — ignore warm cache.
-- `--cool-down <ms>` — pause between runs/targets (suite default **500**).
-- `postBuildDelayMs` — sleep after build before start (default **200**).
-
-Optional peers (exact): `autocannon@8.0.0` (programmatic API) and `artillery@2.0.34` (in-process private core runner — version-locked). No `npx`/CLI fallback. Inline Artillery scripts: `load.artillery.script` (prefer `import type { TestScript } from 'artillery'` at the call site). Custom reporters: `onStart` / `onTarget` / `onEnd`.
+Optional peers (exact): `autocannon@8.0.0`, `artillery@2.0.34` (in-process private core — version-locked). See [calibration](/guide/perf-calibration) and [Artillery verify](/guide/perf-artillery-verify).

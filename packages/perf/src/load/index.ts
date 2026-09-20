@@ -1,7 +1,34 @@
 import type { StartedTarget } from '../start';
-import type { ArtilleryResult, AutocannonResult, LoadMetrics, PerfTarget } from '../types';
+import type {
+  ArtilleryLoadKnobs,
+  ArtilleryResult,
+  AutocannonResult,
+  LoadMetrics,
+  PerfTarget,
+} from '../types';
 import { runArtillery } from './artillery';
 import { runAutocannon } from './autocannon';
+import {
+  buildArtilleryScript,
+  describeArtilleryLoad,
+  isArtilleryKnobs,
+} from './script';
+
+function resolveArtilleryKnobs(
+  artillery: NonNullable<PerfTarget['load']>['artillery'],
+  loadPaths?: string[],
+): ArtilleryLoadKnobs {
+  if (artillery === true || artillery === undefined) {
+    return { paths: loadPaths };
+  }
+  if (isArtilleryKnobs(artillery)) {
+    return {
+      ...artillery,
+      paths: artillery.paths?.length ? artillery.paths : loadPaths,
+    };
+  }
+  return { paths: loadPaths };
+}
 
 export async function runLoadPhase(opts: {
   target: PerfTarget;
@@ -32,19 +59,30 @@ export async function runLoadPhase(opts: {
 
   let artillery: ArtilleryResult | undefined;
   if (load.artillery) {
-    if ('script' in load.artillery) {
+    const art = load.artillery;
+    if (typeof art === 'object' && art && 'script' in art) {
       console.log('  → artillery inline script');
       artillery = await runArtillery({
-        script: load.artillery.script,
+        script: art.script,
+        artifactsDir,
+        name: target.id,
+        cwd: target.root,
+        targetUrl: started.url,
+      });
+    } else if (typeof art === 'object' && art && 'config' in art) {
+      console.log(`  → artillery ${art.config}`);
+      artillery = await runArtillery({
+        configPath: art.config,
         artifactsDir,
         name: target.id,
         cwd: target.root,
         targetUrl: started.url,
       });
     } else {
-      console.log(`  → artillery ${load.artillery.config}`);
+      const knobs = resolveArtilleryKnobs(art, load.paths);
+      console.log(`  → artillery ${describeArtilleryLoad(knobs)} @ ${started.url}`);
       artillery = await runArtillery({
-        configPath: load.artillery.config,
+        script: buildArtilleryScript(knobs),
         artifactsDir,
         name: target.id,
         cwd: target.root,

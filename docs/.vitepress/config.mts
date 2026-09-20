@@ -86,6 +86,8 @@ export default withMermaid(
               { text: 'Explore browsers', link: '/guide/explore-browsers' },
               { text: 'Perf suite', link: '/guide/perf' },
               { text: 'Perf calibration', link: '/guide/perf-calibration' },
+              { text: 'Artillery verify', link: '/guide/perf-artillery-verify' },
+              { text: 'Duration sweep', link: '/guide/perf-duration-sweep' },
               { text: 'AI codegen', link: '/guide/ai' },
               { text: 'Extending', link: '/guide/extending' },
             ],

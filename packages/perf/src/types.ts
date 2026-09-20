@@ -139,16 +139,35 @@ export type PerfTargetStart = SpawnSpec & {
   readyTimeoutMs?: number;
 };
 
+export type ArtilleryLoadKnobs = {
+  /** Main phase length (seconds). */
+  durationSec?: number;
+  /** New VUs / second in the main phase. */
+  arrivalRate?: number;
+  /** Cap concurrent VUs (closest analogue to connection count). */
+  maxVusers?: number;
+  /** Warm-up phase length; `0` skips warm-up. */
+  warmUpSec?: number;
+  warmUpArrivalRate?: number;
+  /** GET paths for the scenario (absolute path strings). */
+  paths?: string[];
+  /** Scenario name in the Artillery report. */
+  name?: string;
+};
+
 export type PerfTargetLoad = {
-  /** Paths for documentation / future multi-url; autocannon hits base URL */
+  /** Paths recorded for docs / merged into Artillery knobs when omitted there. */
   paths?: string[];
   /** `true` = defaults; object = overrides. Omitted = skip autocannon. */
   autocannon?: boolean | { connections?: number; durationSec?: number };
   /**
-   * Artillery load. Prefer a file path, or pass an inline script object
-   * (type as `import('artillery').TestScript` when the peer is installed).
+   * Artillery load (preferred for multi-URL). Programmatic forms:
+   * - `true` → default knobs (`buildArtilleryScript()`)
+   * - knobs `{ durationSec, arrivalRate, maxVusers, paths, … }`
+   * - `{ script }` inline TestScript
+   * - `{ config }` YAML/JSON path (legacy; prefer knobs/script)
    */
-  artillery?: { config: string } | { script: ArtilleryScript };
+  artillery?: true | ArtilleryLoadKnobs | { config: string } | { script: ArtilleryScript };
 };
 
 export type PerfTargetBundle = {
