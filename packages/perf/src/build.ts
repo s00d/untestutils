@@ -1,6 +1,8 @@
+import { existsSync, writeFileSync, readFileSync, mkdirSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { performance } from 'node:perf_hooks';
-import { resolve } from 'pathe';
+import { join, resolve } from 'pathe';
+import { contentHash, hashString } from '@untestutils/core';
 import { measureBundle } from './bundle';
 import { ProcessSampler } from './process-sample';
 import type { BuildMetrics, PerfTarget } from './types';
@@ -17,7 +19,63 @@ const emptyProcess = {
   avgCpuPct: 0,
 };
 
-export async function measureBuild(target: PerfTarget): Promise<BuildMetrics> {
+const BUILD_HASH_FILE = '.perf-build-hash';
+
+function outputDir(target: PerfTarget): string {
+  return resolve(target.root, target.build.outputDir ?? '.output');
+}
+
+function hashSidecar(target: PerfTarget): string {
+  return join(outputDir(target), BUILD_HASH_FILE);
+}
+
+/** Hash inputs: `build.hashInputs` or target root (contentHash, skips .output/node_modules/…). */
+export async function resolveBuildHashInputs(target: PerfTarget): Promise<string[]> {
+  const custom = target.build.hashInputs;
+  if (typeof custom === 'function') return custom(target);
+  if (custom?.length) return custom.map((p) => resolve(target.root, p));
+  return [resolve(target.root)];
+}
+
+/** Content hash of sources + build command fingerprint (same idea as core ArtifactStore). */
+export async function computeBuildHash(target: PerfTarget): Promise<string> {
+  const inputs = await resolveBuildHashInputs(target);
+  const content = await contentHash(inputs);
+  const cmd = [target.build.command, ...(target.build.args ?? [])].join(' ');
+  const env = JSON.stringify(target.build.env ?? {});
+  return hashString(`perf-build|1|${target.id}|${cmd}|${env}|${content}`);
+}
+
+export function readStoredBuildHash(target: PerfTarget): string | undefined {
+  const path = hashSidecar(target);
+  if (!existsSync(path)) return undefined;
+  try {
+    return readFileSync(path, 'utf8').trim() || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function writeStoredBuildHash(target: PerfTarget, hash: string): void {
+  const out = outputDir(target);
+  mkdirSync(out, { recursive: true });
+  writeFileSync(hashSidecar(target), `${hash}\n`, 'utf8');
+}
+
+/** True when output exists and stored hash matches current sources. */
+export async function isBuildWarm(target: PerfTarget): Promise<boolean> {
+  if (!existsSync(outputDir(target))) return false;
+  const current = await computeBuildHash(target);
+  return readStoredBuildHash(target) === current;
+}
+
+/** Reuse an existing warm build (bundle sizes only; timings zeroed). */
+export function cachedBuildMetrics(target: PerfTarget): BuildMetrics {
+  const bundle = target.bundle ? measureBundle(resolve(target.root), target.bundle) : undefined;
+  return { buildTimeSec: 0, cached: true, ...emptyProcess, bundle };
+}
+
+async function runBuildCommand(target: PerfTarget): Promise<BuildMetrics> {
   const cwd = resolve(target.build.cwd ?? target.root);
   const args = target.build.args ?? [];
   const env: NodeJS.ProcessEnv = {
@@ -68,4 +126,25 @@ export async function measureBuild(target: PerfTarget): Promise<BuildMetrics> {
   const bundle = target.bundle ? measureBundle(resolve(target.root), target.bundle) : undefined;
 
   return { buildTimeSec, ...processMetrics, bundle };
+}
+
+/**
+ * Build target unless sources are unchanged (contentHash warm cache).
+ * Pass `force: true` to always rebuild.
+ */
+export async function measureBuild(
+  target: PerfTarget,
+  opts: { force?: boolean } = {},
+): Promise<BuildMetrics> {
+  const hash = await computeBuildHash(target);
+
+  if (!opts.force && (await isBuildWarm(target))) {
+    console.log('  → build (cache hit, sources unchanged)');
+    return cachedBuildMetrics(target);
+  }
+
+  console.log(opts.force ? '  → build (forced)' : '  → build');
+  const metrics = await runBuildCommand(target);
+  writeStoredBuildHash(target, hash);
+  return metrics;
 }

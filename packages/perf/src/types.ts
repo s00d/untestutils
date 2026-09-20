@@ -19,6 +19,8 @@ export type ProcessMetrics = {
 };
 
 export type AutocannonResult = {
+  /** Requested duration (seconds) — used for LoadMetrics.durationSec when artillery is absent. */
+  durationSec: number;
   requests: { average: number; mean: number; total: number };
   latency: {
     average: number;
@@ -85,6 +87,8 @@ export type ArtilleryScript = {
 
 export type BuildMetrics = ProcessMetrics & {
   buildTimeSec: number;
+  /** True when build was reused (content hash warm). */
+  cached?: boolean;
   bundle?: BundleSize;
 };
 
@@ -119,6 +123,13 @@ export type SpawnSpec = {
 export type PerfTargetBuild = SpawnSpec & {
   /** Filter stdout lines to log (default: high-signal only) */
   logFilter?: (line: string) => boolean;
+  /**
+   * Paths hashed for warm-cache invalidation (default: `target.root`).
+   * Same contentHash rules as prepare: skips node_modules, .output, .nuxt, …
+   */
+  hashInputs?: string[] | ((target: PerfTarget) => string[] | Promise<string[]>);
+  /** Build output directory relative to root (default `.output`). */
+  outputDir?: string;
 };
 
 export type PerfTargetStart = SpawnSpec & {
@@ -183,7 +194,10 @@ export type PerfSuite = {
   artifactsDir?: string;
   runs?: number;
   skipLoad?: boolean;
+  /** Pause between runs / targets. Default 500. */
   coolDownMs?: number;
+  /** Sleep after build before start. Default 200. */
+  postBuildDelayMs?: number;
   targets: PerfTarget[];
   beforeAll?: (suite: PerfSuite) => void | Promise<void>;
   beforeTarget?: (target: PerfTarget) => void | Promise<void>;
@@ -197,6 +211,10 @@ export type PerfSuite = {
 export type RunPerfOptions = {
   runs?: number;
   skipLoad?: boolean;
+  /** Always rebuild even when content hash is warm. */
+  forceBuild?: boolean;
+  coolDownMs?: number;
+  postBuildDelayMs?: number;
   only?: string | string[];
   json?: boolean;
 };

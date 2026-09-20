@@ -5,8 +5,9 @@ import type { AutocannonResult } from '../types';
 
 export const AUTOCANNON_PINNED_VERSION = '8.0.0';
 
-function normalize(raw: AutocannonRawResult): AutocannonResult {
+function normalize(raw: AutocannonRawResult, durationSec: number): AutocannonResult {
   return {
+    durationSec,
     requests: {
       average: raw.requests.average,
       mean: raw.requests.mean ?? raw.requests.average,
@@ -35,7 +36,7 @@ export async function runAutocannon(opts: {
   name: string;
 }): Promise<AutocannonResult> {
   const connections = opts.connections ?? 10;
-  const duration = opts.durationSec ?? 10;
+  const duration = opts.durationSec ?? 5;
   mkdirSync(opts.artifactsDir, { recursive: true });
 
   let run: (options: {
@@ -57,7 +58,7 @@ export async function runAutocannon(opts: {
     connections,
     duration,
   });
-  const result = normalize(raw);
+  const result = normalize(raw, duration);
 
   writeFileSync(
     join(opts.artifactsDir, `autocannon-${opts.name}.json`),

@@ -82,6 +82,7 @@ describe('perf/bundle', () => {
 describe('perf/parse', () => {
   test('parses autocannon json', () => {
     const raw = JSON.stringify({
+      durationSec: 5,
       requests: { average: 100, mean: 100, total: 1000 },
       latency: {
         average: 10,
@@ -96,6 +97,7 @@ describe('perf/parse', () => {
       errors: 0,
     });
     expect(parseAutocannonJson(raw).requests.average).toBe(100);
+    expect(parseAutocannonJson(raw).durationSec).toBe(5);
   });
 
   test('parses artillery json', () => {
@@ -193,6 +195,40 @@ describe('perf/parse', () => {
   }, 20_000);
 });
 
+describe('perf/build cache', () => {
+  test('isBuildWarm requires matching content hash sidecar', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'ut-skip-'));
+    try {
+      const {
+        isBuildWarm,
+        computeBuildHash,
+        writeStoredBuildHash,
+        cachedBuildMetrics,
+      } = await import('../../packages/perf/src/build');
+      writeFileSync(join(dir, 'app.ts'), 'export const x = 1\n');
+      const target = {
+        id: 't',
+        root: dir,
+        build: { command: 'true' },
+        start: { command: 'true', port: 1 },
+      };
+      expect(await isBuildWarm(target)).toBe(false);
+      mkdirSync(join(dir, '.output'), { recursive: true });
+      expect(await isBuildWarm(target)).toBe(false);
+      const hash = await computeBuildHash(target);
+      writeStoredBuildHash(target, hash);
+      expect(await isBuildWarm(target)).toBe(true);
+      writeFileSync(join(dir, 'app.ts'), 'export const x = 2\n');
+      expect(await isBuildWarm(target)).toBe(false);
+      const cached = cachedBuildMetrics(target);
+      expect(cached.cached).toBe(true);
+      expect(cached.buildTimeSec).toBe(0);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('perf/thresholds', () => {
   test('detects failures', () => {
     const results: PerfTargetResult[] = [
@@ -255,6 +291,7 @@ describe('perf/load process metrics timing', () => {
       runAutocannon: async () => {
         order.push('autocannon');
         return {
+          durationSec: 1,
           requests: { average: 1, mean: 1, total: 1 },
           latency: { average: 1, mean: 1, min: 1, max: 1, p50: 1, p97_5: 1, p99: 1 },
           throughput: { average: 1 },
@@ -297,6 +334,8 @@ describe('perf/load process metrics timing', () => {
     expect(order).toEqual(['note', 'autocannon', 'note', 'take']);
     expect(metrics.maxCpuPct).toBe(42);
     expect(metrics.maxMemoryMb).toBe(128);
+    expect(metrics.durationSec).toBe(1);
+    expect(metrics.requestsPerSecond).toBe(1);
     vi.doUnmock('../../packages/perf/src/load/autocannon');
     vi.doUnmock('../../packages/perf/src/load/artillery');
     vi.resetModules();

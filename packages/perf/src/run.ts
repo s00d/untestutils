@@ -10,6 +10,9 @@ import { startTarget } from './start';
 import { checkThresholds } from './thresholds';
 import type { PerfSuite, PerfTarget, PerfTargetResult, RunPerfOptions } from './types';
 
+const DEFAULT_COOL_DOWN_MS = 500;
+const DEFAULT_POST_BUILD_DELAY_MS = 200;
+
 function selectTargets(suite: PerfSuite, only?: string | string[]): PerfTarget[] {
   const filter = only ?? suite.only;
   if (!filter || filter === 'all') return suite.targets;
@@ -19,20 +22,23 @@ function selectTargets(suite: PerfSuite, only?: string | string[]): PerfTarget[]
 
 async function runTargetOnce(
   target: PerfTarget,
-  skipLoad: boolean,
-  artifactsDir: string,
+  opts: {
+    skipLoad: boolean;
+    forceBuild: boolean;
+    postBuildDelayMs: number;
+    artifactsDir: string;
+  },
 ): Promise<PerfTargetResult> {
   console.log(`\n══════════ ${target.label ?? target.id} ══════════`);
-  console.log('  → build');
-  const build = await measureBuild(target);
+  const build = await measureBuild(target, { force: opts.forceBuild });
 
   let load;
-  if (!skipLoad && target.load) {
-    await delay(1000);
+  if (!opts.skipLoad && target.load) {
+    await delay(opts.postBuildDelayMs);
     console.log('  → start + load');
     const started = await startTarget(target);
     try {
-      load = await runLoadPhase({ target, started, artifactsDir });
+      load = await runLoadPhase({ target, started, artifactsDir: opts.artifactsDir });
     } finally {
       await started.stop();
     }
@@ -52,7 +58,10 @@ export async function runPerfSuite(
 ): Promise<PerfTargetResult[]> {
   const runs = options.runs ?? suite.runs ?? 1;
   const skipLoad = options.skipLoad ?? suite.skipLoad ?? false;
-  const coolDownMs = suite.coolDownMs ?? 3000;
+  const forceBuild = options.forceBuild ?? false;
+  const coolDownMs = options.coolDownMs ?? suite.coolDownMs ?? DEFAULT_COOL_DOWN_MS;
+  const postBuildDelayMs =
+    options.postBuildDelayMs ?? suite.postBuildDelayMs ?? DEFAULT_POST_BUILD_DELAY_MS;
   const artifactsDir = resolve(suite.artifactsDir ?? '.untestutils/perf');
   mkdirSync(artifactsDir, { recursive: true });
 
@@ -76,7 +85,14 @@ export async function runPerfSuite(
     const samples: PerfTargetResult[] = [];
     for (let run = 1; run <= runs; run++) {
       console.log(`\n▸ ${target.label ?? target.id} · run ${run}/${runs}`);
-      samples.push(await runTargetOnce(target, skipLoad, artifactsDir));
+      samples.push(
+        await runTargetOnce(target, {
+          skipLoad,
+          forceBuild,
+          postBuildDelayMs,
+          artifactsDir,
+        }),
+      );
       if (run < runs) await delay(coolDownMs);
     }
 

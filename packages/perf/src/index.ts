@@ -1,6 +1,13 @@
 export { definePerfSuite } from './define';
 export { runPerfSuite } from './run';
-export { measureBuild } from './build';
+export {
+  measureBuild,
+  isBuildWarm,
+  computeBuildHash,
+  cachedBuildMetrics,
+  resolveBuildHashInputs,
+  writeStoredBuildHash,
+} from './build';
 export { measureBundle } from './bundle';
 export { startTarget, isPortFree } from './start';
 export type { StartedTarget } from './start';

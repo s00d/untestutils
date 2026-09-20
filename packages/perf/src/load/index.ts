@@ -18,7 +18,7 @@ export async function runLoadPhase(opts: {
   if (load.autocannon) {
     const ac = load.autocannon === true ? {} : load.autocannon;
     console.log(
-      `  → autocannon ${ac.connections ?? 10}c × ${ac.durationSec ?? 10}s @ ${started.url}`,
+      `  → autocannon ${ac.connections ?? 10}c × ${ac.durationSec ?? 5}s @ ${started.url}`,
     );
     autocannon = await runAutocannon({
       url: started.url,
@@ -57,7 +57,9 @@ export async function runLoadPhase(opts: {
   const processMetrics = started.takeProcessMetrics();
 
   const summary = artillery?.aggregate;
-  const durationSec = summary ? (summary.lastMetricAt - summary.firstMetricAt) / 1000 : undefined;
+  const durationSec = summary
+    ? (summary.lastMetricAt - summary.firstMetricAt) / 1000
+    : autocannon?.durationSec;
   const rt = summary?.summaries['http.response_time'];
 
   return {

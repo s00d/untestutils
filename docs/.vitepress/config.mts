@@ -85,6 +85,7 @@ export default withMermaid(
               { text: 'Vitest Browser Mode', link: '/guide/browser-mode' },
               { text: 'Explore browsers', link: '/guide/explore-browsers' },
               { text: 'Perf suite', link: '/guide/perf' },
+              { text: 'Perf calibration', link: '/guide/perf-calibration' },
               { text: 'AI codegen', link: '/guide/ai' },
               { text: 'Extending', link: '/guide/extending' },
             ],

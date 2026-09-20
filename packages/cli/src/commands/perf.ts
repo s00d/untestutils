@@ -22,6 +22,15 @@ const perfArgs = {
     default: false,
     description: 'Measure builds only (skip autocannon/artillery)',
   },
+  forceBuild: {
+    type: 'boolean',
+    default: false,
+    description: 'Rebuild even when content-hash cache is warm',
+  },
+  coolDown: {
+    type: 'string',
+    description: 'Override cool-down between runs/targets (ms, default 500)',
+  },
   json: {
     type: 'boolean',
     default: false,
@@ -38,6 +47,7 @@ export const perfCommand: CommandDef<typeof perfArgs> = defineCommand({
       'Examples:',
       '  untestutils perf --config ./perf.config.ts',
       '  untestutils perf --config ./perf.config.ts --only micro --skip-load',
+      '  untestutils perf --config ./perf.config.ts --force-build',
       '  untestutils perf --config ./perf.config.ts --runs 3 --json',
     ].join('\n'),
   },
@@ -68,11 +78,19 @@ export const perfCommand: CommandDef<typeof perfArgs> = defineCommand({
       process.exitCode = 1;
       return;
     }
+    const coolDownMs = args.coolDown !== undefined ? Number(args.coolDown) : undefined;
+    if (coolDownMs !== undefined && (!Number.isFinite(coolDownMs) || coolDownMs < 0)) {
+      consola.error('--cool-down must be a non-negative number (ms)');
+      process.exitCode = 1;
+      return;
+    }
 
     await runPerfSuite(suite, {
       only,
       runs,
       skipLoad: args.skipLoad,
+      forceBuild: args.forceBuild,
+      coolDownMs,
       json: args.json,
     });
   },

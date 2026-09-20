@@ -37,6 +37,7 @@ function averageAutocannon(
   const present = items.filter((a): a is AutocannonResult => Boolean(a));
   if (!present.length) return undefined;
   return {
+    durationSec: avg(present.map((a) => a.durationSec)) ?? present[0]!.durationSec,
     requests: {
       average: avg(present.map((a) => a.requests.average)) ?? 0,
       mean: avg(present.map((a) => a.requests.mean)) ?? 0,
@@ -60,6 +61,7 @@ export function averageBuildMetrics(results: BuildMetrics[]): BuildMetrics {
   if (!results.length) throw new Error('cannot average empty build metrics');
   return {
     buildTimeSec: avg(results.map((r) => r.buildTimeSec)) ?? 0,
+    cached: results.every((r) => r.cached),
     maxMemoryMb: avg(results.map((r) => r.maxMemoryMb)) ?? 0,
     minMemoryMb: avg(results.map((r) => r.minMemoryMb)) ?? 0,
     avgMemoryMb: avg(results.map((r) => r.avgMemoryMb)) ?? 0,
