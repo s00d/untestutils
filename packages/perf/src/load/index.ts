@@ -12,6 +12,8 @@ export async function runLoadPhase(opts: {
   const load = target.load;
   if (!load) return started.takeProcessMetrics();
 
+  started.noteProcess();
+
   let autocannon: AutocannonResult | undefined;
   if (load.autocannon) {
     const ac = load.autocannon === true ? {} : load.autocannon;
@@ -25,6 +27,7 @@ export async function runLoadPhase(opts: {
       artifactsDir,
       name: target.id,
     });
+    started.noteProcess();
   }
 
   let artillery: ArtilleryResult | undefined;
@@ -48,9 +51,9 @@ export async function runLoadPhase(opts: {
         targetUrl: started.url,
       });
     }
+    started.noteProcess();
   }
 
-  // After load tools finish — sampling ran throughout autocannon/artillery.
   const processMetrics = started.takeProcessMetrics();
 
   const summary = artillery?.aggregate;

@@ -235,13 +235,20 @@ describe('perf/thresholds', () => {
 });
 
 describe('perf/load process metrics timing', () => {
-  test('finalizeSamples zeros when no samples (old early-take bug)', () => {
+  test('finalizeSamples zeros when no samples', () => {
     const m = finalizeSamples(createSampleAccumulator());
     expect(m.maxCpuPct).toBe(0);
     expect(m.avgMemoryMb).toBe(0);
   });
 
-  test('runLoadPhase takes process metrics after load tools', async () => {
+  test('parseCpuTime handles mm:ss and hh:mm:ss', async () => {
+    const { parseCpuTime } = await import('../../packages/perf/src/process-sample');
+    expect(parseCpuTime('01:30')).toBe(90);
+    expect(parseCpuTime('1:02:03')).toBe(3723);
+    expect(parseCpuTime('1-00:00:01')).toBe(86401);
+  });
+
+  test('runLoadPhase notes checkpoints around load tools', async () => {
     const order: string[] = [];
     vi.resetModules();
     vi.doMock('../../packages/perf/src/load/autocannon', () => ({
@@ -263,6 +270,9 @@ describe('perf/load process metrics timing', () => {
     const started: StartedTarget = {
       url: 'http://127.0.0.1:9',
       port: 9,
+      noteProcess: () => {
+        order.push('note');
+      },
       takeProcessMetrics: () => {
         order.push('take');
         const acc = createSampleAccumulator();
@@ -284,7 +294,7 @@ describe('perf/load process metrics timing', () => {
       artifactsDir: await mkdtemp(join(tmpdir(), 'ut-perf-load-')),
     });
 
-    expect(order).toEqual(['autocannon', 'take']);
+    expect(order).toEqual(['note', 'autocannon', 'note', 'take']);
     expect(metrics.maxCpuPct).toBe(42);
     expect(metrics.maxMemoryMb).toBe(128);
     vi.doUnmock('../../packages/perf/src/load/autocannon');

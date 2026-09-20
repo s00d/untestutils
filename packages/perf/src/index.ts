@@ -12,7 +12,7 @@ export { parseAutocannonJson, parseArtilleryJson } from './load/parse';
 export { averageTargetResults, averageBuildMetrics, averageLoadMetrics } from './average';
 export { checkThresholds } from './thresholds';
 export { formatBytes, formatSec } from './format';
-export { sampleProcess, startProcessMonitor } from './process-sample';
+export { sampleProcess, readCpuSeconds, parseCpuTime, ProcessSampler } from './process-sample';
 export { consoleReporter } from './report/console';
 export { jsonReporter } from './report/json';
 export type * from './types';

@@ -2,11 +2,20 @@ import { spawn } from 'node:child_process';
 import { performance } from 'node:perf_hooks';
 import { resolve } from 'pathe';
 import { measureBundle } from './bundle';
-import { finalizeSamples, startProcessMonitor } from './process-sample';
+import { ProcessSampler } from './process-sample';
 import type { BuildMetrics, PerfTarget } from './types';
 
 const defaultLogFilter = (line: string) =>
   /Building|built|ERROR|WARN|preset|complete|Nitro|Client|Server|✓|✔/i.test(line);
+
+const emptyProcess = {
+  maxMemoryMb: 0,
+  minMemoryMb: 0,
+  avgMemoryMb: 0,
+  maxCpuPct: 0,
+  minCpuPct: 0,
+  avgCpuPct: 0,
+};
 
 export async function measureBuild(target: PerfTarget): Promise<BuildMetrics> {
   const cwd = resolve(target.build.cwd ?? target.root);
@@ -39,12 +48,8 @@ export async function measureBuild(target: PerfTarget): Promise<BuildMetrics> {
     if (t) console.error(`  [build stderr] ${t.slice(0, 240)}`);
   });
 
-  const monitor = child.pid
-    ? startProcessMonitor(child.pid, 1000, (s) => {
-        /* quiet unless long builds — status every 5s handled by caller progress */
-        void s;
-      })
-    : undefined;
+  const sampler = child.pid ? new ProcessSampler(child.pid) : undefined;
+  sampler?.begin();
 
   try {
     await new Promise<void>((resolvePromise, reject) => {
@@ -55,21 +60,11 @@ export async function measureBuild(target: PerfTarget): Promise<BuildMetrics> {
       child.on('error', reject);
     });
   } finally {
-    monitor?.stop();
+    sampler?.note();
   }
 
   const buildTimeSec = (performance.now() - started) / 1000;
-  const processMetrics = monitor
-    ? finalizeSamples(monitor.acc)
-    : {
-        maxMemoryMb: 0,
-        minMemoryMb: 0,
-        avgMemoryMb: 0,
-        maxCpuPct: 0,
-        minCpuPct: 0,
-        avgCpuPct: 0,
-      };
-
+  const processMetrics = sampler ? sampler.finalize() : emptyProcess;
   const bundle = target.bundle ? measureBundle(resolve(target.root), target.bundle) : undefined;
 
   return { buildTimeSec, ...processMetrics, bundle };

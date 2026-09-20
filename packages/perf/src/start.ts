@@ -2,16 +2,27 @@ import { spawn } from 'node:child_process';
 import net from 'node:net';
 import { getFreePort, LOOPBACK_HOST, waitForHttpReady } from '@untestutils/core';
 import { resolve } from 'pathe';
-import { finalizeSamples, startProcessMonitor, type SampleAccumulator } from './process-sample';
+import { ProcessSampler } from './process-sample';
 import type { PerfTarget, ProcessMetrics } from './types';
 
 export type StartedTarget = {
   url: string;
   port: number;
   pid?: number;
-  stop: () => Promise<void>;
+  /** Push a process checkpoint (call at load phase boundaries). */
+  noteProcess: () => void;
   takeProcessMetrics: () => ProcessMetrics;
+  stop: () => Promise<void>;
 };
+
+const emptyMetrics = (): ProcessMetrics => ({
+  maxMemoryMb: 0,
+  minMemoryMb: 0,
+  avgMemoryMb: 0,
+  maxCpuPct: 0,
+  minCpuPct: 0,
+  avgCpuPct: 0,
+});
 
 /** True when nothing is listening / bound on host:port. */
 export function isPortFree(port: number, host: string = LOOPBACK_HOST): Promise<boolean> {
@@ -61,18 +72,6 @@ export async function startTarget(target: PerfTarget): Promise<StartedTarget> {
     if (t) console.error(`  [server stderr] ${t.slice(0, 200)}`);
   });
 
-  let monitorAcc: SampleAccumulator | undefined;
-  let stopMonitor: (() => void) | undefined;
-
-  const empty: ProcessMetrics = {
-    maxMemoryMb: 0,
-    minMemoryMb: 0,
-    avgMemoryMb: 0,
-    maxCpuPct: 0,
-    minCpuPct: 0,
-    avgCpuPct: 0,
-  };
-
   try {
     await new Promise<void>((resolveReady, reject) => {
       const onExit = (code: number | null) => {
@@ -97,21 +96,16 @@ export async function startTarget(target: PerfTarget): Promise<StartedTarget> {
     throw err;
   }
 
-  // Sample only while serving (ready → stop). Starting earlier often yields 0 samples
-  // when ready is fast (< monitor interval), which zeroed load CPU/RSS in reports.
-  if (child.pid) {
-    const m = startProcessMonitor(child.pid);
-    monitorAcc = m.acc;
-    stopMonitor = m.stop;
-  }
+  const sampler = child.pid ? new ProcessSampler(child.pid) : undefined;
+  sampler?.begin();
 
   return {
     url,
     port,
     pid: child.pid,
-    takeProcessMetrics: () => (monitorAcc ? finalizeSamples(monitorAcc) : empty),
+    noteProcess: () => sampler?.note(),
+    takeProcessMetrics: () => (sampler ? sampler.finalize() : emptyMetrics()),
     stop: async () => {
-      stopMonitor?.();
       await killChild(child);
     },
   };
