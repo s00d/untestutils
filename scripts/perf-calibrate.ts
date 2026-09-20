@@ -7,7 +7,6 @@ import { createServer } from 'node:net';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { pathToFileURL } from 'node:url';
 
 const I18N_ROOT = '/Users/s00d/packeges/nuxt-i18n-next';
 const PORT_BASE = 19_100;

@@ -138,7 +138,7 @@ export async function runPerfSuite(
         preferredPort: portCursor ?? target.start.port,
       });
       samples.push(result);
-      if (boundPort != null) portCursor = boundPort + 1;
+      if (boundPort !== undefined) portCursor = boundPort + 1;
       if (run < runs) await delay(coolDownMs);
     }
 

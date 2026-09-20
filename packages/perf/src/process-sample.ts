@@ -157,7 +157,7 @@ export class ProcessSampler {
     const base = finalizeSamples(this.acc);
     const cpuEnd = readCpuSeconds(this.pid);
     const wallSec = (performance.now() - this.wallStarted) / 1000;
-    if (this.cpuStarted != null && cpuEnd != null && wallSec > 0) {
+    if (this.cpuStarted !== null && cpuEnd !== null && wallSec > 0) {
       const spanAvg = Math.max(0, ((cpuEnd - this.cpuStarted) / wallSec) * 100);
       return {
         ...base,

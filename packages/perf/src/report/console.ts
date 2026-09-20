@@ -72,7 +72,7 @@ function printSummary(results: PerfTargetResult[], runs: number): void {
       const p95 = r.load?.responseTimeP95;
       const err = r.load?.errorRate;
       console.log(
-        `  ${pad(r.label, 18)} ${pad(formatSec(r.build.buildTimeSec), 10)} ${pad(ac != null ? ac.toFixed(0) : '—', 8)} ${pad(art != null ? art.toFixed(0) : '—', 8)} ${pad(p95 != null ? `${p95.toFixed(0)}ms` : '—', 10)} ${err != null ? `${err.toFixed(2)}%` : '—'}`,
+        `  ${pad(r.label, 18)} ${pad(formatSec(r.build.buildTimeSec), 10)} ${pad(ac !== undefined ? ac.toFixed(0) : '—', 8)} ${pad(art !== undefined ? art.toFixed(0) : '—', 8)} ${pad(p95 !== undefined ? `${p95.toFixed(0)}ms` : '—', 10)} ${err !== undefined ? `${err.toFixed(2)}%` : '—'}`,
       );
     }
   } else {
@@ -82,7 +82,7 @@ function printSummary(results: PerfTargetResult[], runs: number): void {
       const p95 = r.load?.responseTimeP95;
       const err = r.load?.errorRate;
       console.log(
-        `  ${pad(r.label, 18)} ${pad(formatSec(r.build.buildTimeSec), 10)} ${pad(rps != null ? rps.toFixed(0) : '—', 8)} ${pad(p95 != null ? `${p95.toFixed(0)}ms` : '—', 10)} ${err != null ? `${err.toFixed(2)}%` : '—'}`,
+        `  ${pad(r.label, 18)} ${pad(formatSec(r.build.buildTimeSec), 10)} ${pad(rps !== undefined ? rps.toFixed(0) : '—', 8)} ${pad(p95 !== undefined ? `${p95.toFixed(0)}ms` : '—', 10)} ${err !== undefined ? `${err.toFixed(2)}%` : '—'}`,
       );
     }
   }
@@ -134,7 +134,7 @@ function bindConsoleRenderer(ui: PerfUi): () => void {
           const r = e.result;
           const rps = r.load?.requestsPerSecond;
           console.log(
-            `${r.label}  build ${formatSec(r.build.buildTimeSec)}${r.build.cached ? ' cached' : ''}${rps != null ? ` · ${rps.toFixed(0)} RPS` : ''}`,
+            `${r.label}  build ${formatSec(r.build.buildTimeSec)}${r.build.cached ? ' cached' : ''}${rps !== undefined ? ` · ${rps.toFixed(0)} RPS` : ''}`,
           );
         } else {
           printTargetResult(e.result, v);
