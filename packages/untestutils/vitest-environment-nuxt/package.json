@@ -1,6 +1,6 @@
 {
   "name": "vitest-environment-nuxt",
-  "version": "0.6.6",
+  "version": "0.6.7",
   "description": "Compat alias: same as vitest-environment-untestutils (environment: 'nuxt')",
   "files": [
     "index.mjs"
