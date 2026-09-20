@@ -6,6 +6,7 @@ import type {
   LoadMetrics,
   PerfTarget,
 } from '../types';
+import type { HarnessOpts } from '../ui';
 import { runArtillery } from './artillery';
 import { runAutocannon } from './autocannon';
 import {
@@ -30,12 +31,17 @@ function resolveArtilleryKnobs(
   return { paths: loadPaths };
 }
 
+/**
+ * Run configured load tools.
+ * Primary top-level metrics prefer Artillery when both are present
+ * (multi-URL / knobs path); Autocannon remains on `load.autocannon`.
+ */
 export async function runLoadPhase(opts: {
   target: PerfTarget;
   started: StartedTarget;
   artifactsDir: string;
-}): Promise<LoadMetrics> {
-  const { target, started, artifactsDir } = opts;
+} & HarnessOpts): Promise<LoadMetrics> {
+  const { target, started, artifactsDir, ui } = opts;
   const load = target.load;
   if (!load) return started.takeProcessMetrics();
 
@@ -44,9 +50,11 @@ export async function runLoadPhase(opts: {
   let autocannon: AutocannonResult | undefined;
   if (load.autocannon) {
     const ac = load.autocannon === true ? {} : load.autocannon;
-    console.log(
-      `  → autocannon ${ac.connections ?? 10}c × ${ac.durationSec ?? 5}s @ ${started.url}`,
-    );
+    ui?.emit({
+      type: 'phase',
+      phase: 'autocannon',
+      detail: `${ac.connections ?? 10}c×${ac.durationSec ?? 5}s`,
+    });
     autocannon = await runAutocannon({
       url: started.url,
       connections: ac.connections,
@@ -61,32 +69,39 @@ export async function runLoadPhase(opts: {
   if (load.artillery) {
     const art = load.artillery;
     if (typeof art === 'object' && art && 'script' in art) {
-      console.log('  → artillery inline script');
+      ui?.emit({ type: 'phase', phase: 'artillery', detail: 'inline script' });
       artillery = await runArtillery({
         script: art.script,
         artifactsDir,
         name: target.id,
         cwd: target.root,
         targetUrl: started.url,
+        ui,
       });
     } else if (typeof art === 'object' && art && 'config' in art) {
-      console.log(`  → artillery ${art.config}`);
+      ui?.emit({ type: 'phase', phase: 'artillery', detail: art.config });
       artillery = await runArtillery({
         configPath: art.config,
         artifactsDir,
         name: target.id,
         cwd: target.root,
         targetUrl: started.url,
+        ui,
       });
     } else {
       const knobs = resolveArtilleryKnobs(art, load.paths);
-      console.log(`  → artillery ${describeArtilleryLoad(knobs)} @ ${started.url}`);
+      ui?.emit({
+        type: 'phase',
+        phase: 'artillery',
+        detail: describeArtilleryLoad(knobs),
+      });
       artillery = await runArtillery({
         script: buildArtilleryScript(knobs),
         artifactsDir,
         name: target.id,
         cwd: target.root,
         targetUrl: started.url,
+        ui,
       });
     }
     started.noteProcess();
@@ -94,11 +109,19 @@ export async function runLoadPhase(opts: {
 
   const processMetrics = started.takeProcessMetrics();
 
+  // Primary fields: Artillery wins when both ran (documented).
   const summary = artillery?.aggregate;
   const durationSec = summary
     ? (summary.lastMetricAt - summary.firstMetricAt) / 1000
     : autocannon?.durationSec;
   const rt = summary?.summaries['http.response_time'];
+
+  const httpRequests = summary?.counters['http.requests'] as number | undefined;
+  const http500 = (summary?.counters['http.codes.500'] as number | undefined) ?? 0;
+  const artilleryErrorRate =
+    summary && httpRequests
+      ? (http500 / httpRequests) * 100
+      : undefined;
 
   return {
     ...processMetrics,
@@ -111,13 +134,10 @@ export async function runLoadPhase(opts: {
     responseTimeP99: rt?.p99 ?? autocannon?.latency.p99,
     requestsPerSecond: summary?.rates['http.request_rate'] ?? autocannon?.requests.average,
     errorRate:
-      summary?.counters['http.codes.500'] && summary?.counters['http.requests']
-        ? ((summary.counters['http.codes.500'] as number) /
-            (summary.counters['http.requests'] as number)) *
-          100
-        : autocannon
-          ? (autocannon.errors / Math.max(1, autocannon.requests.total)) * 100
-          : undefined,
+      artilleryErrorRate ??
+      (autocannon
+        ? (autocannon.errors / Math.max(1, autocannon.requests.total)) * 100
+        : undefined),
     autocannon,
     artillery,
   };

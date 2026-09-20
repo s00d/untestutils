@@ -193,9 +193,18 @@ export type PerfReporterContext = {
   skipLoad: boolean;
 };
 
+export type PerfPhaseEvent = {
+  phase: 'build' | 'start' | 'autocannon' | 'artillery' | 'done';
+  detail?: string;
+  targetId?: string;
+};
+
 export type PerfReporter = {
   name: string;
+  /** When set (e.g. consoleReporter), harness emits progress through this UI. */
+  ui?: import('./ui').PerfUi;
   onStart?: (suite: PerfSuite) => void | Promise<void>;
+  onPhase?: (e: PerfPhaseEvent) => void | Promise<void>;
   onTarget?: (result: PerfTargetResult) => void | Promise<void>;
   onEnd?: (ctx: PerfReporterContext) => void | Promise<void>;
 };
@@ -208,6 +217,8 @@ export type PerfThresholds = {
   errorRate?: number;
 };
 
+export type PerfVerbosity = import('./ui').PerfVerbosity;
+
 export type PerfSuite = {
   /** Absolute or cwd-relative output for JSON / temp load artifacts */
   artifactsDir?: string;
@@ -217,6 +228,8 @@ export type PerfSuite = {
   coolDownMs?: number;
   /** Sleep after build before start. Default 200. */
   postBuildDelayMs?: number;
+  /** Console progress detail. Default `default`. */
+  verbosity?: PerfVerbosity;
   targets: PerfTarget[];
   beforeAll?: (suite: PerfSuite) => void | Promise<void>;
   beforeTarget?: (target: PerfTarget) => void | Promise<void>;
@@ -236,4 +249,5 @@ export type RunPerfOptions = {
   postBuildDelayMs?: number;
   only?: string | string[];
   json?: boolean;
+  verbosity?: PerfVerbosity;
 };

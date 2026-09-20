@@ -3,6 +3,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'pathe';
 import { pathToFileURL } from 'node:url';
 import type { ArtilleryResult, ArtilleryScript, ArtillerySummary } from '../types';
+import type { HarnessOpts } from '../ui';
 
 export type { ArtilleryScript };
 
@@ -15,10 +16,11 @@ export type RunArtilleryOpts = {
   cwd?: string;
   /** Overrides `config.target` (needed when the suite picks a free port). */
   targetUrl?: string;
-} & (
-  | { configPath: string; script?: undefined }
-  | { script: ArtilleryScript; configPath?: undefined }
-);
+} & HarnessOpts &
+  (
+    | { configPath: string; script?: undefined }
+    | { script: ArtilleryScript; configPath?: undefined }
+  );
 
 type HistogramSketch = {
   min: number;
@@ -208,12 +210,15 @@ export async function runArtillery(opts: RunArtilleryOpts): Promise<ArtilleryRes
   const aggregateRaw = await new Promise<PeriodMetrics>((resolvePromise, reject) => {
     ee.on('stats', (stats) => {
       intermediates.push(stats as PeriodMetrics);
-      const line = String((stats as PeriodMetrics).period ?? '');
-      if (line) console.log(`  [artillery] period ${line}`);
+      // period epoch ms is noise — skip
     });
     ee.on('phaseStarted', (spec) => {
       const name = (spec as { name?: string } | undefined)?.name;
-      console.log(`  [artillery] Phase started${name ? `: ${name}` : ''}`);
+      opts.ui?.emit({
+        type: 'phase',
+        phase: 'artillery',
+        detail: `phase ${name ?? 'unnamed'}`,
+      });
     });
     ee.on('done', (stats) => {
       resolvePromise(stats as PeriodMetrics);

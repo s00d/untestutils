@@ -294,6 +294,91 @@ describe('perf/thresholds', () => {
   });
 });
 
+describe('perf/ui console', () => {
+  test('defaultLogFilter drops Nitro chunk trees', async () => {
+    const { defaultLogFilter } = await import('../../packages/perf/src/build');
+    expect(defaultLogFilter('✔ Client built in 510ms')).toBe(true);
+    expect(defaultLogFilter('ERROR boom')).toBe(true);
+    expect(
+      defaultLogFilter('├─ .output/server/chunks/nitro/nitro.mjs (196 kB)'),
+    ).toBe(false);
+    expect(defaultLogFilter('.output/server/index.mjs')).toBe(false);
+  });
+
+  test('formatLoadLines shows dual AC/Art rows', async () => {
+    const { _consoleFormat } = await import('../../packages/perf/src/report/console');
+    const lines = _consoleFormat.formatLoadLines({
+      maxMemoryMb: 0,
+      minMemoryMb: 0,
+      avgMemoryMb: 0,
+      maxCpuPct: 0,
+      minCpuPct: 0,
+      avgCpuPct: 0,
+      requestsPerSecond: 82,
+      responseTimeP95: 596,
+      errorRate: 0,
+      autocannon: {
+        durationSec: 5,
+        requests: { average: 195, mean: 195, total: 1000 },
+        latency: { average: 10, mean: 10, min: 1, max: 50, p50: 8, p97_5: 12, p99: 20 },
+        throughput: { average: 1 },
+        errors: 0,
+      },
+      artillery: {
+        aggregate: {
+          counters: {},
+          rates: { 'http.request_rate': 82 },
+          firstMetricAt: 0,
+          lastMetricAt: 1000,
+          summaries: {},
+          histograms: {},
+        },
+      },
+    });
+    expect(lines[0]).toMatch(/AC\s+195 RPS/);
+    expect(lines[1]).toMatch(/Art 82 RPS/);
+  });
+
+  test('hasUsefulProcessMetrics omits zeros', async () => {
+    const { hasUsefulProcessMetrics } = await import('../../packages/perf/src/ui');
+    expect(
+      hasUsefulProcessMetrics({
+        maxMemoryMb: 0,
+        minMemoryMb: 0,
+        avgMemoryMb: 0,
+        maxCpuPct: 0,
+        minCpuPct: 0,
+        avgCpuPct: 0,
+      }),
+    ).toBe(false);
+    expect(
+      hasUsefulProcessMetrics({
+        maxMemoryMb: 12,
+        minMemoryMb: 1,
+        avgMemoryMb: 5,
+        maxCpuPct: 0,
+        minCpuPct: 0,
+        avgCpuPct: 0,
+      }),
+    ).toBe(true);
+  });
+
+  test('processSuffix hides zeros unless verbose', async () => {
+    const { _consoleFormat } = await import('../../packages/perf/src/report/console');
+    const zero = {
+      maxMemoryMb: 0,
+      minMemoryMb: 0,
+      avgMemoryMb: 0,
+      maxCpuPct: 0,
+      minCpuPct: 0,
+      avgCpuPct: 0,
+    };
+    expect(_consoleFormat.processSuffix(zero, true, 'default')).toBe('');
+    expect(_consoleFormat.processSuffix(zero, false, 'default')).toBe('');
+    expect(_consoleFormat.processSuffix(zero, false, 'verbose')).toBe(' · RSS n/a');
+  });
+});
+
 describe('perf/load process metrics timing', () => {
   test('finalizeSamples zeros when no samples', () => {
     const m = finalizeSamples(createSampleAccumulator());
@@ -331,6 +416,7 @@ describe('perf/load process metrics timing', () => {
     const started: StartedTarget = {
       url: 'http://127.0.0.1:9',
       port: 9,
+      requestedPort: 9,
       noteProcess: () => {
         order.push('note');
       },

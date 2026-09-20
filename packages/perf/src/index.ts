@@ -7,10 +7,11 @@ export {
   cachedBuildMetrics,
   resolveBuildHashInputs,
   writeStoredBuildHash,
+  defaultLogFilter,
 } from './build';
 export { measureBundle } from './bundle';
 export { startTarget, isPortFree } from './start';
-export type { StartedTarget } from './start';
+export type { StartedTarget, StartTargetOpts } from './start';
 export { runLoadPhase } from './load';
 export { runArtillery, packArtilleryReport, ARTILLERY_PINNED_VERSION } from './load/artillery';
 export type { RunArtilleryOpts } from './load/artillery';
@@ -27,5 +28,8 @@ export { checkThresholds } from './thresholds';
 export { formatBytes, formatSec } from './format';
 export { sampleProcess, readCpuSeconds, parseCpuTime, ProcessSampler } from './process-sample';
 export { consoleReporter } from './report/console';
+export type { ConsoleReporterOpts } from './report/console';
 export { jsonReporter } from './report/json';
+export { createPerfUi, hasUsefulProcessMetrics } from './ui';
+export type { PerfUi, PerfUiEvent, PerfUiPhase, PerfVerbosity, HarnessOpts } from './ui';
 export type * from './types';

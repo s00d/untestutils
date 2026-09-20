@@ -6,9 +6,20 @@ import { contentHash, hashString } from '@untestutils/core';
 import { measureBundle } from './bundle';
 import { ProcessSampler } from './process-sample';
 import type { BuildMetrics, PerfTarget } from './types';
+import type { HarnessOpts } from './ui';
 
-const defaultLogFilter = (line: string) =>
-  /Building|built|ERROR|WARN|preset|complete|Nitro|Client|Server|✓|✔/i.test(line);
+/**
+ * High-signal Nuxt/Nitro lifecycle lines only.
+ * Excludes Nitro file trees (`.output/…`, box-drawing chunk lists).
+ */
+export function defaultLogFilter(line: string): boolean {
+  if (/[├└│]/.test(line) || /\.output\//.test(line)) return false;
+  return (
+    /\b(Building|built|ERROR|WARN|preset|complete)\b/i.test(line) ||
+    /✔|✓|✨/.test(line) ||
+    /Client built|Server built|Nitro server built|Build complete/i.test(line)
+  );
+}
 
 const emptyProcess = {
   maxMemoryMb: 0,
@@ -75,7 +86,7 @@ export function cachedBuildMetrics(target: PerfTarget): BuildMetrics {
   return { buildTimeSec: 0, cached: true, ...emptyProcess, bundle };
 }
 
-async function runBuildCommand(target: PerfTarget): Promise<BuildMetrics> {
+async function runBuildCommand(target: PerfTarget, opts: HarnessOpts = {}): Promise<BuildMetrics> {
   const cwd = resolve(target.build.cwd ?? target.root);
   const args = target.build.args ?? [];
   const env: NodeJS.ProcessEnv = {
@@ -95,15 +106,25 @@ async function runBuildCommand(target: PerfTarget): Promise<BuildMetrics> {
   });
 
   const filter = target.build.logFilter ?? defaultLogFilter;
+  const verbose = opts.ui?.verbosity === 'verbose';
+
   child.stdout?.on('data', (buf: Buffer) => {
     for (const line of buf.toString().split('\n')) {
       const t = line.trim();
-      if (t && filter(t)) console.log(`  [build] ${t.slice(0, 200)}`);
+      if (!t) continue;
+      if (filter(t) || verbose) {
+        opts.ui?.emit({ type: 'log', channel: 'build', line: t.slice(0, 200) });
+      }
     }
   });
   child.stderr?.on('data', (buf: Buffer) => {
-    const t = buf.toString().trim();
-    if (t) console.error(`  [build stderr] ${t.slice(0, 240)}`);
+    for (const line of buf.toString().split('\n')) {
+      const t = line.trim();
+      if (!t) continue;
+      if (verbose || filter(t) || /WARN|ERROR/i.test(t)) {
+        opts.ui?.emit({ type: 'log', channel: 'build', line: t.slice(0, 240) });
+      }
+    }
   });
 
   const sampler = child.pid ? new ProcessSampler(child.pid) : undefined;
@@ -134,17 +155,21 @@ async function runBuildCommand(target: PerfTarget): Promise<BuildMetrics> {
  */
 export async function measureBuild(
   target: PerfTarget,
-  opts: { force?: boolean } = {},
+  opts: { force?: boolean } & HarnessOpts = {},
 ): Promise<BuildMetrics> {
   const hash = await computeBuildHash(target);
 
   if (!opts.force && (await isBuildWarm(target))) {
-    console.log('  → build (cache hit, sources unchanged)');
+    opts.ui?.emit({ type: 'phase', phase: 'build', detail: 'cache hit (sources unchanged)' });
     return cachedBuildMetrics(target);
   }
 
-  console.log(opts.force ? '  → build (forced)' : '  → build');
-  const metrics = await runBuildCommand(target);
+  opts.ui?.emit({
+    type: 'phase',
+    phase: 'build',
+    detail: opts.force ? 'forced' : '…',
+  });
+  const metrics = await runBuildCommand(target, opts);
   writeStoredBuildHash(target, hash);
   return metrics;
 }

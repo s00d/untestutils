@@ -4,15 +4,23 @@ import { getFreePort, LOOPBACK_HOST, waitForHttpReady } from '@untestutils/core'
 import { resolve } from 'pathe';
 import { ProcessSampler } from './process-sample';
 import type { PerfTarget, ProcessMetrics } from './types';
+import type { HarnessOpts } from './ui';
 
 export type StartedTarget = {
   url: string;
   port: number;
+  /** Port originally requested (before free-port fallback). */
+  requestedPort: number;
   pid?: number;
   /** Push a process checkpoint (call at load phase boundaries). */
   noteProcess: () => void;
   takeProcessMetrics: () => ProcessMetrics;
   stop: () => Promise<void>;
+};
+
+export type StartTargetOpts = HarnessOpts & {
+  /** Override `target.start.port` (suite port allocator). */
+  preferredPort?: number;
 };
 
 const emptyMetrics = (): ProcessMetrics => ({
@@ -35,18 +43,24 @@ export function isPortFree(port: number, host: string = LOOPBACK_HOST): Promise<
   });
 }
 
-export async function startTarget(target: PerfTarget): Promise<StartedTarget> {
+export async function startTarget(
+  target: PerfTarget,
+  opts: StartTargetOpts = {},
+): Promise<StartedTarget> {
   const cwd = resolve(target.start.cwd ?? target.root);
   const host = target.start.host ?? LOOPBACK_HOST;
-  let port = target.start.port;
+  const requestedPort = opts.preferredPort ?? target.start.port;
+  let port = requestedPort;
 
   // Fixed ports (e.g. fixture LOAD_PORT=10000) collide with other local services —
   // never treat an already-bound listener as "our" server ready.
   if (!(await isPortFree(port, host))) {
-    const next = await getFreePort(host);
-    console.warn(`[untestutils/perf] ${host}:${port} busy — using ${next}`);
-    port = next;
+    port = await getFreePort(host);
   }
+
+  const detail =
+    port === requestedPort ? `:${port}` : `:${port}  (${requestedPort} in use)`;
+  opts.ui?.emit({ type: 'phase', phase: 'start', detail });
 
   const url = `http://${host}:${port}`;
 
@@ -63,13 +77,20 @@ export async function startTarget(target: PerfTarget): Promise<StartedTarget> {
     detached: process.platform !== 'win32',
   });
 
+  const verbose = opts.ui?.verbosity === 'verbose';
   child.stdout?.on('data', (b: Buffer) => {
-    const t = b.toString().trim();
-    if (t) console.log(`  [server] ${t.slice(0, 200)}`);
+    for (const line of b.toString().split('\n')) {
+      const t = line.trim();
+      if (t && verbose) opts.ui?.emit({ type: 'log', channel: 'server', line: t.slice(0, 200) });
+    }
   });
   child.stderr?.on('data', (b: Buffer) => {
-    const t = b.toString().trim();
-    if (t) console.error(`  [server stderr] ${t.slice(0, 200)}`);
+    for (const line of b.toString().split('\n')) {
+      const t = line.trim();
+      if (t && (verbose || /ERROR|WARN/i.test(t))) {
+        opts.ui?.emit({ type: 'log', channel: 'server', line: t.slice(0, 200) });
+      }
+    }
   });
 
   try {
@@ -102,6 +123,7 @@ export async function startTarget(target: PerfTarget): Promise<StartedTarget> {
   return {
     url,
     port,
+    requestedPort,
     pid: child.pid,
     noteProcess: () => sampler?.note(),
     takeProcessMetrics: () => (sampler ? sampler.finalize() : emptyMetrics()),
