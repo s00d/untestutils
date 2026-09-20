@@ -57,8 +57,7 @@ const speedupLabel = computed(() => {
         <p class="mass-panel-metric">
           Measured wall:
           <strong>{{ results.naive.wallSec }}s</strong>
-          · Vitest {{ results.naive.durationSec }}s ·
-          {{ results.naive.tests }} passed ·
+          · Vitest {{ results.naive.durationSec }}s · {{ results.naive.tests }} passed ·
           <code>{{ results.naive.command }}</code>
         </p>
         <pre class="mass-log"><code>{{ results.naive.excerpt.join('\n') }}</code></pre>
@@ -73,8 +72,7 @@ const speedupLabel = computed(() => {
         <p class="mass-panel-metric">
           Measured wall:
           <strong>{{ results.shared.wallSec }}s</strong>
-          · Vitest {{ results.shared.durationSec }}s ·
-          {{ results.shared.tests }} passed ·
+          · Vitest {{ results.shared.durationSec }}s · {{ results.shared.tests }} passed ·
           <code>{{ results.shared.command }}</code>
         </p>
         <pre class="mass-log"><code>{{ results.shared.excerpt.join('\n') }}</code></pre>
@@ -82,11 +80,10 @@ const speedupLabel = computed(() => {
     </div>
 
     <p class="mass-note">
-      Same {{ results.tests }} Playwright scenarios (goto + Nuxt hydration + clicks/cookies).
-      Only prepare strategy differs. Captured
+      Same {{ results.tests }} Playwright scenarios (goto + Nuxt hydration + clicks/cookies). Only
+      prepare strategy differs. Captured
       <time v-if="results.measuredAt">{{ results.measuredAt }}</time
-      >.
-      Example:
+      >. Example:
       <a href="https://github.com/s00d/untestutils/tree/master/examples/mass-nuxt"
         ><code>examples/mass-nuxt</code></a
       >

@@ -55,7 +55,9 @@ async function startServer(): Promise<ChildProcess> {
   return child;
 }
 
-function extract(art: Awaited<ReturnType<typeof import('../packages/perf/src/load/artillery').runArtillery>>) {
+function extract(
+  art: Awaited<ReturnType<typeof import('../packages/perf/src/load/artillery').runArtillery>>,
+) {
   const summary = art.aggregate;
   const rt = summary.summaries['http.response_time'];
   const requests = Number(summary.counters['http.requests'] ?? 0);

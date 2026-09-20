@@ -12,10 +12,17 @@ const OUT = join(ROOT, 'docs/public/demo');
 const ESC = String.fromCharCode(27);
 
 function stripAnsi(s: string): string {
-  return s.split(ESC).join('\0').replace(/\0\[[0-9;]*m/g, '').replace(/\0/g, '');
+  return s
+    .split(ESC)
+    .join('\0')
+    .replace(/\0\[[0-9;]*m/g, '')
+    .replace(/\0/g, '');
 }
 
-function runPnpm(args: string[], wipeSession?: string): { code: number; log: string; wallMs: number } {
+function runPnpm(
+  args: string[],
+  wipeSession?: string,
+): { code: number; log: string; wallMs: number } {
   if (wipeSession) {
     rmSync(join(ROOT, '.untestutils/sessions', wipeSession), { recursive: true, force: true });
   }
@@ -101,8 +108,7 @@ const main = defineCommand({
 
     const sharedWallSec = Math.round((shared.wallMs / 1000) * 10) / 10;
     const naiveWallSec = Math.round((naive.wallMs / 1000) * 10) / 10;
-    const speedup =
-      shared.wallMs > 0 ? Math.round((naive.wallMs / shared.wallMs) * 10) / 10 : 0;
+    const speedup = shared.wallMs > 0 ? Math.round((naive.wallMs / shared.wallMs) * 10) / 10 : 0;
 
     const results = {
       files: sharedSummary.files,

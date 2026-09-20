@@ -44,12 +44,7 @@ export function createPerfUi(verbosity: PerfVerbosity = 'default'): PerfUi {
  * Sub-1MB / sub-1% noise would display as `0` — treat as empty.
  */
 export function hasUsefulProcessMetrics(m: ProcessMetrics): boolean {
-  return (
-    m.maxMemoryMb >= 1 ||
-    m.avgMemoryMb >= 1 ||
-    m.maxCpuPct >= 1 ||
-    m.avgCpuPct >= 1
-  );
+  return m.maxMemoryMb >= 1 || m.avgMemoryMb >= 1 || m.maxCpuPct >= 1 || m.avgCpuPct >= 1;
 }
 
 export type HarnessOpts = {

@@ -192,9 +192,7 @@ async function main() {
       g !== undefined && acGapMicroI18n
         ? (Math.abs(g - acGapMicroI18n) / acGapMicroI18n) * 100
         : Infinity;
-    const minReqs = Math.min(
-      ...cells.filter((c) => c.durationSec === d).flatMap((c) => c.reqs),
-    );
+    const minReqs = Math.min(...cells.filter((c) => c.durationSec === d).flatMap((c) => c.reqs));
     const minRps = Math.min(...Object.values(means));
     // Prefer: correct rank, gap close to autocannon, enough samples, not endless wall time
     const wallSec = (WARM_SEC + d) * FIXTURES.length * REPEATS;

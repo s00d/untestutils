@@ -9,11 +9,7 @@ import type {
 import type { HarnessOpts } from '../ui';
 import { runArtillery } from './artillery';
 import { runAutocannon } from './autocannon';
-import {
-  buildArtilleryScript,
-  describeArtilleryLoad,
-  isArtilleryKnobs,
-} from './script';
+import { buildArtilleryScript, describeArtilleryLoad, isArtilleryKnobs } from './script';
 
 function resolveArtilleryKnobs(
   artillery: NonNullable<PerfTarget['load']>['artillery'],
@@ -36,11 +32,13 @@ function resolveArtilleryKnobs(
  * Primary top-level metrics prefer Artillery when both are present
  * (multi-URL / knobs path); Autocannon remains on `load.autocannon`.
  */
-export async function runLoadPhase(opts: {
-  target: PerfTarget;
-  started: StartedTarget;
-  artifactsDir: string;
-} & HarnessOpts): Promise<LoadMetrics> {
+export async function runLoadPhase(
+  opts: {
+    target: PerfTarget;
+    started: StartedTarget;
+    artifactsDir: string;
+  } & HarnessOpts,
+): Promise<LoadMetrics> {
   const { target, started, artifactsDir, ui } = opts;
   const load = target.load;
   if (!load) return started.takeProcessMetrics();
@@ -118,10 +116,7 @@ export async function runLoadPhase(opts: {
 
   const httpRequests = summary?.counters['http.requests'] as number | undefined;
   const http500 = (summary?.counters['http.codes.500'] as number | undefined) ?? 0;
-  const artilleryErrorRate =
-    summary && httpRequests
-      ? (http500 / httpRequests) * 100
-      : undefined;
+  const artilleryErrorRate = summary && httpRequests ? (http500 / httpRequests) * 100 : undefined;
 
   return {
     ...processMetrics,
@@ -135,9 +130,7 @@ export async function runLoadPhase(opts: {
     requestsPerSecond: summary?.rates['http.request_rate'] ?? autocannon?.requests.average,
     errorRate:
       artilleryErrorRate ??
-      (autocannon
-        ? (autocannon.errors / Math.max(1, autocannon.requests.total)) * 100
-        : undefined),
+      (autocannon ? (autocannon.errors / Math.max(1, autocannon.requests.total)) * 100 : undefined),
     autocannon,
     artillery,
   };

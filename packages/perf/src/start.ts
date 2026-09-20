@@ -58,8 +58,7 @@ export async function startTarget(
     port = await getFreePort(host);
   }
 
-  const detail =
-    port === requestedPort ? `:${port}` : `:${port}  (${requestedPort} in use)`;
+  const detail = port === requestedPort ? `:${port}` : `:${port}  (${requestedPort} in use)`;
   opts.ui?.emit({ type: 'phase', phase: 'start', detail });
 
   const url = `http://${host}:${port}`;

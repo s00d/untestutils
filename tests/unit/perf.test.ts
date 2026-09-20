@@ -101,9 +101,8 @@ describe('perf/parse', () => {
   });
 
   test('buildArtilleryScript builds phases without YAML', async () => {
-    const { buildArtilleryScript, ARTILLERY_LOAD_DEFAULTS } = await import(
-      '../../packages/perf/src/load/script'
-    );
+    const { buildArtilleryScript, ARTILLERY_LOAD_DEFAULTS } =
+      await import('../../packages/perf/src/load/script');
     const script = buildArtilleryScript({
       paths: ['/', '/ru'],
       warmUpSec: 1,
@@ -223,12 +222,8 @@ describe('perf/build cache', () => {
   test('isBuildWarm requires matching content hash sidecar', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'ut-skip-'));
     try {
-      const {
-        isBuildWarm,
-        computeBuildHash,
-        writeStoredBuildHash,
-        cachedBuildMetrics,
-      } = await import('../../packages/perf/src/build');
+      const { isBuildWarm, computeBuildHash, writeStoredBuildHash, cachedBuildMetrics } =
+        await import('../../packages/perf/src/build');
       writeFileSync(join(dir, 'app.ts'), 'export const x = 1\n');
       const target = {
         id: 't',
@@ -299,9 +294,7 @@ describe('perf/ui console', () => {
     const { defaultLogFilter } = await import('../../packages/perf/src/build');
     expect(defaultLogFilter('✔ Client built in 510ms')).toBe(true);
     expect(defaultLogFilter('ERROR boom')).toBe(true);
-    expect(
-      defaultLogFilter('├─ .output/server/chunks/nitro/nitro.mjs (196 kB)'),
-    ).toBe(false);
+    expect(defaultLogFilter('├─ .output/server/chunks/nitro/nitro.mjs (196 kB)')).toBe(false);
     expect(defaultLogFilter('.output/server/index.mjs')).toBe(false);
   });
 

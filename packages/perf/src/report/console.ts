@@ -14,7 +14,11 @@ export type ConsoleReporterOpts = {
   ui?: PerfUi;
 };
 
-function processSuffix(m: ProcessMetrics, cached: boolean | undefined, verbosity: PerfVerbosity): string {
+function processSuffix(
+  m: ProcessMetrics,
+  cached: boolean | undefined,
+  verbosity: PerfVerbosity,
+): string {
   if (cached) return '';
   if (!hasUsefulProcessMetrics(m)) {
     return verbosity === 'verbose' ? ' · RSS n/a' : '';
@@ -46,7 +50,9 @@ function printTargetResult(result: PerfTargetResult, verbosity: PerfVerbosity): 
   const b = result.build;
   console.log('  ──');
   const cachedTag = b.cached ? '  cached' : '';
-  console.log(`  build   ${formatSec(b.buildTimeSec)}${cachedTag}${processSuffix(b, b.cached, verbosity)}`);
+  console.log(
+    `  build   ${formatSec(b.buildTimeSec)}${cachedTag}${processSuffix(b, b.cached, verbosity)}`,
+  );
   if (b.bundle) {
     console.log(
       `  bundle  ${formatBytes(b.bundle.total)} (code ${formatBytes(b.bundle.code)}, asset ${formatBytes(b.bundle.asset)})`,
@@ -65,7 +71,9 @@ function printSummary(results: PerfTargetResult[], runs: number): void {
   const dual = results.some((r) => r.load?.autocannon && r.load?.artillery);
   console.log(`\nsummary (mean of ${runs})`);
   if (dual) {
-    console.log(`  ${pad('target', 18)} ${pad('build', 10)} ${pad('AC', 8)} ${pad('Art', 8)} ${pad('p95', 10)} err`);
+    console.log(
+      `  ${pad('target', 18)} ${pad('build', 10)} ${pad('AC', 8)} ${pad('Art', 8)} ${pad('p95', 10)} err`,
+    );
     for (const r of results) {
       const ac = r.load?.autocannon?.requests.average;
       const art = r.load?.requestsPerSecond;
@@ -76,7 +84,9 @@ function printSummary(results: PerfTargetResult[], runs: number): void {
       );
     }
   } else {
-    console.log(`  ${pad('target', 18)} ${pad('build', 10)} ${pad('RPS', 8)} ${pad('p95', 10)} err`);
+    console.log(
+      `  ${pad('target', 18)} ${pad('build', 10)} ${pad('RPS', 8)} ${pad('p95', 10)} err`,
+    );
     for (const r of results) {
       const rps = r.load?.requestsPerSecond;
       const p95 = r.load?.responseTimeP95;
