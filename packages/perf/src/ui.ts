@@ -39,9 +39,17 @@ export function createPerfUi(verbosity: PerfVerbosity = 'default'): PerfUi {
   };
 }
 
-/** True when sampler produced a non-zero signal worth printing. */
+/**
+ * True when sampler produced a signal worth printing.
+ * Sub-1MB / sub-1% noise would display as `0` — treat as empty.
+ */
 export function hasUsefulProcessMetrics(m: ProcessMetrics): boolean {
-  return m.maxMemoryMb > 0 || m.avgMemoryMb > 0 || m.maxCpuPct > 0 || m.avgCpuPct > 0;
+  return (
+    m.maxMemoryMb >= 1 ||
+    m.avgMemoryMb >= 1 ||
+    m.maxCpuPct >= 1 ||
+    m.avgCpuPct >= 1
+  );
 }
 
 export type HarnessOpts = {

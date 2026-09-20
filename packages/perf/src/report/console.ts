@@ -19,7 +19,7 @@ function processSuffix(m: ProcessMetrics, cached: boolean | undefined, verbosity
   if (!hasUsefulProcessMetrics(m)) {
     return verbosity === 'verbose' ? ' · RSS n/a' : '';
   }
-  return ` · peak RSS ${m.maxMemoryMb.toFixed(0)} MB · CPU ${m.avgCpuPct.toFixed(0)}%`;
+  return ` · peak RSS ${Math.round(m.maxMemoryMb)} MB · CPU ${Math.round(m.avgCpuPct)}%`;
 }
 
 function formatLoadLines(load: LoadMetrics): string[] {

@@ -353,6 +353,16 @@ describe('perf/ui console', () => {
     ).toBe(false);
     expect(
       hasUsefulProcessMetrics({
+        maxMemoryMb: 0.4,
+        minMemoryMb: 0,
+        avgMemoryMb: 0.2,
+        maxCpuPct: 0.3,
+        minCpuPct: 0,
+        avgCpuPct: 0.1,
+      }),
+    ).toBe(false);
+    expect(
+      hasUsefulProcessMetrics({
         maxMemoryMb: 12,
         minMemoryMb: 1,
         avgMemoryMb: 5,
@@ -373,9 +383,19 @@ describe('perf/ui console', () => {
       minCpuPct: 0,
       avgCpuPct: 0,
     };
+    const noise = {
+      maxMemoryMb: 0.6,
+      minMemoryMb: 0,
+      avgMemoryMb: 0.3,
+      maxCpuPct: 0.4,
+      minCpuPct: 0,
+      avgCpuPct: 0.2,
+    };
     expect(_consoleFormat.processSuffix(zero, true, 'default')).toBe('');
     expect(_consoleFormat.processSuffix(zero, false, 'default')).toBe('');
     expect(_consoleFormat.processSuffix(zero, false, 'verbose')).toBe(' · RSS n/a');
+    expect(_consoleFormat.processSuffix(noise, false, 'default')).toBe('');
+    expect(_consoleFormat.processSuffix(noise, false, 'verbose')).toBe(' · RSS n/a');
   });
 });
 
