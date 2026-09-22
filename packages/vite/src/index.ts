@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { resolve, join } from 'pathe';
 import {
   cliFrameworkRecipe,
@@ -65,6 +66,21 @@ async function viteConfigArgs(
   return ['--config', configPath];
 }
 
+/** App build output relative to fixture root (`viteConfig.build.outDir` or `dist`). */
+export function resolveViteAppOutDir(viteConfig?: ViteConfigOverride): string {
+  const build = viteConfig?.build as { outDir?: unknown } | undefined;
+  return typeof build?.outDir === 'string' && build.outDir.length > 0 ? build.outDir : 'dist';
+}
+
+/** Fail when preview would start without a built `index.html` (stale warm cache). */
+export function assertViteBuildOutput(root: string, viteConfig?: ViteConfigOverride): void {
+  const appOut = resolveViteAppOutDir(viteConfig);
+  const index = join(root, appOut, 'index.html');
+  if (!existsSync(index)) {
+    throw new Error(`[untestutils/vite] missing build output ${index}`);
+  }
+}
+
 /**
  * Vite SPA Recipe factory.
  * `run: 'preview'` (default) — `vite build` then `vite preview`
@@ -116,6 +132,9 @@ export const vite: Driver<ViteOptions> = defineDriver((opts: ViteOptions): Recip
     readyPath: opts.readyPath,
     readyTimeoutMs: opts.readyTimeoutMs,
     workspaceDeps: opts.workspaceDeps,
+    verifyArtifact: async () => {
+      assertViteBuildOutput(root, opts.viteConfig);
+    },
     prepare: async ({ outDir }) => {
       const configArgs = await viteConfigArgs(root, outDir, opts.viteConfig);
       return {

@@ -12,6 +12,19 @@ import { solidstart, matrix as solidstartMatrix } from '@untestutils/solidstart'
 import { nuxt } from '@untestutils/nuxt';
 
 describe('framework Recipe factories', () => {
+  test('vite resolveViteAppOutDir + assertViteBuildOutput', async () => {
+    const { resolveViteAppOutDir, assertViteBuildOutput } = await import('@untestutils/vite');
+    expect(resolveViteAppOutDir()).toBe('dist');
+    expect(resolveViteAppOutDir({ build: { outDir: 'dist-override' } })).toBe('dist-override');
+    const root = await mkdtemp(join(tmpdir(), 'ut-vite-out-'));
+    expect(() => assertViteBuildOutput(root, { build: { outDir: 'dist-override' } })).toThrow(
+      /missing build output/,
+    );
+    await mkdir(join(root, 'dist-override'), { recursive: true });
+    await writeFile(join(root, 'dist-override', 'index.html'), '<html/>');
+    expect(() => assertViteBuildOutput(root, { build: { outDir: 'dist-override' } })).not.toThrow();
+  });
+
   test.each([
     ['vite', () => vite({ id: 'v', root: process.cwd(), run: 'preview' }), 'always'],
     ['vite-dev', () => vite({ id: 'vd', root: process.cwd(), run: 'dev' }), 'never'],

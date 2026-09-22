@@ -93,14 +93,36 @@ export async function ensurePrepared(
   const live = liveRunning.get(id);
   if (live) {
     const bound = liveMeta.get(id);
-    return {
-      id,
-      identity: bound?.identity ?? identity,
-      hash: bound?.hash ?? hash,
-      outDir: bound?.outDir ?? store.buildDir(identity),
-      running: live,
-      recipe,
-    };
+    const outDir = bound?.outDir ?? store.buildDir(identity);
+    if (recipe.verifyArtifact) {
+      try {
+        await recipe.verifyArtifact(outDir);
+      } catch (err) {
+        debug('prepare', `live artifact invalid ${id}`, err);
+        const stop = liveStops.get(id);
+        liveStops.delete(id);
+        liveRunning.delete(id);
+        liveMeta.delete(id);
+        if (stop) {
+          try {
+            await stop();
+          } catch {
+            /* best-effort */
+          }
+        }
+        // Fall through to warm/prepare path.
+      }
+    }
+    if (liveRunning.get(id) === live) {
+      return {
+        id,
+        identity: bound?.identity ?? identity,
+        hash: bound?.hash ?? hash,
+        outDir,
+        running: live,
+        recipe,
+      };
+    }
   }
 
   // Reuse registry URL from another worker / prior start — only if still reachable.
@@ -121,10 +143,24 @@ export async function ensurePrepared(
       if (reused) return { ...reused, recipe };
     }
 
-    const outDir = await store.ensureDir(identity);
+    let outDir = await store.ensureDir(identity);
     const run = createRunHelper({ cwd: root, env: scrubEnv() });
 
-    if (!(await store.isWarm(identity, hash))) {
+    let warm = await store.isWarm(identity, hash);
+    // Hash can be warm while the real app build output was deleted (e.g. vite
+    // dist-override). Re-verify and fall through to prepare when stale.
+    if (warm && recipe.verifyArtifact) {
+      try {
+        await recipe.verifyArtifact(outDir);
+      } catch (err) {
+        debug('prepare', `warm artifact invalid ${id}`, err);
+        await store.invalidate(identity);
+        outDir = await store.ensureDir(identity);
+        warm = false;
+      }
+    }
+
+    if (!warm) {
       if (recipe.prepare) {
         progress.prepareStart(id);
         const started = Date.now();

@@ -159,6 +159,12 @@ export const next: Driver<NextOptions> = defineDriver((opts: NextOptions): Recip
           );
         }
       },
+      verifyArtifact: async () => {
+        const index = join(root, 'out', 'index.html');
+        if (!existsSync(index)) {
+          throw new Error(`[untestutils/next] missing static export ${index}`);
+        }
+      },
       start: async (ctx) => {
         ensureRoot();
         const publicDir = join(root, 'out');

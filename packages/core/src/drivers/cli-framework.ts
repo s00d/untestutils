@@ -94,6 +94,11 @@ export interface CliFrameworkRecipeOptions {
   prepare?: (ctx: PrepareCtx & { root: string }) => Promise<SpawnSpec | void> | SpawnSpec | void;
   start: (ctx: StartCtx & { root: string }) => SpawnSpec | Promise<SpawnSpec>;
   verifyAfterPrepare?: (ctx: PrepareCtx & { root: string }) => Promise<void>;
+  /**
+   * Called after prepare and on warm cache hits.
+   * Throw to invalidate warm cache and force rebuild (e.g. missing vite outDir).
+   */
+  verifyArtifact?: (outDir: string) => Promise<void>;
   /** Called after the managed process stops (e.g. restore ephemeral next.config). */
   afterStop?: () => Promise<void> | void;
 }
@@ -158,6 +163,7 @@ export function cliFrameworkRecipe(opts: CliFrameworkRecipeOptions): Recipe {
       return inputs;
     },
     ready: async () => {},
+    verifyArtifact: opts.verifyArtifact,
     prepare: opts.prepare
       ? async (ctx) => {
           ensureRoot();
