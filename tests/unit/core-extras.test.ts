@@ -202,12 +202,18 @@ describe('core extras', () => {
   test('hash collect + stream + missing', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'ut-hash-'));
     await mkdir(join(dir, 'node_modules'), { recursive: true });
+    await mkdir(join(dir, 'dist-e2e'), { recursive: true });
     await writeFile(join(dir, 'a.txt'), 'a');
     await writeFile(join(dir, 'node_modules', 'x'), 'skip');
+    await writeFile(join(dir, 'dist-e2e', 'index.html'), '<html/>');
     const lines: string[] = [];
     await collectFileHashes(dir, lines);
     expect(lines.some((l) => l.includes('a.txt'))).toBe(true);
     expect(lines.some((l) => l.includes('node_modules'))).toBe(false);
+    expect(lines.some((l) => l.includes('dist-e2e'))).toBe(false);
+    const h1 = await contentHash([dir]);
+    await writeFile(join(dir, 'dist-e2e', 'index.html'), '<html>changed</html>');
+    expect(await contentHash([dir])).toBe(h1);
     expect(await hashFile(join(dir, 'a.txt'))).toHaveLength(40);
     expect(await streamSha1(join(dir, 'a.txt'))).toHaveLength(40);
     expect(await contentHash([join(dir, 'missing-file')])).toBeTruthy();

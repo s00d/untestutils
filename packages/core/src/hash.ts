@@ -17,6 +17,11 @@ const SKIP_DIRS = new Set([
   '.next',
 ]);
 
+/** Vite/app outDirs like `dist-e2e` / `dist-override` must not invalidate prepare hash. */
+export function shouldSkipHashDir(name: string): boolean {
+  return SKIP_DIRS.has(name) || name.startsWith('dist-');
+}
+
 const SKIP_FILES = new Set(['.DS_Store', 'pnpm-lock.yaml', 'package-lock.json', 'yarn.lock']);
 
 export function sha1(content: Buffer | string): string {
@@ -41,7 +46,7 @@ export async function collectFileHashes(
     return;
   }
   for (const entry of entries) {
-    if (SKIP_DIRS.has(entry.name) || SKIP_FILES.has(entry.name)) continue;
+    if (shouldSkipHashDir(entry.name) || SKIP_FILES.has(entry.name)) continue;
     const path = join(dir, entry.name);
     if (entry.isDirectory()) {
       await collectFileHashes(path, lines, root);
