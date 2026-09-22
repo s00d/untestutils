@@ -269,9 +269,10 @@ export const _internals: NuxtInternals = {
 
 /**
  * Nuxt Recipe factory.
- * `run: 'server'` — buildNuxt + node nitro server
- * `run: 'static'` — generate + static file server
- * `run: 'dev'` — nuxi `_dev` only (HMR fixtures; never shared). Default path is still build → nitro.
+ * Default / preferred: `run: 'server'` (buildNuxt + node nitro) — shared prepare.
+ * `run: 'static'` — generate + static file server.
+ * `run: 'dev'` — nuxi `_dev` only (`share: 'never'`). Niche HMR / file-watcher
+ * fixtures — not a substitute for skipping builds in normal e2e.
  */
 export const nuxt: Driver<NuxtOptions> = defineDriver((opts: NuxtOptions): Recipe => {
   const root = resolve(opts.root);

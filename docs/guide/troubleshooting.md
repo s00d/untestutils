@@ -27,6 +27,8 @@ Checks Node, peers (Vitest major 4|5), configs, and `recipes.ts`. `doctor --reci
 
 **Ready hang / readiness failed** — local servers bind `ctx.host` (default `127.0.0.1`, override with `UNTESTUTILS_BIND_HOST`). Ready probes TCP then HTTP; wildcard binds like `0.0.0.0` still probe `127.0.0.1`. For `host()`, set `readyTimeoutMs` / `readyPath`, or `skipReady: true` if the URL is already up. Drivers that wait inside `start` use a noop `ready` so the orchestrator does not probe twice.
 
+**Tempted to use `run: 'dev'` to skip builds?** Don’t — that mode is for HMR / file-watcher specs only (`share: 'never'`). Normal e2e should use `server` / `preview` / `static` so shared prepare stays warm. See [Drivers](/guide/drivers#run-modes-nuxt).
+
 **Orphan processes** — hard-killed runs leave locks; clear `.untestutils` and retry. Teardown must not kill pid ≤ 1.
 
 **Empty setup / recipes never load** — published facade must keep `vitest/setup-file` side effects (re-export, not a dead `await import`). Upgrade to a release that includes that fix.

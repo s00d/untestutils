@@ -16,10 +16,23 @@ import { nuxt, matrix } from 'untestutils/nuxt'
 |--------|-------------|
 | `id` | Recipe id |
 | `root` | App directory |
-| `run` | `'server' \| 'static' \| 'dev'` |
+| `run?` | Default **`'server'`**. Also `'static'` \| `'dev'` — see below |
 | `preset?` | Nitro preset (in prepare hash) |
 | `env?` | Build/runtime env |
 | `nuxtConfig?` | `Partial<NuxtConfig>` overrides |
+| `hashInputs?` | Extra paths for prepare identity |
+| `workspaceDeps?` | `true` \| `'auto'` — include workspace `src/` in hash |
+| `readyTimeoutMs?` | Ready probe timeout |
+
+### `run`
+
+| Value | Default? | Share | Notes |
+|-------|----------|-------|-------|
+| `'server'` | **yes** | `always` | Build → Nitro. Use for almost all e2e. |
+| `'static'` | no | `always` | Generate → static files. |
+| `'dev'` | no | `never` | `nuxi _dev` only. **Not** a speed shortcut — only for HMR / live file-watcher tests. |
+
+Full guidance: [Drivers — nuxt run modes](/guide/drivers#run-modes-nuxt).
 
 ## matrix(base, variants)
 

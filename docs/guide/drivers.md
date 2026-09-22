@@ -73,12 +73,22 @@ import { nuxt, matrix } from 'untestutils/nuxt'
 nuxt({
   id: 'app',
   root: resolve('./fixtures/nuxt'),
-  run: 'server', // 'server' | 'static' | 'dev'
+  run: 'server', // default — omit or set explicitly
   preset: 'node-server', // optional Nitro preset (part of prepare hash)
 })
 ```
 
-Prefer `run: 'server'` for shared e2e builds. `matrix(base, variants)` expands one fixture into many recipe ids (Nuxt merges `nuxtConfig.nitro`).
+### `run` modes (Nuxt)
+
+| Mode | What it does | Share | Use when |
+|------|----------------|-------|----------|
+| **`server` (default)** | `buildNuxt` → Nitro `node` | `always` | **Normal e2e / CI** — real production-like build |
+| **`static`** | `nuxi generate` → static dir | `always` | SSG / `output: 'static'` fixtures |
+| **`dev`** | `nuxi _dev` only (no prepare) | `never` | **Niche only** — HMR / file-watcher specs that must mutate sources live |
+
+Do **not** pick `run: 'dev'` to “skip the build” or speed up CI. It disables shared prepare (the whole point of the harness), drifts under HMR, and does not match production. Keep it for the rare suite that *asserts* hot reload (e.g. translation watcher). Everyone else: `server` (or `static`).
+
+`matrix(base, variants)` expands one fixture into many recipe ids (Nuxt merges `nuxtConfig.nitro`).
 
 ## Other frameworks
 
@@ -86,7 +96,9 @@ Prefer `run: 'server'` for shared e2e builds. `matrix(base, variants)` expands o
 |--------|--------|
 | `untestutils/vite` \| `next` \| `astro` \| `sveltekit` \| `remix` \| `solidstart` | Dogfood’d in CI |
 
-Same Recipe idea. Each package exports `matrix()` (merges `env` / `hashInputs` / `run`, and **deep-merges** typed config overrides). Optional `workspaceDeps: true \| 'auto'` adds monorepo `packages/*/src` **and** workspace-root `src/` (when present) to the prepare hash — so module packages that live outside `packages/` still invalidate e2e caches.
+Same Recipe idea. Defaults are the **built** modes (`preview` / `server` / `static`). Each adapter also has a `run: 'dev'` escape hatch (`share: 'never'`) for the same niche as Nuxt — not the default path.
+
+Each package exports `matrix()` (merges `env` / `hashInputs` / `run`, and **deep-merges** typed config overrides). Optional `workspaceDeps: true \| 'auto'` adds monorepo `packages/*/src` **and** workspace-root `src/` (when present) to the prepare hash — so module packages that live outside `packages/` still invalidate e2e caches.
 
 ### Typed config overrides
 

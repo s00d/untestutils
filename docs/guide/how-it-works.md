@@ -36,6 +36,10 @@ flowchart LR
 
 Local servers bind to **`127.0.0.1`**.
 
+### `run: 'dev'` is not the fast path
+
+Framework drivers default to a **built** mode (`nuxt` → `server`, Vite → `preview`, …) so prepare can be shared. `run: 'dev'` skips prepare, sets `share: 'never'`, and exists only for niche HMR assertions. See [Drivers](/guide/drivers#run-modes-nuxt).
+
 ## Shared prepare (speed)
 
 Prepare outputs live under `.untestutils/builds`, keyed by identity. Parallel workers take a file lock so they do not corrupt the same build. Running URLs are registered for Playwright/Vitest (`UNTESTUTILS_HOST_<ID>`).
