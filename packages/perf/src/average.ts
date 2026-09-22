@@ -91,6 +91,8 @@ export function averageLoadMetrics(results: LoadMetrics[]): LoadMetrics {
     responseTimeP99: avg(results.map((r) => r.responseTimeP99)),
     requestsPerSecond: avg(results.map((r) => r.requestsPerSecond)),
     errorRate: avg(results.map((r) => r.errorRate)),
+    vusersCreated: avg(results.map((r) => r.vusersCreated)),
+    vusersSkipped: avg(results.map((r) => r.vusersSkipped)),
     autocannon: averageAutocannon(results.map((r) => r.autocannon)),
     artillery: last.artillery,
   };

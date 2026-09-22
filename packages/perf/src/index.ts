@@ -12,7 +12,7 @@ export {
 export { measureBundle } from './bundle';
 export { startTarget, isPortFree } from './start';
 export type { StartedTarget, StartTargetOpts } from './start';
-export { runLoadPhase } from './load';
+export { runLoadPhase, artilleryVuserStats } from './load';
 export { runArtillery, packArtilleryReport, ARTILLERY_PINNED_VERSION } from './load/artillery';
 export type { RunArtilleryOpts } from './load/artillery';
 export { runAutocannon, AUTOCANNON_PINNED_VERSION } from './load/autocannon';

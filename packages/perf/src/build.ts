@@ -157,8 +157,6 @@ export async function measureBuild(
   target: PerfTarget,
   opts: { force?: boolean } & HarnessOpts = {},
 ): Promise<BuildMetrics> {
-  const hash = await computeBuildHash(target);
-
   if (!opts.force && (await isBuildWarm(target))) {
     opts.ui?.emit({ type: 'phase', phase: 'build', detail: 'cache hit (sources unchanged)' });
     return cachedBuildMetrics(target);
@@ -170,6 +168,8 @@ export async function measureBuild(
     detail: opts.force ? 'forced' : '…',
   });
   const metrics = await runBuildCommand(target, opts);
-  writeStoredBuildHash(target, hash);
+  // Recompute after build so self-mutating roots (codegen into fixture) still warm next run.
+  const postHash = await computeBuildHash(target);
+  writeStoredBuildHash(target, postHash);
   return metrics;
 }

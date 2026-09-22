@@ -43,6 +43,11 @@ function formatLoadLines(load: LoadMetrics): string[] {
       `  load    ${(load.requestsPerSecond ?? 0).toFixed(0)} RPS  p95 ${(load.responseTimeP95 ?? 0).toFixed(1)}ms  err ${(load.errorRate ?? 0).toFixed(2)}%`,
     );
   }
+  if (load.vusersSkipped !== undefined || load.vusersCreated !== undefined) {
+    const created = load.vusersCreated ?? 0;
+    const skipped = load.vusersSkipped ?? 0;
+    lines.push(`          VU  created ${Math.round(created)}  skipped ${Math.round(skipped)}`);
+  }
   return lines;
 }
 

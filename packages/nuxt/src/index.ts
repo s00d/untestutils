@@ -102,8 +102,8 @@ function resolveNuxiEntry(rootDir: string): string {
 
 async function resolveHashInputs(opts: NuxtOptions, root: string): Promise<string[]> {
   const inputs = [...(opts.hashInputs ?? [root])];
-  // Nuxt default: auto-include workspace package src when a workspace exists
-  // (unless explicitly disabled with workspaceDeps: false).
+  // Nuxt default: auto-include workspace package src (and workspace-root src/)
+  // when a workspace exists (unless explicitly disabled with workspaceDeps: false).
   const wantWs =
     opts.workspaceDeps === true ||
     (opts.workspaceDeps !== false && Boolean(findWorkspaceRoot(root)));

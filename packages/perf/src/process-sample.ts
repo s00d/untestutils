@@ -29,6 +29,59 @@ export function sampleProcess(pid: number): ProcessSample | null {
 }
 
 /**
+ * Sum RSS (MB) and max %CPU across `rootPid` and all descendants (ppid walk).
+ * Falls back to `sampleProcess(rootPid)` when the process table cannot be read.
+ */
+export function sampleProcessTree(rootPid: number): ProcessSample | null {
+  if (!rootPid || rootPid <= 0) return null;
+  if (process.platform === 'win32') return sampleProcess(rootPid);
+  try {
+    const raw = execSync('ps -axo pid=,ppid=,%cpu=,rss=', {
+      encoding: 'utf-8',
+      stdio: 'pipe',
+    }).toString();
+    const rows: Array<{ pid: number; ppid: number; cpu: number; rssKb: number }> = [];
+    for (const line of raw.split('\n')) {
+      const t = line.trim();
+      if (!t) continue;
+      const parts = t.split(/\s+/).map((p) => Number.parseFloat(p));
+      if (parts.length < 4) continue;
+      const [pid, ppid, cpu, rssKb] = parts;
+      if (![pid, ppid, cpu, rssKb].every((n) => Number.isFinite(n))) continue;
+      rows.push({ pid: pid!, ppid: ppid!, cpu: cpu!, rssKb: rssKb! });
+    }
+    if (!rows.some((r) => r.pid === rootPid)) return sampleProcess(rootPid);
+
+    const children = new Map<number, number[]>();
+    for (const r of rows) {
+      const list = children.get(r.ppid);
+      if (list) list.push(r.pid);
+      else children.set(r.ppid, [r.pid]);
+    }
+    const byPid = new Map(rows.map((r) => [r.pid, r]));
+    const stack = [rootPid];
+    const seen = new Set<number>();
+    let rssKb = 0;
+    let maxCpu = 0;
+    while (stack.length) {
+      const pid = stack.pop()!;
+      if (seen.has(pid)) continue;
+      seen.add(pid);
+      const row = byPid.get(pid);
+      if (row) {
+        rssKb += row.rssKb;
+        maxCpu = Math.max(maxCpu, row.cpu);
+      }
+      const kids = children.get(pid);
+      if (kids) stack.push(...kids);
+    }
+    return { cpu: maxCpu, memoryMb: rssKb / 1024 };
+  } catch {
+    return sampleProcess(rootPid);
+  }
+}
+
+/**
  * Cumulative CPU time (seconds) for a PID — `ps -o cputime=`.
  * Used for span-average CPU without timers.
  */
@@ -126,32 +179,43 @@ const emptyMetrics = (): ProcessMetrics => ({
 
 /**
  * Explicit checkpoint sampler — call `note()` at phase boundaries.
- * Avg CPU over the span uses cumulative `cputime` / wall (no timers).
+ * Each note samples the process **tree** (parent + descendants RSS).
+ * Avg CPU over the span uses cumulative parent `cputime` / wall (no timers).
  */
 export class ProcessSampler {
   private readonly acc = createSampleAccumulator();
   private wallStarted = performance.now();
   private cpuStarted: number | null = null;
   private begun = false;
+  private pollTimer: ReturnType<typeof setInterval> | undefined;
 
   constructor(private readonly pid: number) {}
 
-  /** First checkpoint (ready / build start). */
+  /** First checkpoint (ready / build start). Starts a light mid-phase poll. */
   begin(): void {
     this.begun = true;
     this.wallStarted = performance.now();
     this.cpuStarted = readCpuSeconds(this.pid);
     this.note();
+    if (!this.pollTimer) {
+      this.pollTimer = setInterval(() => this.note(), 250);
+      // Don't keep the process alive solely for polling
+      this.pollTimer.unref?.();
+    }
   }
 
   /** Extra checkpoint (after autocannon, after artillery, build end, …). */
   note(): void {
     if (!this.begun) this.begin();
-    const s = sampleProcess(this.pid);
+    const s = sampleProcessTree(this.pid);
     if (s) pushSample(this.acc, s);
   }
 
   finalize(): ProcessMetrics {
+    if (this.pollTimer) {
+      clearInterval(this.pollTimer);
+      this.pollTimer = undefined;
+    }
     if (!this.begun) return emptyMetrics();
     this.note();
     const base = finalizeSamples(this.acc);

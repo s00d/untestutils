@@ -27,6 +27,21 @@ function resolveArtilleryKnobs(
   return { paths: loadPaths };
 }
 
+/** Read Artillery vuser counters from an aggregate report. */
+export function artilleryVuserStats(artillery: ArtilleryResult | undefined): {
+  created?: number;
+  skipped?: number;
+} {
+  if (!artillery?.aggregate?.counters) return {};
+  const c = artillery.aggregate.counters;
+  const created = c['vusers.created'];
+  const skipped = c['vusers.skipped'];
+  return {
+    created: typeof created === 'number' ? created : undefined,
+    skipped: typeof skipped === 'number' ? skipped : undefined,
+  };
+}
+
 /**
  * Run configured load tools.
  * Primary top-level metrics prefer Artillery when both are present
@@ -117,6 +132,7 @@ export async function runLoadPhase(
   const httpRequests = summary?.counters['http.requests'] as number | undefined;
   const http500 = (summary?.counters['http.codes.500'] as number | undefined) ?? 0;
   const artilleryErrorRate = summary && httpRequests ? (http500 / httpRequests) * 100 : undefined;
+  const vusers = artilleryVuserStats(artillery);
 
   return {
     ...processMetrics,
@@ -131,6 +147,8 @@ export async function runLoadPhase(
     errorRate:
       artilleryErrorRate ??
       (autocannon ? (autocannon.errors / Math.max(1, autocannon.requests.total)) * 100 : undefined),
+    vusersCreated: vusers.created,
+    vusersSkipped: vusers.skipped,
     autocannon,
     artillery,
   };

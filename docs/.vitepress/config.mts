@@ -98,7 +98,18 @@ export default withMermaid(
             text: 'Why',
             items: [
               { text: 'Why untestutils', link: '/why' },
+              { text: 'Community pain points', link: '/community-pain-points' },
               { text: 'Demo — mass Nuxt e2e', link: '/guide/demo' },
+              { text: 'Roadmap', link: '/roadmap' },
+            ],
+          },
+        ],
+        '/community-pain-points': [
+          {
+            text: 'Why',
+            items: [
+              { text: 'Why untestutils', link: '/why' },
+              { text: 'Community pain points', link: '/community-pain-points' },
               { text: 'Roadmap', link: '/roadmap' },
             ],
           },

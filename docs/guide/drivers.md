@@ -86,7 +86,7 @@ Prefer `run: 'server'` for shared e2e builds. `matrix(base, variants)` expands o
 |--------|--------|
 | `untestutils/vite` \| `next` \| `astro` \| `sveltekit` \| `remix` \| `solidstart` | Dogfood’d in CI |
 
-Same Recipe idea. Each package exports `matrix()` (merges `env` / `hashInputs` / `run`, and **deep-merges** typed config overrides). Optional `workspaceDeps: true \| 'auto'` adds monorepo `packages/*/src` to the prepare hash.
+Same Recipe idea. Each package exports `matrix()` (merges `env` / `hashInputs` / `run`, and **deep-merges** typed config overrides). Optional `workspaceDeps: true \| 'auto'` adds monorepo `packages/*/src` **and** workspace-root `src/` (when present) to the prepare hash — so module packages that live outside `packages/` still invalidate e2e caches.
 
 ### Typed config overrides
 

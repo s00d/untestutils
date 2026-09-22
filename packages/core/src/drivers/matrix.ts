@@ -81,14 +81,20 @@ export function findWorkspaceRoot(from: string): string | undefined {
   return undefined;
 }
 
-/** Collect packages/NAME/src dirs under the workspace root (for prepare hash). */
+/**
+ * Collect source dirs under the workspace root (for prepare hash).
+ * Includes `packages/<name>/src` and, when present, the workspace-root `src/`
+ * (module monorepos that ship the Nuxt module outside `packages/`).
+ */
 export async function workspacePackageSrcDirs(from: string): Promise<string[]> {
   const ws = findWorkspaceRoot(from);
   if (!ws) return [];
-  const packagesDir = join(ws, 'packages');
-  if (!existsSync(packagesDir)) return [];
-  const names = await readdir(packagesDir, { withFileTypes: true }).catch(() => []);
   const out: string[] = [];
+  const rootSrc = join(ws, 'src');
+  if (existsSync(rootSrc)) out.push(rootSrc);
+  const packagesDir = join(ws, 'packages');
+  if (!existsSync(packagesDir)) return out;
+  const names = await readdir(packagesDir, { withFileTypes: true }).catch(() => []);
   for (const e of names) {
     if (!e.isDirectory()) continue;
     const src = join(packagesDir, e.name, 'src');

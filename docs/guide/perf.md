@@ -10,11 +10,19 @@ outline: deep
 This is **build/load benchmarking** (`untestutils/perf`), not the e2e shared-prepare story. **Optional peer** — unit tests run on every PR; a tiny dogfood job is available via CI `workflow_dispatch` (`run_perf`). Not part of the 1.0 stability bar — see [Roadmap](/roadmap). For CI speed of tests, see [Why](/why).
 :::
 
-Builds reuse `.output` when the **content hash** of `hashInputs` (default: target root) matches — same idea as prepare cache.
+Builds reuse `.output` when the **content hash** of `hashInputs` (default: target root) matches — same idea as prepare cache. Set `forceBuild: true` on the suite (or `--force-build`) when measuring mean-of-N build times so warm cache does not zero elapsed time.
+
+## Cool-downs
+
+- `coolDownBetweenRunsMs` — pause between consecutive runs of the same target (default 500, or `coolDownMs`)
+- `coolDownBetweenTargetsMs` — pause between different targets (default 500, or `coolDownMs`)
+- `coolDownMs` — deprecated shared fallback for both
 
 ## Load
 
 Prefer **programmatic Artillery knobs** (no YAML). Autocannon remains an **optional** single-URL tool for other suites; when both run, top-level `LoadMetrics` prefer Artillery and the console shows **both** rows.
+
+Pass `maxVusers: undefined` (key present) to omit the VU cap — same as historical uncapped YAML. Omitting the key keeps the library default (`maxVusers: 40`).
 
 ```ts
 import {
@@ -27,7 +35,8 @@ import {
 export default definePerfSuite({
   runs: 1,
   verbosity: 'default', // 'quiet' | 'default' | 'verbose'
-  coolDownMs: 500,
+  coolDownBetweenRunsMs: 500,
+  coolDownBetweenTargetsMs: 500,
   postBuildDelayMs: 200,
   artifactsDir: '.untestutils/perf',
   reporters: [consoleReporter(), jsonReporter()],

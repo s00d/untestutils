@@ -14,6 +14,14 @@ import { createPerfUi, type PerfUi } from './ui';
 const DEFAULT_COOL_DOWN_MS = 500;
 const DEFAULT_POST_BUILD_DELAY_MS = 200;
 
+function resolveCoolDown(
+  specific: number | undefined,
+  legacy: number | undefined,
+  fallback: number,
+): number {
+  return specific ?? legacy ?? fallback;
+}
+
 function selectTargets(suite: PerfSuite, only?: string | string[]): PerfTarget[] {
   const filter = only ?? suite.only;
   if (!filter || filter === 'all') return suite.targets;
@@ -83,8 +91,17 @@ export async function runPerfSuite(
 ): Promise<PerfTargetResult[]> {
   const runs = options.runs ?? suite.runs ?? 1;
   const skipLoad = options.skipLoad ?? suite.skipLoad ?? false;
-  const forceBuild = options.forceBuild ?? false;
-  const coolDownMs = options.coolDownMs ?? suite.coolDownMs ?? DEFAULT_COOL_DOWN_MS;
+  const forceBuild = options.forceBuild ?? suite.forceBuild ?? false;
+  const coolDownBetweenRunsMs = resolveCoolDown(
+    options.coolDownBetweenRunsMs ?? suite.coolDownBetweenRunsMs,
+    options.coolDownMs ?? suite.coolDownMs,
+    DEFAULT_COOL_DOWN_MS,
+  );
+  const coolDownBetweenTargetsMs = resolveCoolDown(
+    options.coolDownBetweenTargetsMs ?? suite.coolDownBetweenTargetsMs,
+    options.coolDownMs ?? suite.coolDownMs,
+    DEFAULT_COOL_DOWN_MS,
+  );
   const postBuildDelayMs =
     options.postBuildDelayMs ?? suite.postBuildDelayMs ?? DEFAULT_POST_BUILD_DELAY_MS;
   const artifactsDir = resolve(suite.artifactsDir ?? '.untestutils/perf');
@@ -139,7 +156,7 @@ export async function runPerfSuite(
       });
       samples.push(result);
       if (boundPort !== undefined) portCursor = boundPort + 1;
-      if (run < runs) await delay(coolDownMs);
+      if (run < runs) await delay(coolDownBetweenRunsMs);
     }
 
     const mean = averageTargetResults(samples);
@@ -147,7 +164,7 @@ export async function runPerfSuite(
     await suite.afterTarget?.(target, mean);
     for (const r of reporters) await r.onTarget?.(mean);
 
-    if (ti < targets.length - 1) await delay(coolDownMs);
+    if (ti < targets.length - 1) await delay(coolDownBetweenTargetsMs);
   }
 
   const ctx = { suite, results: averaged, runs, skipLoad };

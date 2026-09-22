@@ -102,6 +102,10 @@ export type LoadMetrics = ProcessMetrics & {
   responseTimeP99?: number;
   requestsPerSecond?: number;
   errorRate?: number;
+  /** Artillery `vusers.created` (when artillery ran). */
+  vusersCreated?: number;
+  /** Artillery `vusers.skipped` — overload not counted as HTTP errors. */
+  vusersSkipped?: number;
   autocannon?: AutocannonResult;
   artillery?: ArtilleryResult;
 };
@@ -224,7 +228,22 @@ export type PerfSuite = {
   artifactsDir?: string;
   runs?: number;
   skipLoad?: boolean;
-  /** Pause between runs / targets. Default 500. */
+  /** Always rebuild (ignore warm content-hash cache). Needed for fair mean-of-N build times. */
+  forceBuild?: boolean;
+  /**
+   * Pause between consecutive runs of the same target.
+   * Default: `coolDownMs` if set, else 500.
+   */
+  coolDownBetweenRunsMs?: number;
+  /**
+   * Pause between different targets.
+   * Default: `coolDownMs` if set, else 500.
+   */
+  coolDownBetweenTargetsMs?: number;
+  /**
+   * @deprecated Prefer `coolDownBetweenRunsMs` / `coolDownBetweenTargetsMs`.
+   * Used as fallback for both when the specific fields are unset.
+   */
   coolDownMs?: number;
   /** Sleep after build before start. Default 200. */
   postBuildDelayMs?: number;
@@ -245,6 +264,9 @@ export type RunPerfOptions = {
   skipLoad?: boolean;
   /** Always rebuild even when content hash is warm. */
   forceBuild?: boolean;
+  coolDownBetweenRunsMs?: number;
+  coolDownBetweenTargetsMs?: number;
+  /** @deprecated Prefer split cool-down fields. */
   coolDownMs?: number;
   postBuildDelayMs?: number;
   only?: string | string[];

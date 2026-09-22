@@ -123,6 +123,25 @@ describe('perf/parse', () => {
     });
   });
 
+  test('buildArtilleryScript omits maxVusers when explicitly uncapped', async () => {
+    const { buildArtilleryScript, describeArtilleryLoad } =
+      await import('../../packages/perf/src/load/script');
+    const script = buildArtilleryScript({
+      warmUpSec: 6,
+      warmUpArrivalRate: 6,
+      durationSec: 60,
+      arrivalRate: 60,
+      maxVusers: undefined,
+    });
+    expect(script.config?.phases).toEqual([
+      { name: 'warm-up', duration: 6, arrivalRate: 6 },
+      { name: 'main', duration: 60, arrivalRate: 60 },
+    ]);
+    expect(
+      describeArtilleryLoad({ durationSec: 60, arrivalRate: 60, maxVusers: undefined }),
+    ).toContain('uncapped VU');
+  });
+
   test('parses artillery json', () => {
     const raw = JSON.stringify({
       aggregate: {
