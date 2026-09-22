@@ -1,6 +1,6 @@
 {
   "name": "@untestutils/core",
-  "version": "0.6.9",
+  "version": "0.6.10",
   "description": "Recipe harness core — locks, registry, orchestrator, drivers",
   "homepage": "https://s00d.github.io/untestutils/",
   "license": "MIT",
