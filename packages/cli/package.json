@@ -1,6 +1,6 @@
 {
   "name": "@untestutils/cli",
-  "version": "0.6.10",
+  "version": "0.6.11",
   "description": "CLI for untestutils: init, convert, ai, doctor, and monorepo commands",
   "homepage": "https://s00d.github.io/untestutils/",
   "license": "MIT",
