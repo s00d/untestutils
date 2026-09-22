@@ -1,6 +1,6 @@
 {
   "name": "@untestutils/utils",
-  "version": "0.6.8",
+  "version": "0.6.9",
   "description": "Shared e2e/test utilities — cookies, SEO head, poll, browser helpers",
   "homepage": "https://s00d.github.io/untestutils/",
   "license": "MIT",

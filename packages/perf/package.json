@@ -1,6 +1,6 @@
 {
   "name": "@untestutils/perf",
-  "version": "0.6.8",
+  "version": "0.6.9",
   "description": "Build + load performance harness for recipe/fixture targets",
   "homepage": "https://s00d.github.io/untestutils/",
   "license": "MIT",
