@@ -83,7 +83,7 @@ function resolveSvelteConfigPath(root: string): string {
   return findFirstExistingConfig(root, SVELTE_CONFIG_NAMES) ?? join(root, 'svelte.config.js');
 }
 
-async function viteConfigArgs(
+async function resolveConfigArgs(
   root: string,
   outDir: string,
   viteConfig: ViteConfigOverride | undefined,
@@ -99,9 +99,8 @@ async function viteConfigArgs(
 
 /**
  * SvelteKit Recipe factory.
- * `run: 'preview'` (default) — `vite build` + `vite preview`
- * `run: 'server'` — build + `node build` (adapter-node)
- * `run: 'dev'` — `vite dev`
+ * Vite CLI for build/dev/preview (SvelteKit needs subprocess cwd; in-process Vite 8
+ * + adapter-node manifests are unreliable). Same Recipe surface as other adapters.
  */
 export const sveltekit: Driver<SvelteKitOptions> = defineDriver(
   (opts: SvelteKitOptions): Recipe => {
@@ -130,7 +129,7 @@ export const sveltekit: Driver<SvelteKitOptions> = defineDriver(
               opts.kitConfig!,
             );
           }
-          const configArgs = await viteConfigArgs(root, outDir, opts.viteConfig);
+          const configArgs = await resolveConfigArgs(root, outDir, opts.viteConfig);
           return {
             command: process.execPath,
             args: [
@@ -170,7 +169,8 @@ export const sveltekit: Driver<SvelteKitOptions> = defineDriver(
             ? await installMergedConfigOverride(resolveSvelteConfigPath(root), opts.kitConfig!)
             : undefined;
           try {
-            const configArgs = await viteConfigArgs(root, outDir, opts.viteConfig);
+            const configArgs = await resolveConfigArgs(root, outDir, opts.viteConfig);
+            // CLI prepare: in-process vite.build + Vite 8/rolldown breaks adapter-node manifests.
             const result = await runCommand(process.execPath, [bin(), 'build', ...configArgs], {
               cwd: root,
               env: { ...process.env, ...opts.env, OUT_DIR: outDir },
@@ -222,7 +222,7 @@ export const sveltekit: Driver<SvelteKitOptions> = defineDriver(
           ? await installMergedConfigOverride(resolveSvelteConfigPath(root), opts.kitConfig!)
           : undefined;
         try {
-          const configArgs = await viteConfigArgs(root, outDir, opts.viteConfig);
+          const configArgs = await resolveConfigArgs(root, outDir, opts.viteConfig);
           const result = await runCommand(process.execPath, [bin(), 'build', ...configArgs], {
             cwd: root,
             env: { ...process.env, ...opts.env, OUT_DIR: outDir },
@@ -237,8 +237,17 @@ export const sveltekit: Driver<SvelteKitOptions> = defineDriver(
           await restore?.();
         }
       },
+      verifyArtifact: async () => {
+        const index = join(root, 'build', 'index.html');
+        const client = join(root, '.svelte-kit', 'output', 'client', 'index.html');
+        if (!existsSync(index) && !existsSync(client)) {
+          throw new Error(
+            `[untestutils/sveltekit] missing preview build (expected ${index} or ${client})`,
+          );
+        }
+      },
       start: async ({ port, host, outDir }) => {
-        const configArgs = await viteConfigArgs(root, outDir, opts.viteConfig);
+        const configArgs = await resolveConfigArgs(root, outDir, opts.viteConfig);
         return {
           command: process.execPath,
           args: [

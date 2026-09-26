@@ -1,13 +1,14 @@
 {
-  "name": "vitest-environment-untestutils",
-  "version": "0.6.11",
-  "description": "Vitest environment shim for untestutils unit tests",
-  "files": [
-    "index.mjs"
-  ],
+  "private": true,
+  "description": "Facade nested shim for untestutils/vitest-environment export",
   "type": "module",
   "main": "./index.mjs",
-  "engines": {
-    "node": ">=20"
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.mjs",
+      "default": "./index.mjs"
+    }
   }
 }

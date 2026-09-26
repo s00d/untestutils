@@ -338,6 +338,9 @@ export const nuxt: Driver<NuxtOptions> = defineDriver((opts: NuxtOptions): Recip
           _internals.generateNuxtApp(root, outDir, mergeNuxtConfig(opts)),
         );
       },
+      verifyArtifact: async (outDir) => {
+        _internals.findPublicDir(outDir);
+      },
       start: async (ctx) => {
         const publicDir = _internals.findPublicDir(ctx.outDir);
         const serving = staticDir({ id: `${id}-static-serve`, root: publicDir });
@@ -358,6 +361,9 @@ export const nuxt: Driver<NuxtOptions> = defineDriver((opts: NuxtOptions): Recip
       await _internals.withEnv(opts.env, () =>
         _internals.buildNuxtApp(root, outDir, mergeNuxtConfig(opts), true),
       );
+    },
+    verifyArtifact: async (outDir) => {
+      _internals.findServerEntry(outDir);
     },
     start: async ({ port, host, outDir }) => {
       ensureRoot();

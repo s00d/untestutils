@@ -7,7 +7,6 @@ import {
   playwrightGlobalSetup,
   playwrightGlobalTeardown,
   resolvePlaywrightArtifactsRoot,
-  sanitizePlaywrightSession,
 } from '../../packages/playwright/src/index';
 import pwSetup from '../../packages/playwright/src/pw-global-setup';
 import pwTeardown from '../../packages/playwright/src/pw-global-teardown';
@@ -15,6 +14,7 @@ import {
   defineRecipes,
   clearRegisteredRecipes,
   resetRecipeBindings,
+  sanitizeSession,
   stopAllTargets,
   TargetRegistry,
 } from '@untestutils/core';
@@ -49,9 +49,9 @@ describe('playwright package', () => {
     expect(process.env.UNTESTUTILS_ARTIFACTS_DIR).toBe('/tmp/a');
   });
 
-  test('sanitizePlaywrightSession delegates to core sanitizeSession', () => {
-    expect(sanitizePlaywrightSession('My Session!')).toBe('My-Session');
-    expect(() => sanitizePlaywrightSession('@@@')).toThrow(/non-empty/);
+  test('sanitizeSession nests under session-safe names', () => {
+    expect(sanitizeSession('My Session!')).toBe('My-Session');
+    expect(() => sanitizeSession('@@@')).toThrow(/non-empty/);
   });
 
   test('createPlaywrightConfig session nests artifacts root', async () => {

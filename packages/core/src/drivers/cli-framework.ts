@@ -5,7 +5,7 @@ import { defineRecipe } from '../recipes';
 import { loopbackUrl } from '../paths';
 import { waitForHttpReady } from '../ready';
 import { spawnManaged, runCommand } from '../process';
-import type { Recipe, PrepareCtx, StartCtx, SharePolicy } from '../types';
+import type { Recipe, PrepareCtx, StartCtx, SharePolicy, Running } from '../types';
 import { appendWorkspaceHashInputs } from './matrix';
 
 export interface ResolveBinOptions {
@@ -92,7 +92,12 @@ export interface CliFrameworkRecipeOptions {
   /** See {@link FrameworkBaseOptions.workspaceDeps}. */
   workspaceDeps?: boolean | 'auto';
   prepare?: (ctx: PrepareCtx & { root: string }) => Promise<SpawnSpec | void> | SpawnSpec | void;
-  start: (ctx: StartCtx & { root: string }) => SpawnSpec | Promise<SpawnSpec>;
+  /**
+   * Return a SpawnSpec (CLI) or a fully started {@link Running} (programmatic Vite/Astro APIs).
+   */
+  start: (
+    ctx: StartCtx & { root: string },
+  ) => SpawnSpec | Running | Promise<SpawnSpec | Running>;
   verifyAfterPrepare?: (ctx: PrepareCtx & { root: string }) => Promise<void>;
   /**
    * Called after prepare and on warm cache hits.
@@ -151,6 +156,14 @@ export function assertAppRoot(
 export function cliFrameworkRecipe(opts: CliFrameworkRecipeOptions): Recipe {
   const root = resolve(opts.root);
   const ensureRoot = () => assertAppRoot(root, opts.label);
+  // Warm/live/registry paths only call verifyArtifact — promote verifyAfterPrepare.
+  const verifyArtifact =
+    opts.verifyArtifact ??
+    (opts.verifyAfterPrepare
+      ? async () => {
+          await opts.verifyAfterPrepare!({ outDir: root, root } as PrepareCtx & { root: string });
+        }
+      : undefined);
   const recipe = defineRecipe({
     id: opts.id,
     share: opts.share ?? (opts.prepare ? 'always' : 'never'),
@@ -163,7 +176,7 @@ export function cliFrameworkRecipe(opts: CliFrameworkRecipeOptions): Recipe {
       return inputs;
     },
     ready: async () => {},
-    verifyArtifact: opts.verifyArtifact,
+    verifyArtifact,
     prepare: opts.prepare
       ? async (ctx) => {
           ensureRoot();
@@ -186,7 +199,32 @@ export function cliFrameworkRecipe(opts: CliFrameworkRecipeOptions): Recipe {
       : undefined,
     start: async (ctx) => {
       ensureRoot();
-      const spec = await opts.start({ ...ctx, root });
+      const started = await opts.start({ ...ctx, root });
+      if (started && typeof started === 'object' && 'kind' in started) {
+        const running = started as Running;
+        if ('url' in running && running.url) {
+          try {
+            await waitForHttpReady(running.url, {
+              path: opts.readyPath ?? '/',
+              timeoutMs: opts.readyTimeoutMs ?? 120_000,
+            });
+          } catch (e) {
+            if (running.stop) await running.stop();
+            throw new Error(`[untestutils/${opts.label}] ready failed:\n${e}`);
+          }
+        }
+        if (!opts.afterStop) return running;
+        const prevStop = running.stop;
+        return {
+          ...running,
+          stop: async (stopOpts) => {
+            if (prevStop) await prevStop(stopOpts);
+            await opts.afterStop?.();
+          },
+        };
+      }
+
+      const spec = started as SpawnSpec;
       const managed = spawnManaged(spec.command, spec.args, {
         cwd: spec.cwd ?? root,
         env: {
@@ -214,8 +252,8 @@ export function cliFrameworkRecipe(opts: CliFrameworkRecipeOptions): Recipe {
         kind: 'url+dir',
         url,
         dir: ctx.outDir,
-        stop: async () => {
-          await managed.stop();
+        stop: async (stopOpts) => {
+          await managed.stop(stopOpts);
           if (opts.afterStop) await opts.afterStop();
         },
         pid: managed.pid,

@@ -32,15 +32,21 @@ describe('framework Recipe factories', () => {
     ['next-dev', () => next({ id: 'nd', root: process.cwd(), run: 'dev' }), 'never'],
     ['next-static', () => next({ id: 'ns', root: process.cwd(), run: 'static' }), 'always'],
     ['astro', () => astro({ id: 'a', root: process.cwd(), run: 'preview' }), 'always'],
+    ['astro-server', () => astro({ id: 'as', root: process.cwd(), run: 'server' }), 'always'],
     ['sveltekit', () => sveltekit({ id: 's', root: process.cwd(), run: 'preview' }), 'always'],
     ['remix', () => remix({ id: 'r', root: process.cwd(), run: 'server' }), 'always'],
     ['solidstart', () => solidstart({ id: 'ss', root: process.cwd(), run: 'preview' }), 'always'],
+    ['nuxt-server', () => nuxt({ id: 'nsrv', root: process.cwd(), run: 'server' }), 'always'],
+    ['nuxt-static', () => nuxt({ id: 'nst', root: process.cwd(), run: 'static' }), 'always'],
   ] as const)('%s returns recipe with start', (_name, factory, share) => {
     const r = factory();
     expect(r.id).toBeTruthy();
     expect(r.share).toBe(share);
     expect(typeof r.start).toBe('function');
     expect(typeof r.hashInputs).toBe('function');
+    if (share === 'always') {
+      expect(typeof r.verifyArtifact).toBe('function');
+    }
   });
 
   test.each([

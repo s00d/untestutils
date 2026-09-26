@@ -1,4 +1,5 @@
 /**
- * Drop-in alias so `environment: 'nuxt'` resolves like `@nuxt/test-utils`.
+ * Compat package for `environment: 'nuxt'`.
+ * Prefer `environment: 'untestutils'` + framework nuxt (or legacy environmentOptions.nuxt).
  */
-export { default } from 'vitest-environment-untestutils';
+export { default } from '@untestutils/nuxt/environment';

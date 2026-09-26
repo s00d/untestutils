@@ -51,11 +51,6 @@ type PWConfig = Record<string, unknown> & {
   projects?: unknown;
 };
 
-/** @deprecated Use `sanitizeSession` from `@untestutils/core`. */
-export function sanitizePlaywrightSession(session: string): string {
-  return sanitizeSession(session);
-}
-
 /**
  * Resolve the artifacts root for a Playwright run.
  * Explicit `artifactsRoot` wins; otherwise `session` / `UNTESTUTILS_SESSION`
@@ -92,7 +87,7 @@ export function createPlaywrightConfig(opts: PlaywrightHarnessOptions & PWConfig
 
   const resolvedRoot = resolvePlaywrightArtifactsRoot({ artifactsRoot, session });
   process.env.UNTESTUTILS_ARTIFACTS_DIR = resolvedRoot;
-  if (session) process.env.UNTESTUTILS_SESSION = sanitizePlaywrightSession(session);
+  if (session) process.env.UNTESTUTILS_SESSION = sanitizeSession(session);
   else if (!artifactsRoot) delete process.env.UNTESTUTILS_SESSION;
 
   process.env.UNTESTUTILS_PREWARM = JSON.stringify(prewarm);

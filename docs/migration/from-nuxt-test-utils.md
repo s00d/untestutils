@@ -17,7 +17,7 @@ Clean break, not a drop-in. Keep Vitest/Playwright; change how apps are prepared
 | Playwright `test.use({ nuxt })` | `test.use({ harness: 'id' })` + shared `recipes.ts` |
 | Per-file rebuild | Shared prepare → `.untestutils/builds` |
 
-Keep **e2e** (`untestutils/vitest/plugin`) and Nuxt **unit** (`environment: 'untestutils'`) in **separate** Vitest projects.
+Keep **e2e** (`untestutils/vitest/plugin`) and Nuxt **unit** (`environment: 'untestutils'`) in **separate** Vitest projects. For large unit suites, set `environmentOptions.nuxt.appIsolation: 'worker'` (see [Vitest — appIsolation](/guide/vitest#appisolation-worker-opt-in)).
 
 ## After (e2e)
 

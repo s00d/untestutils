@@ -5,10 +5,11 @@ import {
   configOverrideHashInput,
   deepMergePlain,
   defineDriver,
-  frameworkRoots,
   matrixRecipe,
-  resolveBin,
+  runViteBuild,
   serializeViteMergeConfigModule,
+  startViteDev,
+  startVitePreview,
   writeEphemeralConfig,
   type Driver,
   type FrameworkBaseOptions,
@@ -23,7 +24,7 @@ export type ViteConfigOverride = Record<string, unknown>;
 export interface ViteOptions extends FrameworkBaseOptions {
   run?: ViteRun;
   /**
-   * Merged onto the app's vite.config via `mergeConfig` (ephemeral `--config` in outDir).
+   * Merged onto the app's vite.config via `mergeConfig` (ephemeral config file).
    * Same role as Nuxt `nuxtConfig` overrides.
    */
   viteConfig?: ViteConfigOverride;
@@ -36,34 +37,24 @@ export type ViteMatrixVariant = Partial<
   >
 >;
 
-function resolveViteBin(root: string): string {
-  return resolveBin({
-    label: 'vite',
-    roots: frameworkRoots(root),
-    directIds: ['vite/bin/vite.js', 'vite/bin/vite.mjs'],
-    packageJsonIds: ['vite/package.json'],
-    binRelative: ['bin/vite.js', 'bin/vite.mjs'],
-  });
-}
-
 function hashInputsFor(opts: ViteOptions, root: string, runTag: string): string[] {
   const inputs = [...(opts.hashInputs ?? [root]), runTag];
   if (opts.viteConfig) inputs.push(configOverrideHashInput('viteConfig', opts.viteConfig));
   return inputs;
 }
 
-async function viteConfigArgs(
+async function resolveConfigFile(
   root: string,
   outDir: string,
   viteConfig: ViteConfigOverride | undefined,
-): Promise<string[]> {
-  if (!viteConfig || !Object.keys(viteConfig).length) return [];
+): Promise<string | undefined> {
+  if (!viteConfig || !Object.keys(viteConfig).length) return undefined;
   const configPath = join(outDir, 'vite.untestutils.mjs');
   await writeEphemeralConfig(
     configPath,
     serializeViteMergeConfigModule({ appRoot: root, overrides: viteConfig }),
   );
-  return ['--config', configPath];
+  return configPath;
 }
 
 /** App build output relative to fixture root (`viteConfig.build.outDir` or `dist`). */
@@ -82,15 +73,14 @@ export function assertViteBuildOutput(root: string, viteConfig?: ViteConfigOverr
 }
 
 /**
- * Vite SPA Recipe factory.
- * `run: 'preview'` (default) — `vite build` then `vite preview`
- * `run: 'dev'` — `vite` with strictPort (never shared)
+ * Vite SPA Recipe factory (programmatic Vite JS API).
+ * `run: 'preview'` (default) — `build` then `preview`
+ * `run: 'dev'` — `createServer` with strictPort (never shared)
  */
 export const vite: Driver<ViteOptions> = defineDriver((opts: ViteOptions): Recipe => {
   const root = resolve(opts.root);
   const runMode: ViteRun = opts.run ?? 'preview';
   const id = opts.id ?? `vite-${runMode}-${root.split('/').pop()}`;
-  const bin = () => resolveViteBin(root);
 
   if (runMode === 'dev') {
     return cliFrameworkRecipe({
@@ -103,21 +93,15 @@ export const vite: Driver<ViteOptions> = defineDriver((opts: ViteOptions): Recip
       readyPath: opts.readyPath,
       readyTimeoutMs: opts.readyTimeoutMs,
       workspaceDeps: opts.workspaceDeps,
-      start: async ({ port, outDir }) => {
-        const configArgs = await viteConfigArgs(root, outDir, opts.viteConfig);
-        return {
-          command: process.execPath,
-          args: [
-            bin(),
-            ...configArgs,
-            '--host',
-            '127.0.0.1',
-            '--port',
-            String(port),
-            '--strictPort',
-          ],
-          cwd: root,
-        };
+      start: async ({ port, outDir, host }) => {
+        const configFile = await resolveConfigFile(root, outDir, opts.viteConfig);
+        return startViteDev({
+          root,
+          port,
+          host,
+          configFile,
+          env: opts.env,
+        });
       },
     });
   }
@@ -136,29 +120,18 @@ export const vite: Driver<ViteOptions> = defineDriver((opts: ViteOptions): Recip
       assertViteBuildOutput(root, opts.viteConfig);
     },
     prepare: async ({ outDir }) => {
-      const configArgs = await viteConfigArgs(root, outDir, opts.viteConfig);
-      return {
-        command: process.execPath,
-        args: [bin(), 'build', ...configArgs],
-        cwd: root,
-      };
+      const configFile = await resolveConfigFile(root, outDir, opts.viteConfig);
+      await runViteBuild({ root, configFile, env: opts.env });
     },
-    start: async ({ port, outDir }) => {
-      const configArgs = await viteConfigArgs(root, outDir, opts.viteConfig);
-      return {
-        command: process.execPath,
-        args: [
-          bin(),
-          'preview',
-          ...configArgs,
-          '--host',
-          '127.0.0.1',
-          '--port',
-          String(port),
-          '--strictPort',
-        ],
-        cwd: root,
-      };
+    start: async ({ port, outDir, host }) => {
+      const configFile = await resolveConfigFile(root, outDir, opts.viteConfig);
+      return startVitePreview({
+        root,
+        port,
+        host,
+        configFile,
+        env: opts.env,
+      });
     },
   });
 });

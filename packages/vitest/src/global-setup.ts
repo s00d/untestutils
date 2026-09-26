@@ -3,7 +3,6 @@ import type { TestProject } from 'vitest/node';
 import {
   ensurePrepared,
   stopAllTargets,
-  reclaimStaleTargets,
   getRegisteredRecipe,
   listRegisteredRecipes,
   resolveArtifactsRoot,
@@ -44,8 +43,8 @@ export default async function globalSetup(project: TestProject): Promise<() => P
   await loadRecipesModule();
 
   const artifactsRoot = resolveArtifactsRoot();
-  // Previous vitest forks leave nitro/_dev orphans; kill by registry pid before reuse.
-  await reclaimStaleTargets(artifactsRoot);
+  // Previous vitest forks leave orphans; drain registry before reuse.
+  await stopAllTargets(artifactsRoot);
   const prewarm: string[] = JSON.parse(process.env.UNTESTUTILS_PREWARM || '[]') as string[];
 
   // Prefer recipes export from the module (avoids dual-package Map when entries split)

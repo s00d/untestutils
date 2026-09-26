@@ -6,6 +6,22 @@ declare module '#imports' {
   export const useRouter: typeof import('vue-router').useRouter;
   export const useRoute: typeof import('vue-router').useRoute;
   export const isNuxtError: typeof import('nuxt/app').isNuxtError;
+  export const clearError: typeof import('nuxt/app').clearError;
+  export const clearNuxtData: typeof import('nuxt/app').clearNuxtData;
+  export const clearNuxtState: typeof import('nuxt/app').clearNuxtState;
+}
+
+declare module 'untestutils-vitest-environment-options' {
+  const environmentOptions: {
+    nuxt?: {
+      appIsolation?: 'file' | 'worker';
+      resetBetweenTests?: boolean;
+      rootId?: string;
+      [key: string]: unknown;
+    };
+    [key: string]: unknown;
+  };
+  export default environmentOptions;
 }
 
 declare module '#app/composables/router' {

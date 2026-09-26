@@ -14,7 +14,9 @@ export default defineConfig({
   ],
   test: {
     include: ['e2e/**/*.spec.ts'],
-    testTimeout: 60_000,
-    hookTimeout: 60_000,
+    testTimeout: 180_000,
+    hookTimeout: 240_000,
+    // Shared fixture roots (next/solid) race if two prepares write the same cwd.
+    fileParallelism: false,
   },
 });

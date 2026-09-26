@@ -208,6 +208,16 @@ export const next: Driver<NextOptions> = defineDriver((opts: NextOptions): Recip
         }
       });
     },
+    verifyArtifact: async () => {
+      const distDir =
+        typeof opts.nextConfig?.distDir === 'string' ? opts.nextConfig.distDir : '.next';
+      const buildId = join(root, distDir, 'BUILD_ID');
+      if (!existsSync(buildId)) {
+        throw new Error(
+          `[untestutils/next] missing production build ${buildId} (dev mode must not share this root)`,
+        );
+      }
+    },
     start: ({ port }) => ({
       command: process.execPath,
       args: [bin(), 'start', '-H', '127.0.0.1', '-p', String(port)],

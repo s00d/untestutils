@@ -23,6 +23,9 @@ export type NuxtRuntimeWindow = Window &
     IntersectionObserver?: typeof IntersectionObserver;
     indexedDB?: IDBFactory;
     __NUXT_VITEST_ENVIRONMENT__?: boolean;
+    __NUXT_VITEST_ENVIRONMENT_BROWSER_ENTRY__?: boolean;
+    __UNTESTUTILS_APP_ISOLATION__?: 'file' | 'worker';
+    __UNTESTUTILS_RESET_BETWEEN_TESTS__?: boolean;
     __NUXT__?: {
       serverRendered: boolean;
       config: RuntimeConfig;
@@ -47,6 +50,8 @@ export type EnvironmentOptions = {
     h3Version?: 1 | 2;
     url?: string;
     domEnvironment?: 'happy-dom' | 'jsdom';
+    appIsolation?: 'file' | 'worker';
+    resetBetweenTests?: boolean;
     mock?: {
       intersectionObserver?: boolean;
       indexedDb?: boolean;
@@ -62,6 +67,12 @@ async function setupWindow(
   environmentOptions: EnvironmentOptions,
 ): Promise<SetupWindowCleanup> {
   win.__NUXT_VITEST_ENVIRONMENT__ = true;
+  if (environmentOptions.nuxt?.appIsolation) {
+    win.__UNTESTUTILS_APP_ISOLATION__ = environmentOptions.nuxt.appIsolation;
+  }
+  if (environmentOptions.nuxt?.resetBetweenTests !== undefined) {
+    win.__UNTESTUTILS_RESET_BETWEEN_TESTS__ = environmentOptions.nuxt.resetBetweenTests;
+  }
   win.__NUXT__ = {
     serverRendered: false,
     config: {

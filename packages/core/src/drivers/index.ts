@@ -22,6 +22,13 @@ export type {
   FrameworkBaseOptions,
 } from './cli-framework';
 export {
+  importViteFromRoot,
+  runViteBuild,
+  startViteDev,
+  startVitePreview,
+} from './vite-api';
+export type { ViteApiModule, ViteProgrammaticOpts } from './vite-api';
+export {
   matrixRecipe,
   findWorkspaceRoot,
   workspacePackageSrcDirs,

@@ -1,6 +1,5 @@
-import { spawn } from 'node:child_process';
 import net from 'node:net';
-import { getFreePort, LOOPBACK_HOST, waitForHttpReady } from '@untestutils/core';
+import { getFreePort, LOOPBACK_HOST, waitForHttpReady, spawnManaged } from '@untestutils/core';
 import { resolve } from 'pathe';
 import { ProcessSampler } from './process-sample';
 import type { PerfTarget, ProcessMetrics } from './types';
@@ -63,7 +62,7 @@ export async function startTarget(
 
   const url = `http://${host}:${port}`;
 
-  const child = spawn(target.start.command, target.start.args ?? [], {
+  const managed = spawnManaged(target.start.command, target.start.args ?? [], {
     cwd,
     env: {
       ...process.env,
@@ -72,80 +71,71 @@ export async function startTarget(
       NODE_ENV: 'production',
       ...target.start.env,
     },
-    stdio: ['ignore', 'pipe', 'pipe'],
-    detached: process.platform !== 'win32',
+    captureLogs: true,
+    server: true,
   });
 
   const verbose = opts.ui?.verbosity === 'verbose';
-  child.stdout?.on('data', (b: Buffer) => {
-    for (const line of b.toString().split('\n')) {
+  let logCursor = 0;
+  const pumpLogs = setInterval(() => {
+    const all = managed.logs();
+    if (all.length <= logCursor) return;
+    const chunk = all.slice(logCursor);
+    logCursor = all.length;
+    for (const line of chunk.split('\n')) {
       const t = line.trim();
-      if (t && verbose) opts.ui?.emit({ type: 'log', channel: 'server', line: t.slice(0, 200) });
-    }
-  });
-  child.stderr?.on('data', (b: Buffer) => {
-    for (const line of b.toString().split('\n')) {
-      const t = line.trim();
-      if (t && (verbose || /ERROR|WARN/i.test(t))) {
+      if (!t) continue;
+      if (verbose) opts.ui?.emit({ type: 'log', channel: 'server', line: t.slice(0, 200) });
+      else if (/ERROR|WARN/i.test(t)) {
         opts.ui?.emit({ type: 'log', channel: 'server', line: t.slice(0, 200) });
       }
     }
-  });
+  }, 200);
+  pumpLogs.unref?.();
 
+  const readyTimeoutMs = target.start.readyTimeoutMs ?? 60_000;
+  const readyPath = target.start.readyPath ?? '/';
   try {
-    await new Promise<void>((resolveReady, reject) => {
-      const onExit = (code: number | null) => {
-        reject(new Error(`[untestutils/perf] server exited before ready (code=${code})`));
-      };
-      child.once('exit', onExit);
-      waitForHttpReady(url, {
-        path: target.start.readyPath ?? '/',
-        timeoutMs: target.start.readyTimeoutMs ?? 60_000,
-      })
-        .then(() => {
-          child.off('exit', onExit);
-          resolveReady();
-        })
-        .catch((err: unknown) => {
-          child.off('exit', onExit);
-          reject(err);
-        });
-    });
+    await Promise.race([
+      waitForHttpReady(url, { path: readyPath, timeoutMs: readyTimeoutMs }),
+      new Promise<never>((_, reject) => {
+        const started = Date.now();
+        const poll = setInterval(() => {
+          if (!managed.alive()) {
+            clearInterval(poll);
+            reject(new Error('[untestutils/perf] server exited before ready'));
+          } else if (Date.now() - started >= readyTimeoutMs) {
+            clearInterval(poll);
+          }
+        }, 100);
+        poll.unref?.();
+      }),
+    ]);
   } catch (err) {
-    await killChild(child);
+    clearInterval(pumpLogs);
+    await managed.stop();
     throw err;
   }
 
-  const sampler = child.pid ? new ProcessSampler(child.pid) : undefined;
+  if (!managed.alive()) {
+    clearInterval(pumpLogs);
+    await managed.stop();
+    throw new Error('[untestutils/perf] server exited before ready');
+  }
+
+  const sampler = managed.pid ? new ProcessSampler(managed.pid) : undefined;
   sampler?.begin();
 
   return {
     url,
     port,
     requestedPort,
-    pid: child.pid,
+    pid: managed.pid,
     noteProcess: () => sampler?.note(),
     takeProcessMetrics: () => (sampler ? sampler.finalize() : emptyMetrics()),
     stop: async () => {
-      await killChild(child);
+      clearInterval(pumpLogs);
+      await managed.stop();
     },
   };
-}
-
-async function killChild(child: ReturnType<typeof spawn>): Promise<void> {
-  if (!child.pid) return;
-  try {
-    if (process.platform !== 'win32') {
-      try {
-        process.kill(-child.pid, 'SIGTERM');
-      } catch {
-        process.kill(child.pid, 'SIGTERM');
-      }
-    } else {
-      child.kill('SIGTERM');
-    }
-  } catch {
-    /* ignore */
-  }
-  await new Promise((r) => setTimeout(r, 300));
 }

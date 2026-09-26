@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import {
   isCi,
   isProgressEnabled,
-  isQuiet,
   progress,
   progressIo,
   withQuietLogger,
@@ -52,8 +51,8 @@ describe('progress', () => {
     expect(text).toMatch(/teardown/);
   });
 
-  test('prewarm aliases waveStart', () => {
-    progress.prewarm(['a', 'b']);
+  test('waveStart records prepare wave', () => {
+    progress.waveStart(['a', 'b']);
     expect(progressIo.lines.join('\n')).toMatch(/prepare once/);
     expect(progressIo.wave?.total).toBe(2);
   });
@@ -66,7 +65,6 @@ describe('progress', () => {
 
   test('quiet / PROGRESS=0 suppress status but fail still records', () => {
     process.env.UNTESTUTILS_QUIET = '1';
-    expect(isQuiet()).toBe(true);
     expect(isProgressEnabled()).toBe(false);
     progress.prepareStart('x');
     progress.start('x', 'http://127.0.0.1:1');

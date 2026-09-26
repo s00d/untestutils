@@ -33,11 +33,6 @@ export function isProgressEnabled(): boolean {
   return true;
 }
 
-/** @deprecated prefer isProgressEnabled — QUIET alone */
-export function isQuiet(): boolean {
-  return !isProgressEnabled();
-}
-
 function useFancy(): boolean {
   if (!isProgressEnabled()) return false;
   if (isCi()) return false;
@@ -156,11 +151,6 @@ export const progress = {
     if (total) {
       emit(`  ${total} recipes in the wave`);
     }
-  },
-
-  /** @deprecated use waveStart — kept for older call sites */
-  prewarm(ids: string[]): void {
-    progress.waveStart(ids);
   },
 
   prepareStart(id: string): void {

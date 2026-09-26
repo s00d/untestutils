@@ -1,6 +1,9 @@
 /**
- * Published shim so Vitest can resolve `environment: 'untestutils'`
- * via the conventional package name when nested under the facade tarball.
- * Prefer installing `vitest-environment-untestutils` (also a dependency of this package).
+ * Facade-nested shim — same router as the published `vitest-environment-untestutils` package.
  */
-export { default } from '@untestutils/nuxt/environment';
+export {
+  default,
+  resolveUnitFramework,
+  UNIT_FRAMEWORK_PACKAGES,
+  UNIT_FRAMEWORK_IDS,
+} from 'vitest-environment-untestutils';

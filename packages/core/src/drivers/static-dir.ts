@@ -1,31 +1,41 @@
-import { createServer } from 'node:http';
 import { existsSync } from 'node:fs';
-import { readFile, stat } from 'node:fs/promises';
-import { extname, join, normalize, resolve, sep } from 'pathe';
+import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
+import { dirname, join, resolve } from 'pathe';
 import { defineRecipe } from '../recipes';
 import { loopbackUrl } from '../paths';
 import { waitForHttpReady } from '../ready';
+import { spawnManaged } from '../process';
 import type { Recipe } from '../types';
-
-const MIME: Record<string, string> = {
-  '.html': 'text/html; charset=utf-8',
-  '.js': 'text/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8',
-  '.json': 'application/json',
-  '.svg': 'image/svg+xml',
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.ico': 'image/x-icon',
-  '.txt': 'text/plain; charset=utf-8',
-  '.wasm': 'application/wasm',
-};
 
 export interface StaticDirOptions {
   id: string;
   root: string;
   hashInputs?: string[];
   readyPath?: string;
+}
+
+function resolveStaticChildHost(): string {
+  const beside = fileURLToPath(new URL('./static-child-host.mjs', import.meta.url));
+  if (existsSync(beside)) return beside;
+  try {
+    const pkg = createRequire(import.meta.url).resolve('@untestutils/core/package.json');
+    const fromPkg = join(dirname(pkg), 'dist/drivers/static-child-host.mjs');
+    if (existsSync(fromPkg)) return fromPkg;
+  } catch {
+    /* self-resolve */
+  }
+  let dir = dirname(fileURLToPath(import.meta.url));
+  for (let i = 0; i < 6; i++) {
+    const candidate = join(dir, 'dist/drivers/static-child-host.mjs');
+    if (existsSync(candidate)) return candidate;
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  throw new Error(
+    '[untestutils] static-child-host.mjs not found — run `pnpm --filter @untestutils/core build`',
+  );
 }
 
 export function staticDir(opts: StaticDirOptions): Recipe {
@@ -40,69 +50,48 @@ export function staticDir(opts: StaticDirOptions): Recipe {
       if (!existsSync(root)) {
         throw new Error(`[untestutils/staticDir] root not found: ${root}`);
       }
-      const server = createServer(async (req, res) => {
-        try {
-          const urlPath = decodeURIComponent((req.url ?? '/').split('?')[0] || '/');
-          let filePath = join(root, urlPath === '/' ? 'index.html' : urlPath);
-          // path traversal guard
-          const normalized = normalize(filePath);
-          if (!normalized.startsWith(normalize(root) + sep) && normalized !== normalize(root)) {
-            res.statusCode = 403;
-            res.end('Forbidden');
-            return;
-          }
-          let st = await stat(normalized).catch(() => null);
-          if (st?.isDirectory()) {
-            filePath = join(normalized, 'index.html');
-            st = await stat(filePath).catch(() => null);
-          } else {
-            filePath = normalized;
-          }
-          if (!st?.isFile()) {
-            // SPA fallback
-            const fallback = join(root, 'index.html');
-            const fb = await stat(fallback).catch(() => null);
-            if (fb?.isFile()) {
-              const body = await readFile(fallback);
-              res.setHeader('Content-Type', 'text/html; charset=utf-8');
-              res.end(body);
-              return;
-            }
-            res.statusCode = 404;
-            res.end('Not Found');
-            return;
-          }
-          const body = await readFile(filePath);
-          res.setHeader('Content-Type', MIME[extname(filePath)] ?? 'application/octet-stream');
-          res.end(body);
-        } catch (e) {
-          res.statusCode = 500;
-          res.end(String(e));
-        }
-      });
-
-      await new Promise<void>((resolvePromise, reject) => {
-        server.listen(port, host, () => resolvePromise());
-        server.once('error', (err) => {
-          reject(
-            new Error(`[untestutils/staticDir] listen failed on ${host}:${port}: ${err.message}`, {
-              cause: err,
-            }),
-          );
-        });
+      const script = resolveStaticChildHost();
+      const managed = spawnManaged(process.execPath, [script], {
+        cwd: root,
+        env: {
+          ...process.env,
+          PORT: String(port),
+          HOST: host,
+          UNTESTUTILS_STATIC_ROOT: root,
+          UNTESTUTILS_STATIC_PORT: String(port),
+          UNTESTUTILS_STATIC_HOST: host,
+        },
+        captureLogs: true,
+        server: true,
       });
 
       const url = loopbackUrl(port, '/', host);
-      await waitForHttpReady(url, { path: opts.readyPath ?? '/' });
+      try {
+        const started = Date.now();
+        for (;;) {
+          if (!managed.alive()) {
+            throw new Error('static child exited before ready');
+          }
+          if (managed.logs().includes('ready')) break;
+          if (Date.now() - started > 30_000) {
+            throw new Error(`static child ready timeout\n--- logs ---\n${managed.logs().slice(-4000)}`);
+          }
+          await new Promise((r) => setTimeout(r, 30));
+        }
+        await waitForHttpReady(url, { path: opts.readyPath ?? '/' });
+      } catch (e) {
+        await managed.stop();
+        throw new Error(
+          `[untestutils/staticDir] ready failed:\n${e instanceof Error ? e.message : String(e)}\n--- logs ---\n${managed.logs().slice(-4000)}`,
+        );
+      }
 
       return {
         kind: 'url+dir',
         url,
         dir: root,
-        stop: async () =>
-          new Promise((resolvePromise) => {
-            server.close(() => resolvePromise());
-          }),
+        pid: managed.pid,
+        stop: managed.stop,
       };
     },
   });

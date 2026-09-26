@@ -4,9 +4,21 @@
   "type": "module",
   "scripts": {
     "test": "vitest run --config vitest.config.ts",
+    "test:e2e-matrix": "node --import tsx ./scripts/assert-e2e-mode-matrix.mjs",
+    "test:e2e-teardown": "node ./scripts/assert-e2e-teardown.mjs",
     "test:unit-nuxt": "vitest run --config vitest.unit-nuxt.config.ts",
     "test:unit-nuxt-server": "vitest run --config vitest.unit-nuxt-server.config.ts",
-    "test:playwright": "playwright test --config playwright/playwright.config.ts"
+    "test:unit-worker": "node ./scripts/assert-unit-worker-boots.mjs && node ./scripts/assert-isolate-setup.mjs && node ./scripts/assert-lifecycle.mjs && node ./scripts/assert-e2e-teardown.mjs",
+    "test:unit-worker:watch": "vitest watch --config vitest.unit-worker-hot.config.ts",
+    "test:unit-bench": "node ./scripts/bench-unit-app-isolation.mjs",
+    "test:playwright": "playwright test --config playwright/playwright.config.ts",
+    "test:unit-next": "vitest run --config vitest.unit-next.config.ts && node ./scripts/assert-unit-boots.mjs next",
+    "test:unit-astro": "vitest run --config vitest.unit-astro.config.ts && node ./scripts/assert-unit-boots.mjs astro",
+    "test:unit-sveltekit": "vitest run --config vitest.unit-sveltekit.config.ts && node ./scripts/assert-unit-boots.mjs sveltekit",
+    "test:unit-remix": "vitest run --config vitest.unit-remix.config.ts && node ./scripts/assert-unit-boots.mjs remix",
+    "test:unit-solidstart": "vitest run --config vitest.unit-solidstart.config.ts && node ./scripts/assert-unit-boots.mjs solidstart",
+    "test:unit-vite": "vitest run --config vitest.unit-vite.config.ts && node ./scripts/assert-unit-boots.mjs vite",
+    "test:unit-all": "pnpm run test:unit-nuxt && pnpm run test:unit-vite && pnpm run test:unit-next && pnpm run test:unit-astro && pnpm run test:unit-sveltekit && pnpm run test:unit-remix && pnpm run test:unit-solidstart && pnpm run test:unit-worker"
   },
   "dependencies": {
     "untestutils": "workspace:*"
@@ -14,12 +26,18 @@
   "devDependencies": {
     "@playwright/test": "catalog:",
     "@untestutils/nuxt": "workspace:*",
+    "@untestutils/vite": "workspace:*",
     "@vue/test-utils": "catalog:",
     "happy-dom": "catalog:",
     "nuxt": "catalog:",
     "playwright-core": "catalog:",
     "vitest": "catalog:",
     "vitest-environment-untestutils": "workspace:*",
-    "vue": "catalog:"
+    "vue": "catalog:",
+    "@untestutils/next": "workspace:*",
+    "@untestutils/astro": "workspace:*",
+    "@untestutils/sveltekit": "workspace:*",
+    "@untestutils/remix": "workspace:*",
+    "@untestutils/solidstart": "workspace:*"
   }
 }

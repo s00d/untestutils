@@ -1,10 +1,12 @@
 /**
  * Core recipe types — framework-free.
  */
+import type { ManagedProcess, StopOpts } from './process';
+
 export type RunningKind = 'url' | 'dir' | 'url+dir';
 
 export interface RunningBase {
-  stop?: () => Promise<void>;
+  stop?: (opts?: StopOpts) => Promise<void>;
   /** OS pid of the managed server (for cross-worker teardown via registry). */
   pid?: number;
 }
@@ -59,15 +61,13 @@ export interface RunResult {
   stderr: string;
 }
 
-export interface DetachedProcess {
-  pid?: number;
-  stop: () => Promise<void>;
-  logs: () => string;
-}
-
 export interface RunHelper {
   (strings: TemplateStringsArray, ...values: unknown[]): Promise<RunResult>;
-  detached: (strings: TemplateStringsArray, ...values: unknown[]) => Promise<DetachedProcess>;
+  /** Long-lived server handle — same contract as `spawnManaged`. */
+  detached: (
+    strings: TemplateStringsArray,
+    ...values: unknown[]
+  ) => Promise<ManagedProcess>;
   command: (cmd: string, opts?: { cwd?: string; env?: NodeJS.ProcessEnv }) => Promise<RunResult>;
 }
 

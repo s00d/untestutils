@@ -10,6 +10,7 @@ export default defineVitestProject({
       nuxt: {
         rootDir: fileURLToPath(new URL('.', import.meta.url)),
         domEnvironment: 'happy-dom',
+        // For large suites: appIsolation: 'worker' (auto isolate: false + resetBetweenTests)
       },
     },
   },

@@ -10,6 +10,7 @@ examples/**/.untestutils-*
 .output
 .astro
 .next
+.next-*
 .svelte-kit
 .vinxi
 coverage
@@ -26,3 +27,6 @@ playground/fixtures/**/build
 !.env.example
 docs/.vitepress/cache
 docs/.vitepress/dist
+
+# IDE
+.idea/

@@ -1,6 +1,6 @@
 {
   "name": "@untestutils/vitest",
-  "version": "0.6.11",
+  "version": "0.7.0",
   "homepage": "https://s00d.github.io/untestutils/",
   "license": "MIT",
   "repository": {
@@ -38,7 +38,22 @@
       "import": "./dist/setup-file.mjs",
       "default": "./dist/setup-file.mjs"
     },
-    "./package.json": "./package.json"
+    "./unit-lifecycle": {
+      "types": "./dist/unit-lifecycle/index.d.ts",
+      "import": "./dist/unit-lifecycle/index.mjs",
+      "default": "./dist/unit-lifecycle/index.mjs"
+    },
+    "./package.json": "./package.json",
+    "./unit-dom": {
+      "types": "./dist/unit-dom/index.d.ts",
+      "import": "./dist/unit-dom/index.mjs",
+      "default": "./dist/unit-dom/index.mjs"
+    },
+    "./unit-marker": {
+      "types": "./dist/unit-marker/index.d.ts",
+      "import": "./dist/unit-marker/index.mjs",
+      "default": "./dist/unit-marker/index.mjs"
+    }
   },
   "publishConfig": {
     "access": "public"
@@ -50,10 +65,15 @@
   },
   "dependencies": {
     "@untestutils/core": "workspace:*",
-    "pathe": "catalog:"
+    "pathe": "catalog:",
+    "defu": "catalog:",
+    "fake-indexeddb": "^6.2.5",
+    "local-pkg": "^1.2.1"
   },
   "devDependencies": {
+    "@types/jsdom": "catalog:",
     "@types/node": "catalog:",
+    "happy-dom": "catalog:",
     "obuild": "catalog:",
     "publint": "catalog:",
     "typescript": "catalog:",
@@ -62,7 +82,9 @@
   "peerDependencies": {
     "@playwright/test": "catalog:",
     "playwright-core": "catalog:",
-    "vitest": "^4.0.0 || ^5.0.0"
+    "vitest": "^4.0.0 || ^5.0.0",
+    "happy-dom": ">=20.0.0",
+    "jsdom": ">=27.0.0"
   },
   "peerDependenciesMeta": {
     "@playwright/test": {
@@ -72,6 +94,12 @@
       "optional": true
     },
     "vitest": {
+      "optional": true
+    },
+    "happy-dom": {
+      "optional": true
+    },
+    "jsdom": {
       "optional": true
     }
   },

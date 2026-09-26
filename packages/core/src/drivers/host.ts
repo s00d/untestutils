@@ -39,9 +39,7 @@ export const host: Driver<HostOptions> = defineDriver((opts: HostOptions): Recip
       return {
         kind: 'url',
         url,
-        stop: async () => {
-          /* remote process is not ours */
-        },
+        // No local process — omit stop/pid so orchestrator fail-closed allows remote attach.
       };
     },
   });

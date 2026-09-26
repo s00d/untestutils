@@ -8,7 +8,9 @@ import {
   frameworkRoots,
   matrixRecipe,
   resolveBin,
+  runViteBuild,
   serializeViteMergeConfigModule,
+  startViteDev,
   writeEphemeralConfig,
   type Driver,
   type FrameworkBaseOptions,
@@ -24,7 +26,7 @@ export interface RemixOptions extends FrameworkBaseOptions {
   /** Server build entry relative to root (default `build/server/index.js`). */
   serverEntry?: string;
   /**
-   * When set, build/dev go through Vite with `--config` merge (Remix Vite apps).
+   * When set, build/dev go through Vite with merged config (Remix Vite apps).
    * Same role as Nuxt `nuxtConfig`.
    */
   viteConfig?: ViteConfigOverride;
@@ -44,16 +46,6 @@ export type RemixMatrixVariant = Partial<
   >
 >;
 
-function resolveRemixCli(root: string): string {
-  return resolveBin({
-    label: 'remix',
-    roots: frameworkRoots(root),
-    directIds: ['@remix-run/dev/dist/cli.js', '@remix-run/dev/cli.js'],
-    packageJsonIds: ['@remix-run/dev/package.json'],
-    binRelative: ['dist/cli.js', 'cli.js'],
-  });
-}
-
 function resolveRemixServe(root: string): string {
   return resolveBin({
     label: 'remix',
@@ -64,47 +56,37 @@ function resolveRemixServe(root: string): string {
   });
 }
 
-function resolveViteBin(root: string): string {
-  return resolveBin({
-    label: 'remix',
-    roots: frameworkRoots(root),
-    directIds: ['vite/bin/vite.js', 'vite/bin/vite.mjs'],
-    packageJsonIds: ['vite/package.json'],
-    binRelative: ['bin/vite.js', 'bin/vite.mjs'],
-  });
-}
-
 function hashInputsFor(opts: RemixOptions, root: string, extra: string[]): string[] {
   const inputs = [...(opts.hashInputs ?? [root]), ...extra];
   if (opts.viteConfig) inputs.push(configOverrideHashInput('viteConfig', opts.viteConfig));
   return inputs;
 }
 
-async function viteConfigArgs(
+async function resolveConfigFile(
   root: string,
   outDir: string,
   viteConfig: ViteConfigOverride | undefined,
-): Promise<string[]> {
-  if (!viteConfig || !Object.keys(viteConfig).length) return [];
+): Promise<string | undefined> {
+  if (!viteConfig || !Object.keys(viteConfig).length) return undefined;
   const configPath = join(outDir, 'vite.untestutils.mjs');
   await writeEphemeralConfig(
     configPath,
     serializeViteMergeConfigModule({ appRoot: root, overrides: viteConfig }),
   );
-  return ['--config', configPath];
+  return configPath;
 }
 
 /**
  * Remix (Vite) Recipe factory.
- * `run: 'server'` (default) — vite/remix build + remix-serve
- * `run: 'dev'` — remix vite:dev / vite
+ * Vite branches use programmatic Vite JS API; remix-serve stays CLI.
+ * `run: 'server'` (default) — vite build + remix-serve
+ * `run: 'dev'` — vite createServer
  */
 export const remix: Driver<RemixOptions> = defineDriver((opts: RemixOptions): Recipe => {
   const root = resolve(opts.root);
   const runMode: RemixRun = opts.run ?? 'server';
   const id = opts.id ?? `remix-${runMode}-${root.split('/').pop()}`;
   const serverEntry = opts.serverEntry ?? join('build', 'server', 'index.js');
-  const hasViteOverrides = Boolean(opts.viteConfig && Object.keys(opts.viteConfig).length);
 
   if (runMode === 'dev') {
     return cliFrameworkRecipe({
@@ -117,40 +99,15 @@ export const remix: Driver<RemixOptions> = defineDriver((opts: RemixOptions): Re
       readyPath: opts.readyPath,
       readyTimeoutMs: opts.readyTimeoutMs,
       workspaceDeps: opts.workspaceDeps,
-      start: async ({ port, outDir }) => {
-        if (hasViteOverrides) {
-          const viteBin = resolveViteBin(root);
-          const configArgs = await viteConfigArgs(root, outDir, opts.viteConfig);
-          return {
-            command: process.execPath,
-            args: [
-              viteBin,
-              ...configArgs,
-              '--port',
-              String(port),
-              '--strictPort',
-              '--host',
-              '127.0.0.1',
-            ],
-            cwd: root,
-          };
-        }
-        try {
-          const cli = resolveRemixCli(root);
-          return {
-            command: process.execPath,
-            args: [cli, 'vite:dev', '--port', String(port)],
-            cwd: root,
-            env: { PORT: String(port) },
-          };
-        } catch {
-          const viteBin = resolveViteBin(root);
-          return {
-            command: process.execPath,
-            args: [viteBin, '--port', String(port), '--strictPort', '--host', '127.0.0.1'],
-            cwd: root,
-          };
-        }
+      start: async ({ port, outDir, host }) => {
+        const configFile = await resolveConfigFile(root, outDir, opts.viteConfig);
+        return startViteDev({
+          root,
+          port,
+          host,
+          configFile,
+          env: { ...opts.env, PORT: String(port) },
+        });
       },
     });
   }
@@ -166,30 +123,8 @@ export const remix: Driver<RemixOptions> = defineDriver((opts: RemixOptions): Re
     readyTimeoutMs: opts.readyTimeoutMs,
     workspaceDeps: opts.workspaceDeps,
     prepare: async ({ outDir }) => {
-      if (hasViteOverrides) {
-        const viteBin = resolveViteBin(root);
-        const configArgs = await viteConfigArgs(root, outDir, opts.viteConfig);
-        return {
-          command: process.execPath,
-          args: [viteBin, 'build', ...configArgs],
-          cwd: root,
-        };
-      }
-      try {
-        const cli = resolveRemixCli(root);
-        return {
-          command: process.execPath,
-          args: [cli, 'vite:build'],
-          cwd: root,
-        };
-      } catch {
-        const viteBin = resolveViteBin(root);
-        return {
-          command: process.execPath,
-          args: [viteBin, 'build'],
-          cwd: root,
-        };
-      }
+      const configFile = await resolveConfigFile(root, outDir, opts.viteConfig);
+      await runViteBuild({ root, configFile, env: opts.env });
     },
     verifyAfterPrepare: () => {
       const entry = join(root, serverEntry);

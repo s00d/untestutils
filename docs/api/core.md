@@ -25,7 +25,7 @@ export const recipes = defineRecipes({
 | `hashInputs?` | Identity inputs |
 | `share?` | Share policy |
 
-`Running`: `{ kind: 'url', url, stop }` and/or `{ kind: 'dir', dir }`.
+`Running`: `{ kind: 'url', url, stop?, pid? }` and/or `{ kind: 'dir', dir }`. Local `share: always|never` servers must set `pid` (e.g. via `spawnManaged`); remote attach omits `stop`/`pid`.
 
 ## useHarness / leaseTarget / withHarness
 
@@ -44,5 +44,17 @@ await withHarness('site', async (app) => {
 `prepareOnce(id)` returns the prepared target without ALS bookkeeping.
 
 Also: `getCurrentHarness()`, `ensurePrepared()`, `stopAllTargets()`, `resolveArtifactsRoot()`, `resolveSessionArtifactsRoot()`, `sanitizeSession()`, `waitForHttpReady()`, `TargetRegistry`, `SCHEMA_VERSION`.
+
+## Process handles
+
+Users manage **instances**, not PIDs / process groups:
+
+| Export | Semantics |
+|--------|-----------|
+| `spawnManaged(cmd, args, opts?)` | Long-lived process → `ManagedProcess` (`stop` / `alive` / `logs`) |
+| `runCommand(cmd, args, opts?)` | Foreground one-shot (build / CLI tools) |
+| `stopAllTargets()` | Drain live handles + registry orphans |
+
+`ManagedProcess.stop(opts?)`: `{ graceMs?, signal?, keepEventLoop? }` (defaults 2000 / `SIGTERM`). Servers use process-group / `taskkill /T` internally — callers never pass negative PIDs. Orphan reclaim: [Troubleshooting](/guide/troubleshooting).
 
 See [How it works](/guide/how-it-works) · [Drivers API](/api/drivers).

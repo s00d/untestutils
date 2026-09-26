@@ -7,9 +7,7 @@ import {
   deepMergePlain,
   defineDriver,
   findFirstExistingConfig,
-  frameworkRoots,
   matrixRecipe,
-  resolveBin,
   serializeAstroMergeConfigModule,
   serializeDefaultExport,
   writeEphemeralConfig,
@@ -17,6 +15,7 @@ import {
   type FrameworkBaseOptions,
   type Recipe,
 } from '@untestutils/core';
+import { runAstroBuild, startAstroDev, startAstroPreview } from './astro-api';
 
 export type AstroRun = 'preview' | 'server' | 'dev';
 
@@ -27,7 +26,7 @@ export interface AstroOptions extends FrameworkBaseOptions {
   /** SSR entry relative to root (default dist/server/entry.mjs). */
   serverEntry?: string;
   /**
-   * Merged onto the app's astro.config via ephemeral `--config` (same role as Nuxt `nuxtConfig`).
+   * Merged onto the app's astro.config via ephemeral config (same role as Nuxt `nuxtConfig`).
    */
   astroConfig?: AstroConfigOverride;
 }
@@ -54,28 +53,18 @@ const ASTRO_CONFIG_NAMES = [
   'astro.config.cjs',
 ];
 
-function resolveAstroBin(root: string): string {
-  return resolveBin({
-    label: 'astro',
-    roots: frameworkRoots(root),
-    directIds: ['astro/astro.js'],
-    packageJsonIds: ['astro/package.json'],
-    binRelative: ['astro.js', 'bin/astro.mjs'],
-  });
-}
-
 function hashInputsFor(opts: AstroOptions, root: string, extra: string[]): string[] {
   const inputs = [...(opts.hashInputs ?? [root]), ...extra];
   if (opts.astroConfig) inputs.push(configOverrideHashInput('astroConfig', opts.astroConfig));
   return inputs;
 }
 
-async function astroConfigArgs(
+async function resolveConfigFile(
   root: string,
   outDir: string,
   astroConfig: AstroConfigOverride | undefined,
-): Promise<string[]> {
-  if (!astroConfig || !Object.keys(astroConfig).length) return [];
+): Promise<string | undefined> {
+  if (!astroConfig || !Object.keys(astroConfig).length) return undefined;
   const configPath = join(outDir, 'astro.untestutils.mjs');
   const userConfig = findFirstExistingConfig(root, ASTRO_CONFIG_NAMES);
   const contents = userConfig
@@ -85,20 +74,19 @@ async function astroConfigArgs(
       })
     : serializeDefaultExport(astroConfig);
   await writeEphemeralConfig(configPath, contents);
-  return ['--config', configPath];
+  return configPath;
 }
 
 /**
- * Astro Recipe factory.
- * `run: 'preview'` (default) — `astro build` + `astro preview`
+ * Astro Recipe factory (programmatic `astro` package APIs for build/dev/preview).
+ * `run: 'preview'` (default) — build + preview
  * `run: 'server'` — build + `node dist/server/entry.mjs`
- * `run: 'dev'` — `astro dev`
+ * `run: 'dev'` — astro.dev()
  */
 export const astro: Driver<AstroOptions> = defineDriver((opts: AstroOptions): Recipe => {
   const root = resolve(opts.root);
   const runMode: AstroRun = opts.run ?? 'preview';
   const id = opts.id ?? `astro-${runMode}-${root.split('/').pop()}`;
-  const bin = () => resolveAstroBin(root);
 
   if (runMode === 'dev') {
     return cliFrameworkRecipe({
@@ -111,13 +99,9 @@ export const astro: Driver<AstroOptions> = defineDriver((opts: AstroOptions): Re
       readyPath: opts.readyPath,
       readyTimeoutMs: opts.readyTimeoutMs,
       workspaceDeps: opts.workspaceDeps,
-      start: async ({ port, outDir }) => {
-        const configArgs = await astroConfigArgs(root, outDir, opts.astroConfig);
-        return {
-          command: process.execPath,
-          args: [bin(), 'dev', ...configArgs, '--host', '127.0.0.1', '--port', String(port)],
-          cwd: root,
-        };
+      start: async ({ port, outDir, host }) => {
+        const configFile = await resolveConfigFile(root, outDir, opts.astroConfig);
+        return startAstroDev({ root, port, host, configFile, env: opts.env });
       },
     });
   }
@@ -135,12 +119,8 @@ export const astro: Driver<AstroOptions> = defineDriver((opts: AstroOptions): Re
       readyTimeoutMs: opts.readyTimeoutMs,
       workspaceDeps: opts.workspaceDeps,
       prepare: async ({ outDir }) => {
-        const configArgs = await astroConfigArgs(root, outDir, opts.astroConfig);
-        return {
-          command: process.execPath,
-          args: [bin(), 'build', ...configArgs],
-          cwd: root,
-        };
+        const configFile = await resolveConfigFile(root, outDir, opts.astroConfig);
+        await runAstroBuild({ root, configFile, env: opts.env });
       },
       verifyAfterPrepare: () => {
         const entry = join(root, entryRel);
@@ -171,21 +151,18 @@ export const astro: Driver<AstroOptions> = defineDriver((opts: AstroOptions): Re
     readyTimeoutMs: opts.readyTimeoutMs,
     workspaceDeps: opts.workspaceDeps,
     prepare: async ({ outDir }) => {
-      const configArgs = await astroConfigArgs(root, outDir, opts.astroConfig);
-      return {
-        command: process.execPath,
-        args: [bin(), 'build', ...configArgs],
-        cwd: root,
-      };
+      const configFile = await resolveConfigFile(root, outDir, opts.astroConfig);
+      await runAstroBuild({ root, configFile, env: opts.env });
+    },
+    verifyArtifact: async () => {
+      const index = join(root, 'dist', 'index.html');
+      if (!existsSync(index)) {
+        throw new Error(`[untestutils/astro] missing preview build ${index}`);
+      }
     },
     start: async ({ port, host, outDir }) => {
-      const configArgs = await astroConfigArgs(root, outDir, opts.astroConfig);
-      return {
-        command: process.execPath,
-        args: [bin(), 'preview', ...configArgs, '--host', host, '--port', String(port)],
-        cwd: root,
-        env: { ASTRO_PREVIEW_BACKGROUND: '0' },
-      };
+      const configFile = await resolveConfigFile(root, outDir, opts.astroConfig);
+      return startAstroPreview({ root, port, host, configFile, env: opts.env });
     },
   });
 });

@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import type { Nuxt, NuxtConfig, ViteConfig as NuxtViteConfig } from '@nuxt/schema';
 import { version, type InlineConfig as VitestConfig } from 'vitest/node';
 import type { Plugin, UserConfig as ViteUserConfig, ResolvedConfig } from 'vite';
+import { applyWorkerIsolationDefaults } from '@untestutils/vitest/unit-lifecycle';
 
 /** Absolute path to a sibling runtime emit file (`.mjs` after build). */
 function runtimeFile(rel: string): string {
@@ -74,7 +75,10 @@ function NuxtVitestEnvironmentOptionsPlugin(
       if (id.endsWith(STUB_ID)) return STUB_ID;
     },
     load(id: string): string | undefined {
-      if (id.endsWith(STUB_ID)) return `export default ${JSON.stringify(environmentOptions || {})}`;
+      if (id.endsWith(STUB_ID)) {
+        // JSON.parse avoids object-literal __proto__ reinterpretation of JSON.stringify output.
+        return `export default JSON.parse(${JSON.stringify(JSON.stringify(environmentOptions || {}))})`;
+      }
     },
   };
 }
@@ -155,12 +159,21 @@ const excludedPlugins = [
   'vite-plugin-vue-tracer',
 ];
 
+export type NuxtAppIsolation = 'file' | 'worker';
+
 export interface NuxtConfigOptions {
   rootDir?: string;
   domEnvironment?: 'happy-dom' | 'jsdom';
   overrides?: Partial<NuxtConfig>;
   dotenv?: Partial<DotenvOptions>;
   nitroEnvironment?: boolean;
+  /** Default `'file'`. `'worker'` reuses one Nuxt app per Vitest worker (needs `isolate: false`). */
+  appIsolation?: NuxtAppIsolation;
+  /**
+   * When `appIsolation: 'worker'`, run `resetSharedNuxtApp` after each test.
+   * Defaults to `true` for worker mode.
+   */
+  resetBetweenTests?: boolean;
   [key: string]: unknown;
 }
 
@@ -282,8 +295,35 @@ export async function getVitestConfigFromNuxt(
           name: 'disable-auto-execute',
           enforce: 'pre',
           transform(code: string, id: string) {
-            if (id.match(/nuxt(3|-nightly)?\/.*\/entry\./))
-              return code.replace(/(?<!vueAppPromise = )entry\(\)/, 'Promise.resolve()');
+            const normalized = id.replaceAll('\\', '/');
+            const isNuxtEntry =
+              /nuxt(?:3|-nightly)?\/.*\/entry\./.test(normalized) ||
+              normalized.includes('nuxt-vitest-app-entry');
+            if (!isNuxtEntry || !code.includes('vueAppPromise')) return;
+
+            const out = code
+              // Prevent module-load auto-boot; setupNuxt calls default() explicitly.
+              .replace(
+                /vueAppPromise = entry\(\)\.catch\(\(error\) => \{\n\t\tappDiagnostics\.NUXT_E1009\(\{ cause: error \}\);\n\t\tthrow error;\n\t\}\);/,
+                '/* untestutils: deferred boot via setupNuxt */',
+              )
+              .replace(/(?<!vueAppPromise = )entry\(\)/, 'Promise.resolve()')
+              .replace(
+                /if \(vueAppPromise\) return vueAppPromise;/,
+                `if (vueAppPromise && !globalThis.__UNTESTUTILS_FORCE_NUXT_REMOUNT__) return vueAppPromise;
+		globalThis.__UNTESTUTILS_FORCE_NUXT_REMOUNT__ = false;
+		vueAppPromise = undefined;`,
+              )
+              .replace(
+                /await nextTick\(\);\s*\} catch \(err\) \{\s*handleVueError\(err\);\s*\}\s*return vueApp;/,
+                `await nextTick();
+		} catch (err) {
+			handleVueError(err);
+		}
+		vueAppPromise = Promise.resolve(vueApp);
+		return vueApp;`,
+              );
+            return out;
           },
         },
         ...(options.nitro ? [nitroTeardownPlugin(options.nitro)] : []),
@@ -443,6 +483,7 @@ async function resolveConfig(config: DefineVitestConfigInput): Promise<ResolvedV
       overrides: deepCopy(overrides),
     }),
   ) as ResolvedVitestConfig;
+  applyWorkerAppIsolationDefaults(config, resolvedConfig);
   resolvedConfig.plugins.push(
     NuxtVitestEnvironmentOptionsPlugin(resolvedConfig.test.environmentOptions),
   );
@@ -475,4 +516,31 @@ function normalizeSetupFiles(setupFiles: string | string[] | undefined): string[
 
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
+}
+
+function applyWorkerAppIsolationDefaults(
+  input: DefineVitestConfigInput,
+  resolvedConfig: ResolvedVitestConfig,
+): void {
+  resolvedConfig.test ??= {};
+  resolvedConfig.test.environmentOptions ??= {};
+  const nuxtOpts = (resolvedConfig.test.environmentOptions.nuxt ??= {}) as NuxtConfigOptions;
+  const utOpts = (resolvedConfig.test.environmentOptions.untestutils ??= {}) as Record<
+    string,
+    unknown
+  >;
+  utOpts.framework = 'nuxt';
+  const defaults = applyWorkerIsolationDefaults({
+    userIsolate: input.test?.isolate,
+    appIsolation: nuxtOpts.appIsolation,
+    resetBetweenTests: nuxtOpts.resetBetweenTests,
+    label: 'nuxt',
+  });
+  nuxtOpts.appIsolation = defaults.appIsolation;
+  if (defaults.resetBetweenTests !== undefined) {
+    nuxtOpts.resetBetweenTests = defaults.resetBetweenTests;
+  }
+  if (defaults.isolate !== undefined) {
+    resolvedConfig.test.isolate = defaults.isolate;
+  }
 }

@@ -254,6 +254,7 @@ describe('core extras', () => {
         return {
           kind: 'url',
           url: `http://127.0.0.1:${port}/`,
+          pid: 880_003,
           stop: () => new Promise((r) => s.close(() => r())),
         };
       },

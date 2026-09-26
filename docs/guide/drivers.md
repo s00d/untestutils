@@ -96,7 +96,9 @@ Do **not** pick `run: 'dev'` to “skip the build” or speed up CI. It disables
 |--------|--------|
 | `untestutils/vite` \| `next` \| `astro` \| `sveltekit` \| `remix` \| `solidstart` | Dogfood’d in CI |
 
-Same Recipe idea. Defaults are the **built** modes (`preview` / `server` / `static`). Each adapter also has a `run: 'dev'` escape hatch (`share: 'never'`) for the same niche as Nuxt — not the default path.
+Same Recipe idea. **Stable** run modes are exactly those listed in [Support matrix — E2e run modes](/guide/support-matrix#e2e-run-modes) (each has a playground recipe + `e2e/<fw>/*.spec.ts` + `pnpm test:playground`). SolidStart `run: 'server'` is **Experimental** until vinxi server dogfood is reliable — use `preview` for built mode.
+
+`run: 'dev'` is dogfood’d for every Stable adapter (`share: 'never'`, short home-URL smoke). Prefer built modes (`preview` / `server` / `static`) for normal CI suites; keep `dev` for HMR / live-mutation specs.
 
 Each package exports `matrix()` (merges `env` / `hashInputs` / `run`, and **deep-merges** typed config overrides). Optional `workspaceDeps: true \| 'auto'` adds monorepo `packages/*/src` **and** workspace-root `src/` (when present) to the prepare hash — so module packages that live outside `packages/` still invalidate e2e caches.
 
@@ -110,11 +112,11 @@ Overrides are stringified into the prepare hash and into ephemeral merge modules
 
 | Adapter | Option | How applied |
 |---------|--------|-------------|
-| `vite` / `remix` | `viteConfig` | Ephemeral `vite.untestutils.mjs` + `vite --config` (`mergeConfig`) |
-| `sveltekit` | `viteConfig` / `kitConfig` | Vite via `--config`; `kitConfig` via `withMergedConfigOverride` on `svelte.config.*` |
-| `astro` | `astroConfig` | Ephemeral `--config` + Astro `mergeConfig` |
+| `vite` / `remix` (vite branches) | `viteConfig` | Programmatic Vite JS API (`createServer` / `build` / `preview`) + ephemeral merge config |
+| `sveltekit` | `viteConfig` / `kitConfig` | Vite CLI (subprocess cwd); `kitConfig` via `withMergedConfigOverride` |
+| `astro` | `astroConfig` | Programmatic `astro` `dev` / `build` / `preview` + ephemeral merge config |
 | `solidstart` | `appConfig` | `withEphemeralFile` on `app.config.*` (TS-safe; vinxi discovers root config) |
-| `next` | `nextConfig` | `withEphemeralFile` on `next.config.*` (backup → merge wrapper → restore; Next has no `--config`) |
+| `next` | `nextConfig` | `withEphemeralFile` on `next.config.*` (backup → merge wrapper → restore; Next build stays CLI) |
 
 ```ts
 import { vite } from 'untestutils/vite'

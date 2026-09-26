@@ -17,6 +17,7 @@ import {
 import { vi } from 'vitest';
 import { defineComponent, tryUseNuxtApp, useNuxtApp, useRouter } from '#imports';
 import NuxtRoot from '#build/root-component.mjs';
+import { addCleanup, cleanupAll, removeCleanup } from './shared/cleanup';
 
 type SetupState = Record<string, unknown>;
 type Cleanup = () => void;
@@ -157,17 +158,6 @@ function patchWrapperSetProps(
 ): void {
   Object.assign(wrapper, { __setProps: setProps });
 }
-function cleanupAll(): void {
-  for (const fn of (window.__cleanup || []).splice(0)) fn();
-}
-function addCleanup(fn: Cleanup): void {
-  window.__cleanup ||= [];
-  window.__cleanup.push(fn);
-}
-function removeCleanup(fn: Cleanup): void {
-  const index = window.__cleanup?.indexOf(fn) ?? -1;
-  if (index !== -1) window.__cleanup?.splice(index, 1);
-}
 function runEffectScope<T>(fn: () => T, register: (fn: Cleanup) => void): T | undefined {
   const scope = effectScope();
   register(() => scope.stop());
@@ -300,6 +290,16 @@ function wrapperSuspended<TWrapper>(
                   isMountSettled = true;
                   const typedWrapper = wrapper as TWrapper & { setupState: SetupState };
                   typedWrapper.setupState = setupState;
+                  const maybeUnmount = typedWrapper as { unmount?: () => void };
+                  if (typeof maybeUnmount.unmount === 'function') {
+                    registerCleanup(() => {
+                      try {
+                        maybeUnmount.unmount?.();
+                      } catch {
+                        /* already unmounted */
+                      }
+                    });
+                  }
                   resolve({
                     wrapper: typedWrapper,
                     setProps: (props: Record<string, unknown>) => {

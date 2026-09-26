@@ -1,6 +1,6 @@
 {
   "name": "untestutils",
-  "version": "0.6.11",
+  "version": "0.7.0",
   "description": "Recipe-based test harness for Vitest and Playwright — thin facade over @untestutils/* packages",
   "keywords": [
     "e2e",
@@ -164,7 +164,11 @@
       "import": "./dist/config.mjs",
       "default": "./dist/config.mjs"
     },
-    "./vitest-environment": "./vitest-environment-untestutils/index.mjs",
+    "./vitest-environment": {
+      "types": "./vitest-environment-untestutils/index.d.ts",
+      "import": "./vitest-environment-untestutils/index.mjs",
+      "default": "./vitest-environment-untestutils/index.mjs"
+    },
     "./ai": {
       "types": "./dist/ai.d.ts",
       "import": "./dist/ai.mjs",
@@ -205,18 +209,18 @@
   },
   "peerDependencies": {
     "@playwright/test": "^1.63.0",
-    "@untestutils/ai": "0.6.11",
-    "@untestutils/astro": "0.6.11",
-    "@untestutils/next": "0.6.11",
-    "@untestutils/nuxt": "0.6.11",
-    "@untestutils/perf": "0.6.11",
-    "@untestutils/remix": "0.6.11",
-    "@untestutils/solidstart": "0.6.11",
-    "@untestutils/sveltekit": "0.6.11",
-    "@untestutils/vite": "0.6.11",
+    "@untestutils/ai": "0.7.0",
+    "@untestutils/astro": "0.7.0",
+    "@untestutils/next": "0.7.0",
+    "@untestutils/nuxt": "0.7.0",
+    "@untestutils/perf": "0.7.0",
+    "@untestutils/remix": "0.7.0",
+    "@untestutils/solidstart": "0.7.0",
+    "@untestutils/sveltekit": "0.7.0",
+    "@untestutils/vite": "0.7.0",
     "playwright-core": "^1.63.0",
     "vitest": "^4.0.0 || ^5.0.0",
-    "vitest-environment-untestutils": "0.6.11"
+    "vitest-environment-untestutils": "0.7.0"
   },
   "peerDependenciesMeta": {
     "@untestutils/ai": {

@@ -12,6 +12,12 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PACK_PKGS = [
   'packages/core',
   'packages/nuxt',
+  'packages/vite',
+  'packages/next',
+  'packages/astro',
+  'packages/sveltekit',
+  'packages/remix',
+  'packages/solidstart',
   'packages/utils',
   'packages/vitest',
   'packages/playwright',
@@ -80,9 +86,16 @@ import { createRequire } from 'node:module'
 const req = createRequire(import.meta.url)
 for (const id of [
   '@untestutils/core',
+  '@untestutils/vite/environment',
+  '@untestutils/next/config',
+  '@untestutils/astro/runtime',
+  '@untestutils/sveltekit/runtime/entry',
+  '@untestutils/remix/environment',
+  '@untestutils/solidstart/config',
   'untestutils/vitest/plugin',
   'untestutils/playwright',
   'untestutils/command',
+  'vitest-environment-untestutils',
 ]) {
   req.resolve(id)
   console.log('ok', id)

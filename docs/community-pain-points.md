@@ -15,7 +15,7 @@ Proof dogfood (external consumer): [nuxt-i18n-micro CI](https://github.com/s00d/
 | Pain | Issue | Status | How untestutils handles it |
 | --- | --- | --- | --- |
 | Slow `setup` on every rerun | [#314](https://github.com/nuxt/test-utils/issues/314) | addressed | Shared prepare + content-hash cache + `prewarm` |
-| Opt-in Nuxt app reuse across workers | [#1750](https://github.com/nuxt/test-utils/issues/1750) | addressed | Target registry + lock-by-identity; one prepare, many workers |
+| Opt-in Nuxt app reuse across workers | [#1750](https://github.com/nuxt/test-utils/issues/1750) | addressed (e2e) | Target registry + lock-by-identity; one prepare, many workers — **e2e only**; unit reuse is separate (see below) |
 | Shared server faster in CI | [#925](https://github.com/nuxt/test-utils/issues/925) | addressed | First-class shared serve / recipe identity |
 | Vitest workspaces | [#664](https://github.com/nuxt/test-utils/issues/664) | documented | Absolute recipe roots; e2e vs unit as separate Vitest projects |
 | Playwright fixture timeout | [#861](https://github.com/nuxt/test-utils/issues/861) | documented | Readiness HTTP + sane hook timeouts |
@@ -31,6 +31,7 @@ Mostly **out-of-scope** for the recipe e2e core. Optional `@untestutils/nuxt` + 
 
 | Pain | Issue | Status |
 | --- | --- | --- |
+| Opt-in worker-scoped Nuxt app reuse (unit) | [#1750](https://github.com/nuxt/test-utils/issues/1750), [untestutils#1](https://github.com/s00d/untestutils/issues/1), [#1821](https://github.com/nuxt/test-utils/pull/1821) | addressed (`appIsolation: 'worker'` + soft reset + browser-entry; keep opt-in vs always-memoize) |
 | Server environment for unit | [#531](https://github.com/nuxt/test-utils/issues/531) | documented (partial; optional package) |
 | Server-only `setup()` | [#921](https://github.com/nuxt/test-utils/issues/921) | out-of-scope |
 | `useRuntimeConfig` without Nuxt instance | [#949](https://github.com/nuxt/test-utils/issues/949) | out-of-scope |

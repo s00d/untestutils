@@ -1,7 +1,5 @@
-import { spawn } from 'node:child_process';
-import type { DetachedProcess, RunHelper, RunResult } from './types';
-import { killProcessTree, runCommand, scrubTestEnv } from './process';
-import { platform } from 'node:os';
+import type { RunHelper } from './types';
+import { runCommand, scrubTestEnv, spawnManaged } from './process';
 
 function interpolate(strings: TemplateStringsArray, values: unknown[]): string {
   let out = '';
@@ -27,11 +25,10 @@ export function createRunHelper(
   const run = (async (strings, ...values) => {
     const cmd = interpolate(strings, values);
     const { command, args } = splitCommand(cmd);
-    const result = await runCommand(command, args, {
+    return runCommand(command, args, {
       cwd: defaults.cwd,
       env: { ...scrubTestEnv(), ...defaults.env },
     });
-    return result;
   }) as RunHelper;
 
   run.command = async (cmd, opts = {}) => {
@@ -45,29 +42,13 @@ export function createRunHelper(
   run.detached = async (strings, ...values) => {
     const cmd = interpolate(strings, values);
     const { command, args } = splitCommand(cmd);
-    const env = { ...scrubTestEnv(), ...defaults.env };
-    let output = '';
-    const child = spawn(command, args, {
+    return spawnManaged(command, args, {
       cwd: defaults.cwd,
-      env,
-      stdio: ['ignore', 'pipe', 'pipe'],
-      detached: platform() !== 'win32',
+      env: { ...scrubTestEnv(), ...defaults.env },
+      captureLogs: true,
+      server: true,
     });
-    child.stdout?.on('data', (c: Buffer) => {
-      output += c.toString();
-    });
-    child.stderr?.on('data', (c: Buffer) => {
-      output += c.toString();
-    });
-    const proc: DetachedProcess = {
-      pid: child.pid,
-      stop: async () => killProcessTree(child),
-      logs: () => output,
-    };
-    return proc;
   };
 
   return run;
 }
-
-export type { RunResult };

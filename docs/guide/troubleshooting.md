@@ -29,7 +29,31 @@ Checks Node, peers (Vitest major 4|5), configs, and `recipes.ts`. `doctor --reci
 
 **Tempted to use `run: 'dev'` to skip builds?** Don’t — that mode is for HMR / file-watcher specs only (`share: 'never'`). Normal e2e should use `server` / `preview` / `static` so shared prepare stays warm. See [Drivers](/guide/drivers#run-modes-nuxt).
 
-**Orphan processes** — hard-killed runs leave locks; clear `.untestutils` and retry. Teardown must not kill pid ≤ 1.
+**Orphan processes / leftover servers** — hard-killed runs can leave registry entries and ports. Clear `.untestutils` and retry. Global setup calls `stopAllTargets`, which stops registry orphans internally. For ad-hoc servers use handles from `@untestutils/core`:
+
+| API | Use |
+|-----|-----|
+| `spawnManaged(cmd, args)` | Start → `stop()` / `alive()` / `logs()` |
+| `stopAllTargets()` | Drain live handles + registry |
+
+Do not dig for PIDs or process groups — tear down via the handle.
+
+## Warm cache / stale artifacts
+
+Prepare reuse (`.ready` + content hash) does **not** hash build outputs like `.next/`, `dist/`, or `.output/`. Warm and registry-reuse paths call `recipe.verifyArtifact` when present — if the check throws, cache is invalidated and prepare runs again.
+
+| Hook | When |
+|------|------|
+| `verifyAfterPrepare` | Cold prepare only (also promoted to `verifyArtifact` when the latter is unset) |
+| `verifyArtifact(outDir)` | After prepare **and** on warm / live / registry reuse |
+
+**Shared fixture roots:** do not run `dev` and a built mode (`server` / `preview` / `static`) against the same app directory if both write the same output (e.g. Next `.next` / `out`). Split fixtures (`next-dev` / `next-server` / `next-app-override`) or set distinct `distDir` / `outDir`. Playground `nextStaticOverride` uses its own fixture root.
+
+**Next `distDir`:** `verifyArtifact` / `BUILD_ID` checks respect `nextConfig.distDir`.
+
+## Reset failure (unit worker)
+
+If `resetSharedApp` throws under `appIsolation: 'worker'`, the shared app is disposed and the next test fails with **call `restartSharedApp()`** until you restart.
 
 **Empty setup / recipes never load** — published facade must keep `vitest/setup-file` side effects (re-export, not a dead `await import`). Upgrade to a release that includes that fix.
 

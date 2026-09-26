@@ -1,7 +1,7 @@
 {
   "name": "vitest-environment-untestutils",
-  "version": "0.6.11",
-  "description": "Vitest environment shim → @untestutils/nuxt/environment",
+  "version": "0.7.0",
+  "description": "Vitest environment router → @untestutils/<framework>/environment",
   "homepage": "https://s00d.github.io/untestutils/",
   "license": "MIT",
   "repository": {
@@ -10,18 +10,55 @@
     "directory": "packages/vitest-environment-untestutils"
   },
   "files": [
-    "index.mjs"
+    "index.mjs",
+    "index.d.ts"
   ],
   "type": "module",
   "exports": {
-    ".": "./index.mjs",
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.mjs",
+      "default": "./index.mjs"
+    },
     "./package.json": "./package.json"
   },
   "publishConfig": {
     "access": "public"
   },
   "dependencies": {
-    "@untestutils/nuxt": "workspace:*"
+    "@untestutils/vitest": "workspace:*"
+  },
+  "peerDependencies": {
+    "@untestutils/astro": "workspace:*",
+    "@untestutils/next": "workspace:*",
+    "@untestutils/nuxt": "workspace:*",
+    "@untestutils/remix": "workspace:*",
+    "@untestutils/solidstart": "workspace:*",
+    "@untestutils/sveltekit": "workspace:*",
+    "@untestutils/vite": "workspace:*"
+  },
+  "peerDependenciesMeta": {
+    "@untestutils/astro": {
+      "optional": true
+    },
+    "@untestutils/next": {
+      "optional": true
+    },
+    "@untestutils/nuxt": {
+      "optional": true
+    },
+    "@untestutils/remix": {
+      "optional": true
+    },
+    "@untestutils/solidstart": {
+      "optional": true
+    },
+    "@untestutils/sveltekit": {
+      "optional": true
+    },
+    "@untestutils/vite": {
+      "optional": true
+    }
   },
   "engines": {
     "node": ">=20"

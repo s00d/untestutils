@@ -212,6 +212,15 @@ export const solidstart: Driver<SolidStartOptions> = defineDriver(
           }
         });
       },
+      verifyArtifact: async () => {
+        const index = join(root, '.output', 'public', 'index.html');
+        const server = join(root, '.output', 'server', 'index.mjs');
+        if (!existsSync(index) && !existsSync(server)) {
+          throw new Error(
+            `[untestutils/solidstart] missing preview build (.output/public or .output/server)`,
+          );
+        }
+      },
       start: ({ port }) => ({
         command: process.execPath,
         args: [bin(), 'start', '--port', String(port)],

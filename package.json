@@ -1,6 +1,6 @@
 {
   "name": "@untestutils/monorepo",
-  "version": "0.6.11",
+  "version": "0.7.0",
   "private": true,
   "homepage": "https://s00d.github.io/untestutils/",
   "bugs": {
@@ -25,8 +25,11 @@
     "test:unit:watch": "vitest watch --config vitest.unit.config.ts",
     "test:types": "vitest run --config vitest.types.config.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
-    "test:playground": "pnpm --filter @untestutils/playground test",
-    "test:playground:unit": "pnpm --filter @untestutils/playground test:unit-nuxt && pnpm --filter @untestutils/playground test:unit-nuxt-server",
+    "test:playground": "pnpm --filter @untestutils/playground test:e2e-matrix && pnpm --filter @untestutils/playground test && pnpm --filter @untestutils/playground test:e2e-teardown",
+    "test:playground:unit": "pnpm --filter @untestutils/playground test:unit-all",
+    "test:e2e-teardown": "pnpm --filter @untestutils/playground test:e2e-teardown",
+    "test:e2e-matrix": "pnpm --filter @untestutils/playground test:e2e-matrix",
+    "test:unit-bench": "pnpm --filter @untestutils/playground test:unit-bench",
     "test:playwright": "pnpm --filter @untestutils/playground test:playwright",
     "test:dist": "vitest run --config vitest.dist.config.ts",
     "test:ai": "vitest run --config vitest.ai.config.ts",

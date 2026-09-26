@@ -1,4 +1,4 @@
-import { mkdir, writeFile, readdir, readFile, access } from 'node:fs/promises';
+import { readdir, readFile, access } from 'node:fs/promises';
 import { join } from 'pathe';
 import { ArtifactStore } from './artifact-store';
 import { debug, envFlag } from './debug';
@@ -10,9 +10,11 @@ import { progress } from './progress';
 import { defaultReady } from './ready';
 import { createRunHelper } from './run-helper';
 import { TargetRegistry } from './target-registry';
-import type { Recipe, Running, SharePolicy } from './types';
+import type { TargetEntry } from './target-registry';
+import type { HarnessHandle, Recipe, Running, SharePolicy } from './types';
 import { getRegisteredRecipe, listRegisteredRecipes } from './recipes';
-import { isPidAlive, killPidTree } from './process';
+import { adoptProcess, scrubTestEnv } from './process';
+import type { StopOpts } from './process';
 import { ofetch } from 'ofetch';
 import { constants } from 'node:fs';
 
@@ -30,15 +32,27 @@ export interface PreparedTarget {
   recipe: Recipe;
 }
 
-const liveStops = new Map<string, () => Promise<void>>();
+const liveStops = new Map<string, (opts?: StopOpts) => Promise<void>>();
 const liveRunning = new Map<string, Running>();
 const liveMeta = new Map<string, { identity: string; hash: string; outDir: string }>();
+
+/** Prefer ManagedProcess.stop / adopt so stopOpts (keepEventLoop) are not swallowed. */
+function stopForLive(running: Running): ((opts?: StopOpts) => Promise<void>) | undefined {
+  if (running.stop) {
+    return (opts?: StopOpts) => running.stop!(opts);
+  }
+  const pid = running.pid;
+  if (typeof pid === 'number' && pid > 1 && pid !== process.pid) {
+    return (opts?: StopOpts) => adoptProcess(pid, 'server').stop(opts);
+  }
+  return undefined;
+}
 
 function rememberLive(
   id: string,
   running: Running,
   meta: { identity: string; hash: string; outDir: string },
-  stop?: () => Promise<void>,
+  stop?: (opts?: StopOpts) => Promise<void>,
 ): void {
   liveRunning.set(id, running);
   liveMeta.set(id, meta);
@@ -128,7 +142,7 @@ export async function ensurePrepared(
   // Reuse registry URL from another worker / prior start — only if still reachable.
   // share:never also reuses URL (one _dev per fixture; forks must not each spawn).
   if (share === 'always' || share === 'never') {
-    const reused = await tryReuseRegistry(registry, store, id, identity, hash, share);
+    const reused = await tryReuseRegistry(registry, store, id, identity, hash, share, recipe);
     if (reused) return { ...reused, recipe };
   }
 
@@ -139,12 +153,12 @@ export async function ensurePrepared(
   try {
     // Another worker may have registered while we waited for the lock.
     if (share === 'always' || share === 'never') {
-      const reused = await tryReuseRegistry(registry, store, id, identity, hash, share);
+      const reused = await tryReuseRegistry(registry, store, id, identity, hash, share, recipe);
       if (reused) return { ...reused, recipe };
     }
 
     let outDir = await store.ensureDir(identity);
-    const run = createRunHelper({ cwd: root, env: scrubEnv() });
+    const run = createRunHelper({ cwd: root, env: scrubTestEnv() });
 
     let warm = await store.isWarm(identity, hash);
     // Hash can be warm while the real app build output was deleted (e.g. vite
@@ -169,7 +183,7 @@ export async function ensurePrepared(
             root,
             outDir,
             artifactsRoot,
-            env: scrubEnv(),
+            env: scrubTestEnv(),
             run,
           });
           if (recipe.verifyArtifact) await recipe.verifyArtifact(outDir);
@@ -202,20 +216,42 @@ export async function ensurePrepared(
       artifactsRoot,
       port,
       host: bindHost,
-      env: scrubEnv(),
+      env: scrubTestEnv(),
       run: createRunHelper({
         cwd: root,
-        env: { ...scrubEnv(), PORT: String(port), HOST: bindHost },
+        env: { ...scrubTestEnv(), PORT: String(port), HOST: bindHost },
       }),
     };
 
     progress.start(id, loopbackUrl(port, '/', bindHost));
     try {
       const running = await recipe.start(startCtx);
+      // Fail-closed: share always/never need a reclaimable child pid (mirror shouldSkipPid),
+      // except remote `host` attach (kind:url, no local process / stop).
+      const pid = running.pid;
+      if (
+        (share === 'always' || share === 'never') &&
+        (pid == null || pid <= 1 || pid === process.pid)
+      ) {
+        const remoteAttach = running.kind === 'url' && !running.stop;
+        if (!remoteAttach) {
+          if (running.stop) {
+            try {
+              await running.stop();
+            } catch {
+              /* best-effort */
+            }
+          }
+          throw new Error(
+            `[untestutils] recipe "${id}" (share:${share}) started without a reclaimable child pid — ` +
+              'registry orphan reclaim requires a child-process server',
+          );
+        }
+      }
       if (recipe.ready) await recipe.ready(running);
       else await defaultReady(running);
 
-      rememberLive(id, running, { identity, hash, outDir }, running.stop);
+      rememberLive(id, running, { identity, hash, outDir }, stopForLive(running));
 
       await replaceRegistryEntry(registry, {
         id,
@@ -224,8 +260,6 @@ export async function ensurePrepared(
         dir: 'dir' in running ? running.dir : outDir,
         pid: running.pid,
       });
-
-      await writeEnvSnapshot(outDir, { id, identity, port, hash });
 
       return { id, identity, hash, outDir, running, recipe };
     } catch (err) {
@@ -240,19 +274,16 @@ export async function ensurePrepared(
 /** Register a live target; kill any previous pid for the same recipe id. */
 async function replaceRegistryEntry(
   registry: TargetRegistry,
-  entry: import('./target-registry').TargetEntry,
+  entry: TargetEntry,
 ): Promise<void> {
   const prev = await registry.set(entry);
-  if (prev?.pid && prev.pid !== entry.pid && isPidAlive(prev.pid)) {
-    debug('teardown', `replacing ${entry.id} — kill old pid ${prev.pid}`);
-    await killPidTree(prev.pid);
+  if (prev?.pid && prev.pid !== entry.pid) {
+    const orphan = adoptProcess(prev.pid, 'server');
+    if (orphan.alive()) {
+      debug('teardown', `replacing ${entry.id} — stop old server`);
+      await orphan.stop();
+    }
   }
-}
-
-function scrubEnv(): NodeJS.ProcessEnv {
-  const env = { ...process.env };
-  for (const k of ['VITEST', 'VITEST_WORKER_ID', 'TEST', 'JEST_WORKER_ID', 'JEST']) delete env[k];
-  return env;
 }
 
 async function tryReuseRegistry(
@@ -262,20 +293,30 @@ async function tryReuseRegistry(
   identity: string,
   hash: string,
   share: SharePolicy,
+  recipe?: Recipe,
 ): Promise<Omit<PreparedTarget, 'recipe'> | undefined> {
   const existing = await registry.get(id);
   if (!existing?.url) return undefined;
   const warmOk = share === 'never' ? true : await store.isWarm(identity, hash);
   if (!warmOk) return undefined;
 
-  // Stale registry after a crashed worker: pid gone → must not reuse the URL.
-  if (existing.pid !== null && existing.pid !== undefined && !isPidAlive(existing.pid)) {
+  // Stale registry after a crashed worker: process gone → must not reuse the URL.
+  if (existing.pid !== null && existing.pid !== undefined && !adoptProcess(existing.pid).alive()) {
     debug('registry', `stale pid ${existing.pid} for ${id}`);
     return undefined;
   }
   if (!(await isUrlAlive(existing.url))) return undefined;
 
   const outDir = existing.dir ?? store.buildDir(identity);
+  if (recipe?.verifyArtifact) {
+    try {
+      await recipe.verifyArtifact(outDir);
+    } catch (err) {
+      debug('registry', `artifact invalid for ${id}, skip reuse`, err);
+      return undefined;
+    }
+  }
+
   const running: Running = {
     kind: 'url+dir',
     url: existing.url,
@@ -284,12 +325,10 @@ async function tryReuseRegistry(
   };
   progress.prepareCache(id);
   progress.start(id, existing.url);
-  // Adopt pid so any process that remembered this target can tear it down.
+  // Adopt so any process that remembered this target can tear it down (honor stopOpts).
   const stop =
     existing.pid !== null && existing.pid !== undefined
-      ? async () => {
-          await killPidTree(existing.pid!);
-        }
+      ? (opts?: StopOpts) => adoptProcess(existing.pid!, 'server').stop(opts)
       : undefined;
   rememberLive(id, running, { identity, hash, outDir }, stop);
   // Ensure this process sees UNTESTUTILS_HOST_* after cross-worker reuse.
@@ -313,27 +352,15 @@ async function isUrlAlive(url: string): Promise<boolean> {
   }
 }
 
-async function writeEnvSnapshot(
-  outDir: string,
-  info: { id: string; identity: string; port: number; hash: string },
+export async function stopAllTargets(
+  artifactsRoot?: string,
+  stopOpts: StopOpts = {},
 ): Promise<void> {
-  try {
-    await mkdir(outDir, { recursive: true });
-    const env: Record<string, string> = {};
-    for (const [k, v] of Object.entries(scrubEnv())) {
-      if (v !== undefined && !/secret|token|password|key/i.test(k)) env[k] = v;
-    }
-    await writeFile(
-      join(outDir, 'env.snapshot.json'),
-      JSON.stringify({ ...info, node: process.version, env }, null, 2),
-      'utf8',
+  if (artifactsRoot !== undefined && typeof artifactsRoot !== 'string') {
+    throw new Error(
+      '[untestutils] stopAllTargets(artifactsRoot?, stopOpts?) — pass artifacts root string, not an options object',
     );
-  } catch {
-    /* optional */
   }
-}
-
-export async function stopAllTargets(artifactsRoot?: string): Promise<void> {
   const stops = [...liveStops.entries()];
   liveStops.clear();
   liveRunning.clear();
@@ -341,7 +368,7 @@ export async function stopAllTargets(artifactsRoot?: string): Promise<void> {
   await Promise.all(
     stops.map(async ([id, stop]) => {
       try {
-        await stop();
+        await stop(stopOpts);
         debug('teardown', `stopped ${id}`);
       } catch (e) {
         debug('teardown', `failed ${id}`, e);
@@ -360,19 +387,15 @@ export async function stopAllTargets(artifactsRoot?: string): Promise<void> {
   await Promise.all(
     pids.map(async (pid) => {
       try {
-        await killPidTree(pid);
-        debug('teardown', `killed registry pid ${pid}`);
+        await adoptProcess(pid, 'server').stop(stopOpts);
+        debug('teardown', `stopped registry orphan ${pid}`);
       } catch (e) {
-        debug('teardown', `failed registry pid ${pid}`, e);
+        debug('teardown', `failed registry orphan ${pid}`, e);
       }
     }),
   );
 }
 
-/** Kill leftover registry servers from a previous crashed run (call at globalSetup start). */
-export async function reclaimStaleTargets(artifactsRoot?: string): Promise<void> {
-  await stopAllTargets(artifactsRoot);
-}
 
 /** @internal clear in-process maps without stopping servers (coverage of registry reuse). */
 export function detachLiveTargetsForTests(): void {
@@ -381,7 +404,7 @@ export function detachLiveTargetsForTests(): void {
   liveMeta.clear();
 }
 
-export function createHarnessHandle(prepared: PreparedTarget): import('./types').HarnessHandle {
+export function createHarnessHandle(prepared: PreparedTarget): HarnessHandle {
   const url = 'url' in prepared.running ? prepared.running.url : undefined;
   const dir = 'dir' in prepared.running ? prepared.running.dir : prepared.outDir;
 

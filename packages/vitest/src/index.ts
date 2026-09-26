@@ -21,3 +21,25 @@ export {
   normalizeHarnessBrowsers,
   resolveHarnessBrowserName,
 } from './browsers';
+export {
+  cleanupAll,
+  addCleanup,
+  removeCleanup,
+  bumpUnitBootCounter,
+  clearTimersAndStubs,
+  applyHostResetLayers,
+  disposeBestEffort,
+  registerSetupEntry,
+  resolveAppIsolation,
+  invalidateWorkerSetup,
+  applyWorkerIsolationDefaults,
+} from './unit-lifecycle/index';
+export type {
+  AppIsolation,
+  SetupEntryWindow,
+  DisposableApp,
+  RegisterSetupEntryOptions,
+  HostResetOptions,
+  WorkerIsolationDefaultsInput,
+  WorkerIsolationDefaultsResult,
+} from './unit-lifecycle/index';

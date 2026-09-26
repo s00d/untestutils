@@ -1,12 +1,25 @@
 {
   "name": "vitest-environment-nuxt",
-  "version": "0.6.11",
-  "description": "Compat alias: same as vitest-environment-untestutils (environment: 'nuxt')",
+  "version": "0.7.0",
+  "description": "Compat: environment:'nuxt' → @untestutils/nuxt/environment",
   "files": [
-    "index.mjs"
+    "index.mjs",
+    "index.d.ts"
   ],
   "type": "module",
   "main": "./index.mjs",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.mjs",
+      "default": "./index.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "@untestutils/nuxt": "workspace:*"
+  },
   "engines": {
     "node": ">=20"
   }

@@ -1,6 +1,6 @@
 {
   "name": "@untestutils/nuxt",
-  "version": "0.6.11",
+  "version": "0.7.0",
   "description": "Nuxt recipes + in-process unit runtime, config, module, and Vitest environment",
   "homepage": "https://s00d.github.io/untestutils/",
   "license": "MIT",
@@ -13,7 +13,10 @@
     "dist"
   ],
   "type": "module",
-  "sideEffects": false,
+  "sideEffects": [
+    "./dist/runtime/entry.mjs",
+    "./dist/runtime/browser-entry.mjs"
+  ],
   "main": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -81,6 +84,7 @@
     "@nuxt/kit": "catalog:",
     "@nuxt/schema": "catalog:",
     "@untestutils/core": "workspace:*",
+    "@untestutils/vitest": "workspace:*",
     "c12": "^3.0.0",
     "defu": "catalog:",
     "destr": "catalog:",

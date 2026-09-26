@@ -329,3 +329,18 @@ export async function renderSuspended<T extends Component>(
   return renderResult;
 }
 //#endregion
+
+export {
+  resetSharedNuxtApp,
+  clearNuxtImportMocks,
+  clearRegisteredEndpoints,
+  registerSharedNuxtReset,
+  type ResetSharedNuxtAppOptions,
+} from './shared/reset';
+
+export { restartSharedNuxtApp, enableSharedNuxtHotRestart } from './shared/restart';
+
+/** Contract alias — same as `resetSharedNuxtApp`. */
+export { resetSharedNuxtApp as resetSharedApp } from './shared/reset';
+/** Contract alias — same as `restartSharedNuxtApp`. */
+export { restartSharedNuxtApp as restartSharedApp } from './shared/restart';
