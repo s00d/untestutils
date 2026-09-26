@@ -29,6 +29,9 @@ export {
   ArtifactStore,
   envFlag,
   debug,
+  scrubTestEnv,
+  spawnManaged,
+  runCommand,
 } from '@untestutils/core';
 
 export type {
@@ -43,6 +46,9 @@ export type {
   StartCtx,
   HashCtx,
   UseHarnessOptions,
+  ManagedProcess,
+  StopOpts,
+  SpawnOpts,
 } from '@untestutils/core';
 
 export { command, staticDir, nodeEntry, host, defineDriver, matrixRecipe } from '@untestutils/core';
