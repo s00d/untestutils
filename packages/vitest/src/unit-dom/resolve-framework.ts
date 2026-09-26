@@ -46,7 +46,9 @@ export function resolveUnitFramework(options: ResolveUnitFrameworkOptions = {}):
     return id;
   }
 
-  const topLevel = UNIT_FRAMEWORK_IDS.filter((id) => options[id] != null);
+  const topLevel = UNIT_FRAMEWORK_IDS.filter(
+    (id) => options[id] !== null && options[id] !== undefined,
+  );
   if (topLevel.length > 1) {
     throw new Error(
       `[untestutils] ambiguous environmentOptions — set untestutils.framework or only one of: ${topLevel.join(', ')}`,
@@ -54,6 +56,10 @@ export function resolveUnitFramework(options: ResolveUnitFrameworkOptions = {}):
   }
   if (topLevel.length === 1) return topLevel[0]!;
 
-  if (options.nuxt != null || options.nuxtRuntimeConfig != null) return 'nuxt';
+  if (
+    (options.nuxt !== null && options.nuxt !== undefined) ||
+    (options.nuxtRuntimeConfig !== null && options.nuxtRuntimeConfig !== undefined)
+  )
+    return 'nuxt';
   return 'nuxt';
 }

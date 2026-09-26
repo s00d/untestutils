@@ -9,12 +9,10 @@ import { getFreePort } from './ports';
 import { progress } from './progress';
 import { defaultReady } from './ready';
 import { createRunHelper } from './run-helper';
-import { TargetRegistry } from './target-registry';
-import type { TargetEntry } from './target-registry';
+import { TargetRegistry, type TargetEntry } from './target-registry';
 import type { HarnessHandle, Recipe, Running, SharePolicy } from './types';
 import { getRegisteredRecipe, listRegisteredRecipes } from './recipes';
-import { adoptProcess, scrubTestEnv } from './process';
-import type { StopOpts } from './process';
+import { adoptProcess, scrubTestEnv, type StopOpts } from './process';
 import { ofetch } from 'ofetch';
 import { constants } from 'node:fs';
 
@@ -231,7 +229,7 @@ export async function ensurePrepared(
       const pid = running.pid;
       if (
         (share === 'always' || share === 'never') &&
-        (pid == null || pid <= 1 || pid === process.pid)
+        (pid === null || pid === undefined || pid <= 1 || pid === process.pid)
       ) {
         const remoteAttach = running.kind === 'url' && !running.stop;
         if (!remoteAttach) {

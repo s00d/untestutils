@@ -163,7 +163,7 @@ describe('registerNuxtSetupEntry', () => {
     const afterEachFns: Array<() => void | Promise<void>> = [];
     let beforeAllFn: (() => void | Promise<void>) | undefined;
     const unmount = vi.fn();
-    let app: { vueApp: { unmount: () => void } } | null = { vueApp: { unmount } };
+    const app: { vueApp: { unmount: () => void } } | null = { vueApp: { unmount } };
 
     registerNuxtSetupEntry({
       mode: 'worker',
