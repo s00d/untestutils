@@ -20,8 +20,7 @@ export function markerUnitProjectOptions(input: MarkerUnitProjectInput): {
   const { framework, kind } = input;
   const dir = `unit-${framework}`;
   const name =
-    input.name ??
-    (kind === 'marker' ? `unit-${framework}` : `unit-${framework}-${kind}`);
+    input.name ?? (kind === 'marker' ? `unit-${framework}` : `unit-${framework}-${kind}`);
 
   if (kind === 'marker') {
     return {

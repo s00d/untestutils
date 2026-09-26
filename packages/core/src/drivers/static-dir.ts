@@ -74,7 +74,9 @@ export function staticDir(opts: StaticDirOptions): Recipe {
           }
           if (managed.logs().includes('ready')) break;
           if (Date.now() - started > 30_000) {
-            throw new Error(`static child ready timeout\n--- logs ---\n${managed.logs().slice(-4000)}`);
+            throw new Error(
+              `static child ready timeout\n--- logs ---\n${managed.logs().slice(-4000)}`,
+            );
           }
           await new Promise((r) => setTimeout(r, 30));
         }

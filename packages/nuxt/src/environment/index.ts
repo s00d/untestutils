@@ -32,7 +32,11 @@ const environment = {
       environmentOptions.nuxt?.url ?? 'http://localhost:3000',
       environmentOptions.nuxtRuntimeConfig?.app?.baseURL || '/',
     );
-    const { window: win, teardown, populate } = await setupUnitDom(global, {
+    const {
+      window: win,
+      teardown,
+      populate,
+    } = await setupUnitDom(global, {
       url,
       domEnvironment: environmentOptions.nuxt?.domEnvironment,
       happyDom: environmentOptions.happyDom,

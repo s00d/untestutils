@@ -11,10 +11,7 @@ import {
   resetRecipeBindings,
   TargetRegistry,
 } from '@untestutils/core';
-import {
-  detachLiveTargetsForTests,
-  stopAllTargets,
-} from '../../packages/core/src/orchestrator';
+import { detachLiveTargetsForTests, stopAllTargets } from '../../packages/core/src/orchestrator';
 
 describe('warm cache artifact verify', () => {
   beforeEach(() => {

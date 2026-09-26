@@ -27,8 +27,9 @@ function isWorkerIsolation(): boolean {
 }
 
 function forceNuxtEntryRemount(): void {
-  (globalThis as { __UNTESTUTILS_FORCE_NUXT_REMOUNT__?: boolean }).__UNTESTUTILS_FORCE_NUXT_REMOUNT__ =
-    true;
+  (
+    globalThis as { __UNTESTUTILS_FORCE_NUXT_REMOUNT__?: boolean }
+  ).__UNTESTUTILS_FORCE_NUXT_REMOUNT__ = true;
 }
 
 async function callNuxtAppEntry(): Promise<void> {
@@ -50,9 +51,7 @@ function tearDownLiveNuxtApp(existing: NuxtAppWithRouteSync | null | undefined):
     /* ignore */
   }
   try {
-    const unctx = (
-      globalThis as { __unctx__?: { unset?: (id: string) => void } }
-    ).__unctx__;
+    const unctx = (globalThis as { __unctx__?: { unset?: (id: string) => void } }).__unctx__;
     unctx?.unset?.('nuxt-app');
   } catch {
     /* ignore */
@@ -72,9 +71,8 @@ export async function setupNuxt(): Promise<void> {
   )) as NuxtImports;
 
   const existing = tryUseNuxtApp?.() ?? null;
-  const forceRemount = !!(
-    globalThis as { __UNTESTUTILS_FORCE_NUXT_REMOUNT__?: boolean }
-  ).__UNTESTUTILS_FORCE_NUXT_REMOUNT__;
+  const forceRemount = !!(globalThis as { __UNTESTUTILS_FORCE_NUXT_REMOUNT__?: boolean })
+    .__UNTESTUTILS_FORCE_NUXT_REMOUNT__;
   // Worker mode reuses the live app unless an explicit remount was requested.
   if (existing && isWorkerIsolation() && !forceRemount) {
     captureSharedNuxtBaseline(useRouter().currentRoute.value.fullPath);

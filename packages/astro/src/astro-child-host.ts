@@ -126,7 +126,7 @@ async function main(): Promise<void> {
 
 main().catch((err) => {
   process.stderr.write(
-    `[untestutils] astro-child-host failed: ${err instanceof Error ? err.stack ?? err.message : String(err)}\n`,
+    `[untestutils] astro-child-host failed: ${err instanceof Error ? (err.stack ?? err.message) : String(err)}\n`,
   );
   process.exit(1);
 });

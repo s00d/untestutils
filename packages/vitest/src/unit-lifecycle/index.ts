@@ -1,8 +1,4 @@
-export {
-  cleanupAll,
-  addCleanup,
-  removeCleanup,
-} from './cleanup';
+export { cleanupAll, addCleanup, removeCleanup } from './cleanup';
 
 export { bumpUnitBootCounter } from './boot-counter';
 

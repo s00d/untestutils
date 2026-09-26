@@ -9,10 +9,7 @@ import {
   processIo,
   processPlatform,
 } from '../../packages/core/src/process';
-import {
-  stopAllTargets,
-  detachLiveTargetsForTests,
-} from '../../packages/core/src/orchestrator';
+import { stopAllTargets, detachLiveTargetsForTests } from '../../packages/core/src/orchestrator';
 import { TargetRegistry } from '../../packages/core/src/target-registry';
 import { getFreePort } from '../../packages/core/src/ports';
 
@@ -234,9 +231,9 @@ describe('ManagedProcess / spawnManaged / adoptProcess', () => {
 
     try {
       await adoptProcess(88_004, 'server').stop();
-      expect(spawns.some((a) => a[0] === 'taskkill' && a.includes('/T') && a.includes('88004'))).toBe(
-        true,
-      );
+      expect(
+        spawns.some((a) => a[0] === 'taskkill' && a.includes('/T') && a.includes('88004')),
+      ).toBe(true);
     } finally {
       processPlatform.current = realPlatform;
       processIo.spawn = realSpawn;

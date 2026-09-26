@@ -101,7 +101,12 @@ try {
   rmSync(artifacts, { recursive: true, force: true });
   throw new Error(`url still reachable after reclaim (status ${res.status})`);
 } catch (err) {
-  if (err && typeof err === 'object' && 'message' in err && String(err.message).includes('reachable')) {
+  if (
+    err &&
+    typeof err === 'object' &&
+    'message' in err &&
+    String(err.message).includes('reachable')
+  ) {
     throw err;
   }
   /* expected: connection refused */

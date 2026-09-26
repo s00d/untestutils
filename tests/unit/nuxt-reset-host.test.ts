@@ -35,10 +35,12 @@ describe('resetSharedNuxtApp host layers', () => {
   beforeEach(() => {
     document.body.innerHTML = '<div id="nuxt-test"></div><div id="teleports"></div>';
     const baseline = new Set([...document.body.children]);
-    (window as unknown as { __UNTESTUTILS_BASELINE_BODY__?: Set<Element> }).__UNTESTUTILS_BASELINE_BODY__ =
-      baseline;
-    (window as unknown as { __UNTESTUTILS_BASELINE_ROUTE__?: string }).__UNTESTUTILS_BASELINE_ROUTE__ =
-      '/';
+    (
+      window as unknown as { __UNTESTUTILS_BASELINE_BODY__?: Set<Element> }
+    ).__UNTESTUTILS_BASELINE_BODY__ = baseline;
+    (
+      window as unknown as { __UNTESTUTILS_BASELINE_ROUTE__?: string }
+    ).__UNTESTUTILS_BASELINE_ROUTE__ = '/';
     localStorage.setItem('x', '1');
     sessionStorage.setItem('y', '2');
     document.cookie = 'tok=abc; path=/';
@@ -63,10 +65,11 @@ describe('resetSharedNuxtApp host layers', () => {
   });
 
   test('clears registered endpoints', async () => {
-    (window as unknown as { __app?: { _registeredEndpointRegistry: Record<string, unknown[]> } }).__app =
-      {
-        _registeredEndpointRegistry: { '/x': [{}] },
-      };
+    (
+      window as unknown as { __app?: { _registeredEndpointRegistry: Record<string, unknown[]> } }
+    ).__app = {
+      _registeredEndpointRegistry: { '/x': [{}] },
+    };
     (window as unknown as { __registry?: Set<string> }).__registry = new Set(['/x']);
     clearRegisteredEndpoints();
     expect(

@@ -8,7 +8,9 @@ import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const playground = fileURLToPath(new URL('..', import.meta.url));
-const { E2E_MODE_MARKERS, recipes } = await import(pathToFileURL(join(playground, 'recipes.ts')).href);
+const { E2E_MODE_MARKERS, recipes } = await import(
+  pathToFileURL(join(playground, 'recipes.ts')).href
+);
 
 function walk(dir) {
   const out = [];
@@ -38,7 +40,12 @@ if (missingRecipes.length || missingSpecs.length) {
 
 console.log(
   JSON.stringify(
-    { ok: true, modes: Object.keys(E2E_MODE_MARKERS).length, recipes: recipeIds.length, specs: specs.length },
+    {
+      ok: true,
+      modes: Object.keys(E2E_MODE_MARKERS).length,
+      recipes: recipeIds.length,
+      specs: specs.length,
+    },
     null,
     2,
   ),

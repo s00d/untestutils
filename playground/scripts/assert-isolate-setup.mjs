@@ -61,7 +61,9 @@ function callsFrom(result, setupLogFile) {
 
 function assertNoDoubleMount(result) {
   const text = `${result.stdout || ''}\n${result.stderr || ''}`;
-  if (text.includes('[Vue warn]: There is already an app instance mounted on the host container.')) {
+  if (
+    text.includes('[Vue warn]: There is already an app instance mounted on the host container.')
+  ) {
     throw new Error('Vue double-mount warning detected');
   }
 }

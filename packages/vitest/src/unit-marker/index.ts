@@ -1,10 +1,6 @@
 import { defu } from 'defu';
 import { fileURLToPath } from 'node:url';
-import {
-  setupUnitDom,
-  type UnitDomGlobal,
-  type UnitDomOptions,
-} from '../unit-dom/index';
+import { setupUnitDom, type UnitDomGlobal, type UnitDomOptions } from '../unit-dom/index';
 import {
   applyHostResetLayers,
   applyWorkerIsolationDefaults,
@@ -178,7 +174,9 @@ export function createMarkerUnitFramework(
     environmentOptions: FrameworkEnvironmentOptions = {},
   ): FrameworkUnitEnvOptions {
     const ut = environmentOptions.untestutils ?? {};
-    const nested = (ut[FRAMEWORK] ?? environmentOptions[FRAMEWORK] ?? {}) as FrameworkUnitEnvOptions;
+    const nested = (ut[FRAMEWORK] ??
+      environmentOptions[FRAMEWORK] ??
+      {}) as FrameworkUnitEnvOptions;
     return {
       url: nested.url ?? ut.url,
       domEnvironment: nested.domEnvironment ?? ut.domEnvironment,
@@ -234,9 +232,7 @@ export function createMarkerUnitFramework(
 
   function runtimeFile(rel: string): string {
     const base =
-      typeof opts.runtimeEntryUrl === 'string'
-        ? opts.runtimeEntryUrl
-        : opts.runtimeEntryUrl.href;
+      typeof opts.runtimeEntryUrl === 'string' ? opts.runtimeEntryUrl : opts.runtimeEntryUrl.href;
     return fileURLToPath(new URL(`${rel}.mjs`, base));
   }
 
@@ -306,7 +302,9 @@ export function createMarkerUnitFramework(
     bumpUnitBootCounter();
     const root = document.getElementById(ROOT_ID);
     if (!root) {
-      throw new Error(`[${pkgLabel}] #${ROOT_ID} root missing — is environment: 'untestutils' active?`);
+      throw new Error(
+        `[${pkgLabel}] #${ROOT_ID} root missing — is environment: 'untestutils' active?`,
+      );
     }
     mountDom(root, UNIT_MARKER);
     const w = window as AppWindow;

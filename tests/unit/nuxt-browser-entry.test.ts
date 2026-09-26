@@ -30,11 +30,11 @@ describe('runBrowserNuxtEntry', () => {
     const afterEach = vi.fn();
     const resetModules = vi.fn();
 
-    await runBrowserNuxtEntry(
-      win,
-      { nuxt: { appIsolation: 'file' } } as never,
-      { beforeAll, afterEach, vi: { resetModules } },
-    );
+    await runBrowserNuxtEntry(win, { nuxt: { appIsolation: 'file' } } as never, {
+      beforeAll,
+      afterEach,
+      vi: { resetModules },
+    });
 
     expect(win.__NUXT_VITEST_ENVIRONMENT_BROWSER_ENTRY__).toBe(true);
     expect(setupWindow).toHaveBeenCalledTimes(1);
@@ -48,11 +48,11 @@ describe('runBrowserNuxtEntry', () => {
       __NUXT_VITEST_ENVIRONMENT__: true,
     } as SetupEntryWindow;
 
-    await runBrowserNuxtEntry(
-      win,
-      { nuxt: {} } as never,
-      { beforeAll: vi.fn(), afterEach: vi.fn(), vi: { resetModules: vi.fn() } },
-    );
+    await runBrowserNuxtEntry(win, { nuxt: {} } as never, {
+      beforeAll: vi.fn(),
+      afterEach: vi.fn(),
+      vi: { resetModules: vi.fn() },
+    });
 
     expect(setupWindow).not.toHaveBeenCalled();
   });

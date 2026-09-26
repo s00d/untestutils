@@ -270,10 +270,7 @@ export async function ensurePrepared(
 }
 
 /** Register a live target; kill any previous pid for the same recipe id. */
-async function replaceRegistryEntry(
-  registry: TargetRegistry,
-  entry: TargetEntry,
-): Promise<void> {
+async function replaceRegistryEntry(registry: TargetRegistry, entry: TargetEntry): Promise<void> {
   const prev = await registry.set(entry);
   if (prev?.pid && prev.pid !== entry.pid) {
     const orphan = adoptProcess(prev.pid, 'server');
@@ -393,7 +390,6 @@ export async function stopAllTargets(
     }),
   );
 }
-
 
 /** @internal clear in-process maps without stopping servers (coverage of registry reuse). */
 export function detachLiveTargetsForTests(): void {

@@ -51,21 +51,11 @@ export {
   findRepoRoot,
 } from './paths';
 export { waitForHttpReady, defaultReady } from './ready';
-export {
-  scrubTestEnv,
-  spawnManaged,
-  runCommand,
-} from './process';
+export { scrubTestEnv, spawnManaged, runCommand } from './process';
 export type { StopOpts, ManagedProcess, SpawnOpts } from './process';
 export { createRunHelper } from './run-helper';
 export { debug, isDebug, log, envFlag } from './debug';
-export {
-  progress,
-  isCi,
-  isProgressEnabled,
-  progressIo,
-  withQuietLogger,
-} from './progress';
+export { progress, isCi, isProgressEnabled, progressIo, withQuietLogger } from './progress';
 export { computeIdentity, assertUniqueRecipeBinding, resetRecipeBindings } from './identity';
 
 // Drivers (formerly @untestutils/drivers)

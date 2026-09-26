@@ -95,9 +95,7 @@ export interface CliFrameworkRecipeOptions {
   /**
    * Return a SpawnSpec (CLI) or a fully started {@link Running} (programmatic Vite/Astro APIs).
    */
-  start: (
-    ctx: StartCtx & { root: string },
-  ) => SpawnSpec | Running | Promise<SpawnSpec | Running>;
+  start: (ctx: StartCtx & { root: string }) => SpawnSpec | Running | Promise<SpawnSpec | Running>;
   verifyAfterPrepare?: (ctx: PrepareCtx & { root: string }) => Promise<void>;
   /**
    * Called after prepare and on warm cache hits.

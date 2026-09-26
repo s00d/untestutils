@@ -64,10 +64,7 @@ export interface RunResult {
 export interface RunHelper {
   (strings: TemplateStringsArray, ...values: unknown[]): Promise<RunResult>;
   /** Long-lived server handle — same contract as `spawnManaged`. */
-  detached: (
-    strings: TemplateStringsArray,
-    ...values: unknown[]
-  ) => Promise<ManagedProcess>;
+  detached: (strings: TemplateStringsArray, ...values: unknown[]) => Promise<ManagedProcess>;
   command: (cmd: string, opts?: { cwd?: string; env?: NodeJS.ProcessEnv }) => Promise<RunResult>;
 }
 

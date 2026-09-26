@@ -4,10 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'pathe';
 import { startViteDev } from '../../packages/core/src/drivers/vite-api';
 import { adoptProcess } from '../../packages/core/src/process';
-import {
-  stopAllTargets,
-  detachLiveTargetsForTests,
-} from '../../packages/core/src/orchestrator';
+import { stopAllTargets, detachLiveTargetsForTests } from '../../packages/core/src/orchestrator';
 import { TargetRegistry } from '../../packages/core/src/target-registry';
 import { getFreePort } from '../../packages/core/src/ports';
 import { findRepoRoot } from '../../packages/core/src/paths';

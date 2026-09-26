@@ -245,9 +245,9 @@ export async function setupUnitDom(
   };
 }
 
-export type {
-  UnitFrameworkId,
-  ResolveUnitFrameworkOptions,
+export type { UnitFrameworkId, ResolveUnitFrameworkOptions } from './resolve-framework';
+export {
+  UNIT_FRAMEWORK_PACKAGES,
+  UNIT_FRAMEWORK_IDS,
+  resolveUnitFramework,
 } from './resolve-framework';
-export { UNIT_FRAMEWORK_PACKAGES, UNIT_FRAMEWORK_IDS, resolveUnitFramework } from './resolve-framework';
-

@@ -25,7 +25,12 @@
   },
   "devDependencies": {
     "@playwright/test": "catalog:",
+    "@untestutils/astro": "workspace:*",
+    "@untestutils/next": "workspace:*",
     "@untestutils/nuxt": "workspace:*",
+    "@untestutils/remix": "workspace:*",
+    "@untestutils/solidstart": "workspace:*",
+    "@untestutils/sveltekit": "workspace:*",
     "@untestutils/vite": "workspace:*",
     "@vue/test-utils": "catalog:",
     "happy-dom": "catalog:",
@@ -33,11 +38,6 @@
     "playwright-core": "catalog:",
     "vitest": "catalog:",
     "vitest-environment-untestutils": "workspace:*",
-    "vue": "catalog:",
-    "@untestutils/next": "workspace:*",
-    "@untestutils/astro": "workspace:*",
-    "@untestutils/sveltekit": "workspace:*",
-    "@untestutils/remix": "workspace:*",
-    "@untestutils/solidstart": "workspace:*"
+    "vue": "catalog:"
   }
 }

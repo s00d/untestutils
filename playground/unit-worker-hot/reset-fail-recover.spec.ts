@@ -1,5 +1,9 @@
 import { expect, test } from 'vitest';
-import { registerSharedNuxtReset, resetSharedNuxtApp, restartSharedNuxtApp } from 'untestutils/runtime';
+import {
+  registerSharedNuxtReset,
+  resetSharedNuxtApp,
+  restartSharedNuxtApp,
+} from 'untestutils/runtime';
 
 declare global {
   // eslint-disable-next-line no-var

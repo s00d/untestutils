@@ -65,10 +65,10 @@
   },
   "dependencies": {
     "@untestutils/core": "workspace:*",
-    "pathe": "catalog:",
     "defu": "catalog:",
     "fake-indexeddb": "^6.2.5",
-    "local-pkg": "^1.2.1"
+    "local-pkg": "^1.2.1",
+    "pathe": "catalog:"
   },
   "devDependencies": {
     "@types/jsdom": "catalog:",
@@ -81,10 +81,10 @@
   },
   "peerDependencies": {
     "@playwright/test": "catalog:",
-    "playwright-core": "catalog:",
-    "vitest": "^4.0.0 || ^5.0.0",
     "happy-dom": ">=20.0.0",
-    "jsdom": ">=27.0.0"
+    "jsdom": ">=27.0.0",
+    "playwright-core": "catalog:",
+    "vitest": "^4.0.0 || ^5.0.0"
   },
   "peerDependenciesMeta": {
     "@playwright/test": {

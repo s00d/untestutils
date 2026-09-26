@@ -269,10 +269,7 @@ function createHandle(opts: {
  * Adopt a pid from the target registry (orphan reclaim after a crash).
  * Recipe servers are always `'server'` (process group / taskkill tree).
  */
-export function adoptProcess(
-  pid: number,
-  kind: 'server' | 'process' = 'server',
-): ManagedProcess {
+export function adoptProcess(pid: number, kind: 'server' | 'process' = 'server'): ManagedProcess {
   return createHandle({ pid, kind });
 }
 

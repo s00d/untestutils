@@ -55,9 +55,9 @@
   },
   "dependencies": {
     "@untestutils/core": "workspace:*",
-    "pathe": "catalog:",
     "@untestutils/vitest": "workspace:*",
-    "defu": "catalog:"
+    "defu": "catalog:",
+    "pathe": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",
@@ -67,9 +67,9 @@
     "vitest": "catalog:"
   },
   "peerDependencies": {
-    "vitest": "^4.0.0 || ^5.0.0",
     "happy-dom": ">=20.0.0",
-    "vite": "*"
+    "vite": "*",
+    "vitest": "^4.0.0 || ^5.0.0"
   },
   "peerDependenciesMeta": {
     "vite": {

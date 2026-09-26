@@ -112,6 +112,8 @@ export function resolveAppIsolation(
 }
 
 /** Clear worker memoization so the next boot runs setupNuxt again (watch / restart). */
-export function invalidateWorkerNuxtSetup(win: SetupEntryWindow = window as SetupEntryWindow): void {
+export function invalidateWorkerNuxtSetup(
+  win: SetupEntryWindow = window as SetupEntryWindow,
+): void {
   invalidateWorkerSetup(win);
 }

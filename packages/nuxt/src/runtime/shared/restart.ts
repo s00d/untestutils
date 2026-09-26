@@ -29,8 +29,9 @@ export async function restartSharedNuxtApp(
   }
   await disposeSharedNuxtApp(tryUseNuxtAppFromUnctx);
   invalidateWorkerNuxtSetup(win);
-  (globalThis as { __UNTESTUTILS_FORCE_NUXT_REMOUNT__?: boolean }).__UNTESTUTILS_FORCE_NUXT_REMOUNT__ =
-    true;
+  (
+    globalThis as { __UNTESTUTILS_FORCE_NUXT_REMOUNT__?: boolean }
+  ).__UNTESTUTILS_FORCE_NUXT_REMOUNT__ = true;
   await setupNuxt();
 }
 

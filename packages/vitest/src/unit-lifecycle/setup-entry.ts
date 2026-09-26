@@ -15,10 +15,13 @@ export type SetupEntryWindow = Window & {
   __UNTESTUTILS_BASELINE_BODY__?: Set<Element>;
 };
 
-export type DisposableApp = {
-  vueApp?: { unmount: () => void };
-  _scope?: { stop?: () => void };
-} | null | undefined;
+export type DisposableApp =
+  | {
+      vueApp?: { unmount: () => void };
+      _scope?: { stop?: () => void };
+    }
+  | null
+  | undefined;
 
 export type RegisterSetupEntryOptions = {
   mode: AppIsolation;
@@ -76,8 +79,7 @@ export async function disposeBestEffort(
   }
   if (opts.rootId) {
     try {
-      const root =
-        typeof document !== 'undefined' ? document.getElementById(opts.rootId) : null;
+      const root = typeof document !== 'undefined' ? document.getElementById(opts.rootId) : null;
       if (root) root.innerHTML = '';
     } catch {
       /* ignore */
@@ -139,7 +141,13 @@ export function registerSetupEntry(options: RegisterSetupEntryOptions): void {
     await win.__UNTESTUTILS_WORKER_SETUP__;
   });
 
-  if (mode === 'worker' && resetBetweenTests && afterEach && reset && !win.__UNTESTUTILS_WORKER_RESET_HOOK__) {
+  if (
+    mode === 'worker' &&
+    resetBetweenTests &&
+    afterEach &&
+    reset &&
+    !win.__UNTESTUTILS_WORKER_RESET_HOOK__
+  ) {
     win.__UNTESTUTILS_WORKER_RESET_HOOK__ = true;
     afterEach(async () => {
       try {
@@ -150,10 +158,9 @@ export function registerSetupEntry(options: RegisterSetupEntryOptions): void {
         delete win.__UNTESTUTILS_WORKER_SETUP__;
         delete win.__UNTESTUTILS_WORKER_RESET_HOOK__;
         win.__UNTESTUTILS_NEEDS_RESTART__ = true;
-        throw new Error(
-          `${resetFailureMessage}; call restartSharedApp() before the next test`,
-          { cause: error },
-        );
+        throw new Error(`${resetFailureMessage}; call restartSharedApp() before the next test`, {
+          cause: error,
+        });
       }
     });
   }
@@ -170,9 +177,7 @@ export function resolveAppIsolation(
 }
 
 /** Clear worker memoization so the next boot runs setup again (watch / restart). */
-export function invalidateWorkerSetup(
-  win: SetupEntryWindow = window as SetupEntryWindow,
-): void {
+export function invalidateWorkerSetup(win: SetupEntryWindow = window as SetupEntryWindow): void {
   delete win.__UNTESTUTILS_WORKER_SETUP__;
   delete win.__UNTESTUTILS_WORKER_RESET_HOOK__;
   delete win.__UNTESTUTILS_NEEDS_RESTART__;

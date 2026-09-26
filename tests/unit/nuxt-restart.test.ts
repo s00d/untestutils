@@ -34,9 +34,7 @@ describe('restartSharedNuxtApp', () => {
   });
 
   test('invalidates worker memo and calls setupNuxt', async () => {
-    const { restartSharedNuxtApp } = await import(
-      '../../packages/nuxt/src/runtime/shared/restart'
-    );
+    const { restartSharedNuxtApp } = await import('../../packages/nuxt/src/runtime/shared/restart');
     const win = {
       __UNTESTUTILS_WORKER_SETUP__: Promise.resolve(),
       __UNTESTUTILS_WORKER_RESET_HOOK__: true,
@@ -59,9 +57,7 @@ describe('restartSharedNuxtApp', () => {
     cleanupAll.mockImplementationOnce(() => {
       throw new Error('cleanup boom');
     });
-    const { restartSharedNuxtApp } = await import(
-      '../../packages/nuxt/src/runtime/shared/restart'
-    );
+    const { restartSharedNuxtApp } = await import('../../packages/nuxt/src/runtime/shared/restart');
     const win = {
       __UNTESTUTILS_WORKER_SETUP__: Promise.reject(new Error('stale')),
     } as SetupEntryWindow;
@@ -75,9 +71,8 @@ describe('restartSharedNuxtApp', () => {
 
   test('enableSharedNuxtHotRestart is idempotent', async () => {
     const on = vi.fn();
-    const { enableSharedNuxtHotRestart } = await import(
-      '../../packages/nuxt/src/runtime/shared/restart'
-    );
+    const { enableSharedNuxtHotRestart } =
+      await import('../../packages/nuxt/src/runtime/shared/restart');
     const win = {} as SetupEntryWindow;
     enableSharedNuxtHotRestart(win, { on });
     enableSharedNuxtHotRestart(win, { on });
@@ -86,9 +81,8 @@ describe('restartSharedNuxtApp', () => {
 
   test('hot invalidate clears worker memo', async () => {
     const handlers: Record<string, () => void> = {};
-    const { enableSharedNuxtHotRestart } = await import(
-      '../../packages/nuxt/src/runtime/shared/restart'
-    );
+    const { enableSharedNuxtHotRestart } =
+      await import('../../packages/nuxt/src/runtime/shared/restart');
     const win = {
       __UNTESTUTILS_WORKER_SETUP__: Promise.resolve(),
       __UNTESTUTILS_WORKER_RESET_HOOK__: true,
