@@ -3,5 +3,6 @@
   "description": "Facade nested shim for untestutils/vitest-environment export",
   "type": "module",
   "main": "./index.mjs",
-  "types": "./index.d.ts"
+  "types": "./index.d.ts",
+  "version": "0.7.2"
 }

@@ -1,6 +1,6 @@
 {
   "name": "vitest-environment-untestutils",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "description": "Vitest environment router → @untestutils/<framework>/environment",
   "homepage": "https://s00d.github.io/untestutils/",
   "license": "MIT",
@@ -29,13 +29,13 @@
     "@untestutils/vitest": "workspace:*"
   },
   "peerDependencies": {
-    "@untestutils/astro": "workspace:*",
-    "@untestutils/next": "workspace:*",
-    "@untestutils/nuxt": "workspace:*",
-    "@untestutils/remix": "workspace:*",
-    "@untestutils/solidstart": "workspace:*",
-    "@untestutils/sveltekit": "workspace:*",
-    "@untestutils/vite": "workspace:*"
+    "@untestutils/astro": "0.7.2",
+    "@untestutils/next": "0.7.2",
+    "@untestutils/nuxt": "0.7.2",
+    "@untestutils/remix": "0.7.2",
+    "@untestutils/solidstart": "0.7.2",
+    "@untestutils/sveltekit": "0.7.2",
+    "@untestutils/vite": "0.7.2"
   },
   "peerDependenciesMeta": {
     "@untestutils/astro": {
