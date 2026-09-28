@@ -8,7 +8,7 @@ import {
 } from './setup-entry';
 import { resetSharedNuxtApp } from './reset';
 import { enableSharedNuxtHotRestart } from './restart';
-import { afterEach, beforeAll, beforeEach, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, onTestFinished, vi } from 'vitest';
 
 /**
  * Vitest Browser Mode boot (nuxt/test-utils#1821 shape + worker-aware register).
@@ -20,8 +20,9 @@ export async function runBrowserNuxtEntry(
     beforeAll: typeof beforeAll;
     afterEach: typeof afterEach;
     beforeEach?: typeof beforeEach;
+    onTestFinished?: typeof onTestFinished;
     vi: { resetModules: () => void };
-  } = { beforeAll, afterEach, beforeEach, vi },
+  } = { beforeAll, afterEach, beforeEach, onTestFinished, vi },
 ): Promise<void> {
   if (!win) return;
 
@@ -49,6 +50,7 @@ export async function runBrowserNuxtEntry(
     beforeAll: hooks.beforeAll,
     afterEach: hooks.afterEach,
     beforeEach: hooks.beforeEach,
+    onTestFinished: hooks.onTestFinished,
     fromBrowserEntry: true,
   });
 

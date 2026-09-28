@@ -188,7 +188,6 @@ describe('registerNuxtSetupEntry', () => {
     await expect(afterEachFns[0]!()).rejects.toThrow(/call restartSharedApp/);
     expect(win.__UNTESTUTILS_NEEDS_RESTART__).toBe(true);
     expect(win.__UNTESTUTILS_WORKER_SETUP__).toBeUndefined();
-    expect(win.__UNTESTUTILS_WORKER_RESET_HOOK__).toBeUndefined();
     expect(unmount).toHaveBeenCalledTimes(1);
   });
 
@@ -215,7 +214,7 @@ describe('registerNuxtSetupEntry', () => {
     expect(setupCalls).toHaveBeenCalledTimes(2);
   });
 
-  test('worker mode registers afterEach only once across setupFile re-evals', async () => {
+  test('worker mode re-registers afterEach on each setupFile eval', async () => {
     const resetSharedNuxtApp = vi.fn(async () => {});
     const afterEach = vi.fn((fn: () => void | Promise<void>) => {
       void fn;
@@ -236,8 +235,7 @@ describe('registerNuxtSetupEntry', () => {
       });
     }
 
-    expect(afterEach).toHaveBeenCalledTimes(1);
-    expect(win.__UNTESTUTILS_WORKER_RESET_HOOK__).toBe(true);
+    expect(afterEach.mock.calls.length).toBeGreaterThanOrEqual(3);
   });
 
   test('node entry skips when browser flag set without fromBrowserEntry', () => {

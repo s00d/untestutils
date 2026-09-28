@@ -31,7 +31,7 @@ Mostly **out-of-scope** for the recipe e2e core. Optional `@untestutils/nuxt` + 
 
 | Pain | Issue | Status |
 | --- | --- | --- |
-| Opt-in worker-scoped Nuxt app reuse (unit) | [#1750](https://github.com/nuxt/test-utils/issues/1750), [untestutils#1](https://github.com/s00d/untestutils/issues/1), [#1821](https://github.com/nuxt/test-utils/pull/1821) | addressed (`appIsolation: 'worker'` + soft reset + browser-entry; keep opt-in vs always-memoize) |
+| Opt-in worker-scoped Nuxt app reuse (unit) | [#1750](https://github.com/nuxt/test-utils/issues/1750), [untestutils#1](https://github.com/s00d/untestutils/issues/1), [#1821](https://github.com/nuxt/test-utils/pull/1821) | addressed (`appIsolation: 'worker'` + soft reset + browser-entry; 0.7.2 hardens per-file hook re-register, keyed resets, document cookie tracker + jsdom jar clear, `maxConcurrency: 1`, override APIs) |
 | Server environment for unit | [#531](https://github.com/nuxt/test-utils/issues/531) | documented (partial; optional package) |
 | Server-only `setup()` | [#921](https://github.com/nuxt/test-utils/issues/921) | out-of-scope |
 | `useRuntimeConfig` without Nuxt instance | [#949](https://github.com/nuxt/test-utils/issues/949) | out-of-scope |

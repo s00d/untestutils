@@ -338,9 +338,19 @@ export {
   type ResetSharedNuxtAppOptions,
 } from './shared/reset';
 
+export {
+  overridableNuxtImport,
+  overrideNuxtImport,
+  overrideNuxtRoute,
+  clearNuxtImportOverrides,
+  type TestNuxtImports,
+} from './shared/overrides';
+
 export { restartSharedNuxtApp, enableSharedNuxtHotRestart } from './shared/restart';
 
 /** Contract alias — same as `resetSharedNuxtApp`. */
 export { resetSharedNuxtApp as resetSharedApp } from './shared/reset';
 /** Contract alias — same as `restartSharedNuxtApp`. */
 export { restartSharedNuxtApp as restartSharedApp } from './shared/restart';
+
+export { getOrCreateWorkerState } from '@untestutils/vitest/unit-lifecycle';

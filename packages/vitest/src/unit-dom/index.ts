@@ -76,6 +76,12 @@ type VitestEnvironmentsModule = {
   populateGlobal: PopulateGlobal;
 };
 
+const COOKIE_TRACKER = '__UNTESTUTILS_COOKIE_TRACKER__' as const;
+
+type CookieTrackerWindow = Window & {
+  [COOKIE_TRACKER]?: Set<string>;
+};
+
 const vitestMajorRaw = getPackageInfoSync('vitest')?.version?.split('.')[0];
 const vitestMajor = Number(vitestMajorRaw ?? 5);
 
@@ -121,9 +127,84 @@ async function importVitestEnvironments(): Promise<VitestEnvironmentsModule> {
   throw last instanceof Error ? last : new Error(String(last));
 }
 
+function findCookieDescriptor(doc: Document): PropertyDescriptor | null {
+  let proto: object | null = doc;
+  while (proto) {
+    const desc = Object.getOwnPropertyDescriptor(proto, 'cookie');
+    if (desc?.get && desc?.set) return desc;
+    proto = Object.getPrototypeOf(proto);
+  }
+  return null;
+}
+
+/**
+ * Track `document.cookie` assignments (name + path) so soft-reset can expire
+ * path-scoped cookies without touching happy-dom internals / dual-package Maps.
+ * Idempotent. Installed automatically by `setupUnitDom` (happy-dom).
+ */
+export function installDocumentCookieTracker(win: Window): void {
+  const w = win as CookieTrackerWindow;
+  if (w[COOKIE_TRACKER]) return;
+  const desc = findCookieDescriptor(win.document);
+  if (!desc?.get || !desc?.set) return;
+
+  const tracked = new Set<string>();
+  w[COOKIE_TRACKER] = tracked;
+
+  Object.defineProperty(win.document, 'cookie', {
+    configurable: true,
+    enumerable: true,
+    get() {
+      return desc.get!.call(this);
+    },
+    set(value: string) {
+      const raw = String(value);
+      const name = raw.split('=')[0]?.trim();
+      const pathMatch = /(?:^|;)\s*path=([^;]*)/i.exec(raw);
+      // Empty path = Path attribute absent (happy-dom expires without path=).
+      const path = pathMatch ? (pathMatch[1] || '/').trim() || '/' : '';
+      // Skip expiry writes from our own clearer.
+      if (name && !/;\s*expires=/i.test(raw)) {
+        tracked.add(`${name}\0${path}`);
+      }
+      return desc.set!.call(this, value);
+    },
+  });
+}
+
+/**
+ * Expire every cookie recorded by {@link installDocumentCookieTracker}.
+ * Returns false when tracker missing or empty (caller must fall back).
+ */
+export function clearTrackedDocumentCookies(win: Window): boolean {
+  const tracked = (win as CookieTrackerWindow)[COOKIE_TRACKER];
+  if (!tracked || tracked.size === 0) return false;
+  const doc = win.document;
+  for (const key of tracked) {
+    const sep = key.indexOf('\0');
+    const name = sep === -1 ? key : key.slice(0, sep);
+    const path = sep === -1 ? '' : key.slice(sep + 1);
+    if (!name) continue;
+    doc.cookie = path
+      ? `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=${path}`
+      : `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+  }
+  tracked.clear();
+  return true;
+}
+
+/**
+ * Clear cookies for a unit-dom / happy-dom window via the document cookie tracker.
+ * Prefer this over WindowBrowserContext (dual-package under Vitest breaks jar Maps).
+ */
+export async function clearUnitDomCookies(win: Window): Promise<boolean> {
+  return clearTrackedDocumentCookies(win);
+}
+
 const happyDomEnvironment: DomEnvironmentFactory = async (_global, { happyDom = {} }) => {
   const { Window, GlobalWindow } = await import('happy-dom');
   const window = new (GlobalWindow || Window)(happyDom) as unknown as UnitDomWindow;
+  installDocumentCookieTracker(window);
   return {
     window,
     teardown(): void {

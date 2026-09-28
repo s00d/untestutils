@@ -1,5 +1,6 @@
 import { defu } from 'defu';
 import { fileURLToPath } from 'node:url';
+import { onTestFinished as vitestOnTestFinished } from 'vitest';
 import { setupUnitDom, type UnitDomGlobal, type UnitDomOptions } from '../unit-dom/index';
 import {
   applyHostResetLayers,
@@ -134,6 +135,8 @@ export type MarkerEntryHooks = {
   afterEach: any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   beforeEach?: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onTestFinished?: any;
 };
 
 export type MarkerUnitFramework = {
@@ -266,8 +269,16 @@ export function createMarkerUnitFramework(
       {}) as UnitConfigOptions;
     const defaults = applyWorkerIsolationDefaults({
       userIsolate: config.test?.isolate,
+      userMaxConcurrency: config.test?.maxConcurrency,
       appIsolation: nested.appIsolation ?? ut.appIsolation,
       resetBetweenTests: nested.resetBetweenTests ?? ut.resetBetweenTests,
+      pool: typeof config.test?.pool === 'string' ? config.test.pool : undefined,
+      sequenceHooks:
+        typeof config.test?.sequence?.hooks === 'string' ? config.test.sequence.hooks : undefined,
+      sequenceSetupFiles:
+        typeof config.test?.sequence?.setupFiles === 'string'
+          ? config.test.sequence.setupFiles
+          : undefined,
       label: FRAMEWORK,
     });
 
@@ -277,6 +288,9 @@ export function createMarkerUnitFramework(
     }
     if (defaults.isolate !== undefined) {
       resolved.test.isolate = defaults.isolate;
+    }
+    if (defaults.maxConcurrency !== undefined) {
+      resolved.test.maxConcurrency = defaults.maxConcurrency;
     }
 
     ut[FRAMEWORK] = {
@@ -317,7 +331,7 @@ export function createMarkerUnitFramework(
     const w = window as AppWindow;
 
     cleanupAll(w);
-    applyHostResetLayers(resetOpts, w);
+    await applyHostResetLayers(resetOpts, w);
 
     const keep = w[BASELINE_BODY_PROP];
     if (keep) {
@@ -383,6 +397,9 @@ export function createMarkerUnitFramework(
       win,
     );
 
+    // Prefer Vitest onTestFinished when adapters omit it (matches Nuxt entry).
+    const onTestFinished = hooks.onTestFinished ?? vitestOnTestFinished;
+
     registerSetupEntry({
       mode,
       resetBetweenTests,
@@ -394,6 +411,7 @@ export function createMarkerUnitFramework(
       beforeAll: hooks.beforeAll,
       afterEach: hooks.afterEach,
       beforeEach: hooks.beforeEach,
+      onTestFinished,
       resetFailureMessage: `[${pkgLabel}] resetSharedApp failed; disposing shared app`,
     });
   }

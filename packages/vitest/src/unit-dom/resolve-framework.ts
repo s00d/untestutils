@@ -56,10 +56,5 @@ export function resolveUnitFramework(options: ResolveUnitFrameworkOptions = {}):
   }
   if (topLevel.length === 1) return topLevel[0]!;
 
-  if (
-    (options.nuxt !== null && options.nuxt !== undefined) ||
-    (options.nuxtRuntimeConfig !== null && options.nuxtRuntimeConfig !== undefined)
-  )
-    return 'nuxt';
   return 'nuxt';
 }

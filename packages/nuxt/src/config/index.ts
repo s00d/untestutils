@@ -532,8 +532,16 @@ function applyWorkerAppIsolationDefaults(
   utOpts.framework = 'nuxt';
   const defaults = applyWorkerIsolationDefaults({
     userIsolate: input.test?.isolate,
+    userMaxConcurrency: input.test?.maxConcurrency,
     appIsolation: nuxtOpts.appIsolation,
     resetBetweenTests: nuxtOpts.resetBetweenTests,
+    pool: typeof input.test?.pool === 'string' ? input.test.pool : undefined,
+    sequenceHooks:
+      typeof input.test?.sequence?.hooks === 'string' ? input.test.sequence.hooks : undefined,
+    sequenceSetupFiles:
+      typeof input.test?.sequence?.setupFiles === 'string'
+        ? input.test.sequence.setupFiles
+        : undefined,
     label: 'nuxt',
   });
   nuxtOpts.appIsolation = defaults.appIsolation;
@@ -542,5 +550,8 @@ function applyWorkerAppIsolationDefaults(
   }
   if (defaults.isolate !== undefined) {
     resolvedConfig.test.isolate = defaults.isolate;
+  }
+  if (defaults.maxConcurrency !== undefined) {
+    resolvedConfig.test.maxConcurrency = defaults.maxConcurrency;
   }
 }

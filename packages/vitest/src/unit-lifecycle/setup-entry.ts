@@ -1,6 +1,8 @@
 export type AppIsolation = 'file' | 'worker';
 
+/** @deprecated Prefer literal `'__UNTESTUTILS_WORKER_SETUP__'` / typed `SetupEntryWindow`. */
 export const WORKER_SETUP_PROP = '__UNTESTUTILS_WORKER_SETUP__' as const;
+/** @deprecated Unused — reset hooks re-register every setupFile eval. */
 export const WORKER_RESET_HOOK_PROP = '__UNTESTUTILS_WORKER_RESET_HOOK__' as const;
 
 export type SetupEntryWindow = Window & {
@@ -8,7 +10,8 @@ export type SetupEntryWindow = Window & {
   __UNTESTUTILS_APP_ISOLATION__?: AppIsolation;
   __UNTESTUTILS_RESET_BETWEEN_TESTS__?: boolean;
   __UNTESTUTILS_WORKER_SETUP__?: Promise<void>;
-  __UNTESTUTILS_WORKER_RESET_HOOK__?: boolean;
+  /** In-flight dispose from HMR invalidate — next boot must await before setup. */
+  __UNTESTUTILS_PENDING_DISPOSE__?: Promise<void>;
   /** Set when soft-reset failed and disposed — next test must `restartSharedApp()`. */
   __UNTESTUTILS_NEEDS_RESTART__?: boolean;
   __UNTESTUTILS_BASELINE_ROUTE__?: string;
@@ -35,6 +38,11 @@ export type RegisterSetupEntryOptions = {
   beforeAll: (fn: () => void | Promise<void>) => void;
   afterEach?: (fn: () => void | Promise<void>) => void;
   beforeEach?: (fn: () => void | Promise<void>) => void;
+  /**
+   * Prefer for soft-reset: runs after project `afterEach`, even when those fail.
+   * Falls back to `afterEach` when omitted.
+   */
+  onTestFinished?: (fn: () => void | Promise<void>) => void;
   /**
    * When false, registration is a no-op.
    * Default: `window.__UNTESTUTILS_ENVIRONMENT__ === true`.
@@ -103,6 +111,7 @@ export function registerSetupEntry(options: RegisterSetupEntryOptions): void {
     beforeAll,
     afterEach,
     beforeEach,
+    onTestFinished,
     enabled = win.__UNTESTUTILS_ENVIRONMENT__ === true,
     resetFailureMessage = '[untestutils] shared reset failed; disposing shared app',
   } = options;
@@ -132,6 +141,8 @@ export function registerSetupEntry(options: RegisterSetupEntryOptions): void {
       return;
     }
 
+    await awaitPendingDispose(win);
+
     win.__UNTESTUTILS_WORKER_SETUP__ ??= setup().catch(async (error: unknown) => {
       await dispose(tryUseApp);
       delete win.__UNTESTUTILS_WORKER_SETUP__;
@@ -141,28 +152,31 @@ export function registerSetupEntry(options: RegisterSetupEntryOptions): void {
     await win.__UNTESTUTILS_WORKER_SETUP__;
   });
 
-  if (
-    mode === 'worker' &&
-    resetBetweenTests &&
-    afterEach &&
-    reset &&
-    !win.__UNTESTUTILS_WORKER_RESET_HOOK__
-  ) {
-    win.__UNTESTUTILS_WORKER_RESET_HOOK__ = true;
-    afterEach(async () => {
+  // Re-register every setupFile eval — Vitest clears suite hooks per file.
+  // Prefer onTestFinished (via beforeEach) so project afterEach failures cannot skip reset.
+  // onTestFinished() may only be called inside a test — schedule it from beforeEach.
+  if (mode === 'worker' && resetBetweenTests && reset) {
+    const runReset = async (): Promise<void> => {
       try {
         await reset();
       } catch (error) {
         console.warn(resetFailureMessage, error);
         await dispose(tryUseApp);
         delete win.__UNTESTUTILS_WORKER_SETUP__;
-        delete win.__UNTESTUTILS_WORKER_RESET_HOOK__;
         win.__UNTESTUTILS_NEEDS_RESTART__ = true;
         throw new Error(`${resetFailureMessage}; call restartSharedApp() before the next test`, {
           cause: error,
         });
       }
-    });
+    };
+
+    if (onTestFinished && beforeEach) {
+      beforeEach(() => {
+        onTestFinished(runReset);
+      });
+    } else if (afterEach) {
+      afterEach(runReset);
+    }
   }
 }
 
@@ -179,8 +193,21 @@ export function resolveAppIsolation(
 /** Clear worker memoization so the next boot runs setup again (watch / restart). */
 export function invalidateWorkerSetup(win: SetupEntryWindow = window as SetupEntryWindow): void {
   delete win.__UNTESTUTILS_WORKER_SETUP__;
-  delete win.__UNTESTUTILS_WORKER_RESET_HOOK__;
   delete win.__UNTESTUTILS_NEEDS_RESTART__;
   delete win.__UNTESTUTILS_BASELINE_ROUTE__;
   delete win.__UNTESTUTILS_BASELINE_BODY__;
+}
+
+/**
+ * Drain HMR dispose chain. Compare-and-swap delete so a concurrent invalidate
+ * that replaces the slot during await is not dropped.
+ */
+export async function awaitPendingDispose(win: SetupEntryWindow): Promise<void> {
+  while (win.__UNTESTUTILS_PENDING_DISPOSE__) {
+    const pending = win.__UNTESTUTILS_PENDING_DISPOSE__;
+    await pending;
+    if (win.__UNTESTUTILS_PENDING_DISPOSE__ === pending) {
+      delete win.__UNTESTUTILS_PENDING_DISPOSE__;
+    }
+  }
 }

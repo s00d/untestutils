@@ -4,7 +4,7 @@ import {
   addCleanup,
   cleanupAll,
   removeCleanup,
-} from '../../packages/nuxt/src/runtime/shared/cleanup';
+} from '../../packages/vitest/src/unit-lifecycle';
 import {
   disposeSharedNuxtApp,
   invalidateWorkerNuxtSetup,
@@ -68,7 +68,6 @@ describe('invalidateWorkerNuxtSetup', () => {
   test('clears memo and baselines', () => {
     const win = {
       __UNTESTUTILS_WORKER_SETUP__: Promise.resolve(),
-      __UNTESTUTILS_WORKER_RESET_HOOK__: true,
       __UNTESTUTILS_BASELINE_ROUTE__: '/x',
       __UNTESTUTILS_BASELINE_BODY__: new Set(),
     } as SetupEntryWindow & {
@@ -77,7 +76,6 @@ describe('invalidateWorkerNuxtSetup', () => {
     };
     invalidateWorkerNuxtSetup(win);
     expect(win.__UNTESTUTILS_WORKER_SETUP__).toBeUndefined();
-    expect(win.__UNTESTUTILS_WORKER_RESET_HOOK__).toBeUndefined();
     expect(win.__UNTESTUTILS_BASELINE_ROUTE__).toBeUndefined();
     expect(win.__UNTESTUTILS_BASELINE_BODY__).toBeUndefined();
   });

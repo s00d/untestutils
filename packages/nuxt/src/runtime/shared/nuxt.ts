@@ -1,6 +1,7 @@
 import { getVueWrapperPlugin } from './vue-wrapper-plugin';
 import { captureSharedNuxtBaseline } from './reset';
-import { bumpSharedNuxtBootCounter } from './boot-counter';
+import { disposeSharedNuxtApp, tryUseNuxtAppFromUnctx } from './setup-entry';
+import { bumpUnitBootCounter } from '@untestutils/vitest/unit-lifecycle';
 import type { NuxtApp } from 'nuxt/app';
 
 type NuxtAppWithRouteSync = NuxtApp & {
@@ -38,32 +39,6 @@ async function callNuxtAppEntry(): Promise<void> {
   );
 }
 
-function tearDownLiveNuxtApp(existing: NuxtAppWithRouteSync | null | undefined): void {
-  if (!existing) return;
-  try {
-    existing._scope?.stop?.();
-  } catch {
-    /* ignore */
-  }
-  try {
-    existing.vueApp?.unmount();
-  } catch {
-    /* ignore */
-  }
-  try {
-    const unctx = (globalThis as { __unctx__?: { unset?: (id: string) => void } }).__unctx__;
-    unctx?.unset?.('nuxt-app');
-  } catch {
-    /* ignore */
-  }
-  try {
-    const root = typeof document !== 'undefined' ? document.getElementById('nuxt-test') : null;
-    if (root) root.innerHTML = '';
-  } catch {
-    /* ignore */
-  }
-}
-
 /** Boots Nuxt app entry inside the Vitest unit environment (Nuxt virtuals only resolve there). */
 export async function setupNuxt(): Promise<void> {
   const { useRouter, useNuxtApp, tryUseNuxtApp } = (await import(
@@ -80,11 +55,11 @@ export async function setupNuxt(): Promise<void> {
   }
 
   // File / remount path on a shared window (isolate:false).
-  tearDownLiveNuxtApp(existing);
+  await disposeSharedNuxtApp(() => existing ?? tryUseNuxtAppFromUnctx());
   if (!isWorkerIsolation()) forceNuxtEntryRemount();
 
   await callNuxtAppEntry();
-  bumpSharedNuxtBootCounter();
+  bumpUnitBootCounter();
   const nuxtApp = useNuxtApp();
   function sync(): Promise<void> | void {
     return syncRoute(nuxtApp);

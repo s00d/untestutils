@@ -1,12 +1,9 @@
-import { afterEach, expect, test } from 'vitest';
+import { expect, test } from 'vitest';
 import { resetSharedNuxtApp } from 'untestutils/runtime';
 
-afterEach(async () => {
-  await resetSharedNuxtApp();
-});
-
 /**
- * Single-test phases so shuffle / file order cannot make the suite pass accidentally.
+ * Mid-test explicit reset still works; no suite-level afterEach needed for
+ * cross-test isolation when resetBetweenTests is on.
  */
 test('useState mutate → reset → assert (order-proof)', async () => {
   const { useState } = await import('#imports');

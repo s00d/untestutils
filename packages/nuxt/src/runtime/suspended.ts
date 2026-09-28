@@ -17,7 +17,7 @@ import {
 import { vi } from 'vitest';
 import { defineComponent, tryUseNuxtApp, useNuxtApp, useRouter } from '#imports';
 import NuxtRoot from '#build/root-component.mjs';
-import { addCleanup, cleanupAll, removeCleanup } from './shared/cleanup';
+import { addCleanup, cleanupAll, removeCleanup } from '@untestutils/vitest/unit-lifecycle';
 
 type SetupState = Record<string, unknown>;
 type Cleanup = () => void;

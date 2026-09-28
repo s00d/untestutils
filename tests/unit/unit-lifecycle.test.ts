@@ -12,7 +12,11 @@ import {
   disposeBestEffort,
   registerSetupEntry,
   invalidateWorkerSetup,
+  awaitPendingDispose,
   applyWorkerIsolationDefaults,
+  registerSharedReset,
+  runSharedResets,
+  getOrCreateWorkerState,
   type SetupEntryWindow,
 } from '../../packages/vitest/src/unit-lifecycle';
 
@@ -253,21 +257,21 @@ describe('unit-lifecycle host reset', () => {
     vi.useRealTimers();
   });
 
-  test('clears host by default', () => {
-    applyHostResetLayers({ timers: false, stubs: false });
+  test('clears host by default', async () => {
+    await applyHostResetLayers({ timers: false, stubs: false });
     expect(localStorage.getItem('k')).toBeNull();
     expect(sessionStorage.getItem('s')).toBeNull();
     expect(document.cookie.includes('tok=')).toBe(false);
   });
 
-  test('host: false leaves storage', () => {
-    applyHostResetLayers({ host: false, timers: false, stubs: false });
+  test('host: false leaves storage', async () => {
+    await applyHostResetLayers({ host: false, timers: false, stubs: false });
     expect(localStorage.getItem('k')).toBe('1');
   });
 
-  test('clears fake timers by default', () => {
+  test('clears fake timers by default', async () => {
     vi.useFakeTimers();
-    applyHostResetLayers({ host: false, stubs: false });
+    await applyHostResetLayers({ host: false, stubs: false });
     expect(vi.isFakeTimers()).toBe(false);
   });
 });
@@ -296,10 +300,11 @@ describe('unit-lifecycle boot counter', () => {
 });
 
 describe('unit-lifecycle isolation defaults', () => {
-  test('worker auto isolate:false + resetBetweenTests', () => {
+  test('worker auto isolate:false + resetBetweenTests + maxConcurrency:1', () => {
     const r = applyWorkerIsolationDefaults({ appIsolation: 'worker' });
     expect(r.isolate).toBe(false);
     expect(r.resetBetweenTests).toBe(true);
+    expect(r.maxConcurrency).toBe(1);
   });
 
   test('worker + isolate:true warns once', () => {
@@ -315,12 +320,69 @@ describe('unit-lifecycle invalidateWorkerSetup', () => {
   test('clears memo keys', () => {
     const win = {
       __UNTESTUTILS_WORKER_SETUP__: Promise.resolve(),
-      __UNTESTUTILS_WORKER_RESET_HOOK__: true,
       __UNTESTUTILS_BASELINE_ROUTE__: '/',
       __UNTESTUTILS_BASELINE_BODY__: new Set(),
     } as SetupEntryWindow;
     invalidateWorkerSetup(win);
     expect(win.__UNTESTUTILS_WORKER_SETUP__).toBeUndefined();
-    expect(win.__UNTESTUTILS_WORKER_RESET_HOOK__).toBeUndefined();
+    expect(win.__UNTESTUTILS_BASELINE_ROUTE__).toBeUndefined();
+  });
+});
+
+describe('unit-lifecycle shared resets + worker state', () => {
+  afterEach(() => {
+    const w = window as Window & { __UNTESTUTILS_SHARED_RESETS__?: unknown };
+    delete w.__UNTESTUTILS_SHARED_RESETS__;
+    delete (window as Window & { __UNTESTUTILS_WORKER_STATE__?: unknown }).__UNTESTUTILS_WORKER_STATE__;
+  });
+
+  test('keyed register replaces in place', async () => {
+    const a = vi.fn();
+    const b = vi.fn();
+    registerSharedReset('k', a);
+    registerSharedReset('k', b);
+    await runSharedResets();
+    expect(a).not.toHaveBeenCalled();
+    expect(b).toHaveBeenCalledTimes(1);
+  });
+
+  test('runSharedResets continues after throw', async () => {
+    const second = vi.fn();
+    registerSharedReset('boom', () => {
+      throw new Error('reset boom');
+    });
+    registerSharedReset('ok', second);
+    await expect(runSharedResets()).rejects.toThrow('reset boom');
+    expect(second).toHaveBeenCalledTimes(1);
+  });
+
+  test('getOrCreateWorkerState survives re-calls', () => {
+    const first = getOrCreateWorkerState('probe', () => ({ n: 1 }));
+    first.n = 7;
+    const second = getOrCreateWorkerState('probe', () => ({ n: 0 }));
+    expect(second.n).toBe(7);
+  });
+});
+
+describe('unit-lifecycle awaitPendingDispose', () => {
+  test('CAS-drain awaits replacement assigned during await', async () => {
+    let resolveA!: () => void;
+    const a = new Promise<void>((r) => {
+      resolveA = r;
+    });
+    const bDone = vi.fn();
+    const win = {
+      __UNTESTUTILS_PENDING_DISPOSE__: a,
+    } as SetupEntryWindow;
+
+    const drain = awaitPendingDispose(win);
+    // Simulate HMR replacing the slot while boot awaits A.
+    win.__UNTESTUTILS_PENDING_DISPOSE__ = Promise.resolve().then(() => {
+      bDone();
+    });
+    resolveA();
+    await drain;
+    expect(bDone).toHaveBeenCalledTimes(1);
+    expect(win.__UNTESTUTILS_PENDING_DISPOSE__).toBeUndefined();
   });
 });

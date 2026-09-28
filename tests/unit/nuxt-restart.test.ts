@@ -9,9 +9,15 @@ vi.mock('../../packages/nuxt/src/runtime/shared/nuxt', () => ({
   setupNuxt: (...args: unknown[]) => setupNuxt(...args),
 }));
 
-vi.mock('../../packages/nuxt/src/runtime/shared/cleanup', () => ({
-  cleanupAll: (...args: unknown[]) => cleanupAll(...args),
-}));
+vi.mock('@untestutils/vitest/unit-lifecycle', async () => {
+  const actual = await vi.importActual<typeof import('@untestutils/vitest/unit-lifecycle')>(
+    '@untestutils/vitest/unit-lifecycle',
+  );
+  return {
+    ...actual,
+    cleanupAll: (...args: unknown[]) => cleanupAll(...args),
+  };
+});
 
 vi.mock('../../packages/nuxt/src/runtime/shared/setup-entry', async () => {
   const actual = await vi.importActual<
@@ -37,14 +43,12 @@ describe('restartSharedNuxtApp', () => {
     const { restartSharedNuxtApp } = await import('../../packages/nuxt/src/runtime/shared/restart');
     const win = {
       __UNTESTUTILS_WORKER_SETUP__: Promise.resolve(),
-      __UNTESTUTILS_WORKER_RESET_HOOK__: true,
       __UNTESTUTILS_BASELINE_ROUTE__: '/',
     } as SetupEntryWindow & { __UNTESTUTILS_BASELINE_ROUTE__?: string };
 
     await restartSharedNuxtApp(win);
 
     expect(win.__UNTESTUTILS_WORKER_SETUP__).toBeUndefined();
-    expect(win.__UNTESTUTILS_WORKER_RESET_HOOK__).toBeUndefined();
     expect(disposeSharedNuxtApp).toHaveBeenCalled();
     expect(setupNuxt).toHaveBeenCalled();
     expect(
@@ -85,7 +89,6 @@ describe('restartSharedNuxtApp', () => {
       await import('../../packages/nuxt/src/runtime/shared/restart');
     const win = {
       __UNTESTUTILS_WORKER_SETUP__: Promise.resolve(),
-      __UNTESTUTILS_WORKER_RESET_HOOK__: true,
     } as SetupEntryWindow;
     enableSharedNuxtHotRestart(win, {
       on: (event, cb) => {
@@ -94,6 +97,7 @@ describe('restartSharedNuxtApp', () => {
     });
     handlers['vite:beforeFullReload']!();
     expect(win.__UNTESTUTILS_WORKER_SETUP__).toBeUndefined();
+    await win.__UNTESTUTILS_PENDING_DISPOSE__;
     expect(disposeSharedNuxtApp).toHaveBeenCalled();
   });
 });

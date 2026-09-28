@@ -1,13 +1,9 @@
-import { afterEach, expect, test } from 'vitest';
+import { expect, test } from 'vitest';
 import { registerEndpoint, resetSharedNuxtApp, registerSharedNuxtReset } from 'untestutils/runtime';
-
-afterEach(async () => {
-  await resetSharedNuxtApp();
-});
 
 test('endpoint + custom reset (order-proof)', async () => {
   let customRan = 0;
-  const dispose = registerSharedNuxtReset(() => {
+  const dispose = registerSharedNuxtReset('endpoint-reset-probe', () => {
     customRan += 1;
   });
 

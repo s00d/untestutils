@@ -1,5 +1,11 @@
 import { nextTick } from 'vue';
-import { applyHostResetLayers, cleanupAll } from '@untestutils/vitest/unit-lifecycle';
+import {
+  applyHostResetLayers,
+  cleanupAll,
+  registerSharedReset,
+  runSharedResets,
+} from '@untestutils/vitest/unit-lifecycle';
+import { clearNuxtImportOverrides } from './overrides';
 
 const HELPER_MOCK_HOIST = '__NUXT_VITEST_MOCKS';
 const HELPER_MOCK_HOIST_FNS = '__NUXT_VITEST_MOCK_FNS';
@@ -7,7 +13,6 @@ const HELPER_MOCK_HOIST_ORIGINAL = '__NUXT_VITEST_MOCKS_ORIGINAL';
 
 const BASELINE_ROUTE_PROP = '__UNTESTUTILS_BASELINE_ROUTE__';
 const BASELINE_BODY_PROP = '__UNTESTUTILS_BASELINE_BODY__';
-const SHARED_RESETS_PROP = '__UNTESTUTILS_SHARED_RESETS__';
 
 type ResetFn = () => void | Promise<void>;
 
@@ -22,7 +27,6 @@ type ResetWindow = Window & {
   };
   __UNTESTUTILS_BASELINE_ROUTE__?: string;
   __UNTESTUTILS_BASELINE_BODY__?: Set<Element>;
-  __UNTESTUTILS_SHARED_RESETS__?: ResetFn[];
 };
 
 type MockEntry = Record<string, unknown> & {
@@ -62,18 +66,21 @@ export function captureSharedNuxtBaseline(
   w[BASELINE_BODY_PROP] ??= new Set([...w.document.body.children]);
 }
 
+let unkeyedResetCounter = 0;
+
 /**
  * Register a custom cleanup that runs inside `resetSharedNuxtApp` (worker mode).
+ * Prefer `registerSharedNuxtReset(key, fn)` so setupFile re-evals replace in place.
+ * Unkeyed `(fn)` gets a unique auto-key (legacy; can accumulate across re-evals).
  */
-export function registerSharedNuxtReset(fn: ResetFn): () => void {
-  if (typeof window === 'undefined') return () => {};
-  const w = asResetWindow(window);
-  const list = (w[SHARED_RESETS_PROP] ??= []);
-  list.push(fn);
-  return () => {
-    const index = list.indexOf(fn);
-    if (index !== -1) list.splice(index, 1);
-  };
+export function registerSharedNuxtReset(fn: ResetFn): () => void;
+export function registerSharedNuxtReset(key: string, fn: ResetFn): () => void;
+export function registerSharedNuxtReset(keyOrFn: string | ResetFn, maybeFn?: ResetFn): () => void {
+  if (typeof keyOrFn === 'function') {
+    const key = `__unkeyed_${++unkeyedResetCounter}`;
+    return registerSharedReset(key, keyOrFn);
+  }
+  return registerSharedReset(keyOrFn, maybeFn!);
 }
 
 /**
@@ -88,7 +95,12 @@ export async function resetSharedNuxtApp(opts: ResetSharedNuxtAppOptions = {}): 
   await Promise.resolve();
   await Promise.resolve();
 
-  cleanupAll();
+  let layerError: unknown;
+  try {
+    cleanupAll();
+  } catch (error) {
+    layerError = error;
+  }
 
   try {
     const importsModule = '#imp' + 'orts';
@@ -97,14 +109,30 @@ export async function resetSharedNuxtApp(opts: ResetSharedNuxtAppOptions = {}): 
     );
     const baseline = w[BASELINE_ROUTE_PROP] ?? '/';
     const router = useRouter();
-    if (router.currentRoute.value.fullPath !== baseline) {
-      await router.replace(baseline);
+    // Live Nuxt: route + clear failures are real (do not swallow).
+    try {
+      if (router.currentRoute.value.fullPath !== baseline) {
+        await router.replace(baseline);
+      }
+      if (router.currentRoute.value.fullPath !== baseline) {
+        throw new Error(
+          `[untestutils] resetSharedNuxtApp: route restore failed (expected ${baseline}, got ${router.currentRoute.value.fullPath})`,
+        );
+      }
+      await clearError();
+      clearNuxtData();
+      clearNuxtState(undefined, { reset: false });
+    } catch (error) {
+      if (layerError === undefined) layerError = error;
+      else {
+        layerError = new AggregateError(
+          [layerError, error],
+          '[untestutils] resetSharedNuxtApp: multiple layer failures',
+        );
+      }
     }
-    await clearError();
-    clearNuxtData();
-    clearNuxtState(undefined, { reset: false });
   } catch {
-    /* outside Nuxt env / already torn down */
+    /* Import / useRouter failure → outside Nuxt env / already torn down */
   }
 
   const keep = w[BASELINE_BODY_PROP];
@@ -115,16 +143,27 @@ export async function resetSharedNuxtApp(opts: ResetSharedNuxtAppOptions = {}): 
   }
 
   if (opts.endpoints !== false) clearRegisteredEndpoints();
-  applyHostResetLayers({
+  await applyHostResetLayers({
     host: opts.host,
     timers: opts.timers,
     stubs: opts.stubs,
   });
   if (opts.mocks === true) clearNuxtImportMocks();
+  clearNuxtImportOverrides(w);
 
-  for (const fn of [...(w[SHARED_RESETS_PROP] ?? [])]) {
-    await fn();
+  try {
+    await runSharedResets(w);
+  } catch (error) {
+    if (layerError === undefined) layerError = error;
+    else {
+      layerError = new AggregateError(
+        [layerError, error],
+        '[untestutils] resetSharedNuxtApp: multiple layer failures',
+      );
+    }
   }
+
+  if (layerError !== undefined) throw layerError;
 }
 
 /**

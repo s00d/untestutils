@@ -9,6 +9,10 @@ export {
   type HostResetOptions,
 } from './host-reset';
 
+export { registerSharedReset, runSharedResets } from './shared-reset';
+
+export { getOrCreateWorkerState } from './worker-state';
+
 export {
   type AppIsolation,
   type SetupEntryWindow,
@@ -20,6 +24,7 @@ export {
   registerSetupEntry,
   resolveAppIsolation,
   invalidateWorkerSetup,
+  awaitPendingDispose,
 } from './setup-entry';
 
 export {

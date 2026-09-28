@@ -115,7 +115,7 @@ See [API overview](/api/) (`config`, `runtime`, `module`).
 
 ### `appIsolation: 'worker'` (opt-in)
 
-Today this surface is the **Nuxt unit adapter** (`environment: 'untestutils'`). Framework-agnostic hooks live in `@untestutils/vitest/unit-lifecycle` (`registerSetupEntry`, `disposeBestEffort`, host/timers reset, `applyWorkerIsolationDefaults`) so future unit environments can reuse the same worker/file lifecycle without Nuxt imports.
+Today this surface is the **Nuxt unit adapter** (`environment: 'untestutils'`). Framework-agnostic hooks live in `@untestutils/vitest/unit-lifecycle` (`registerSetupEntry`, `disposeBestEffort`, host/timers reset, `applyWorkerIsolationDefaults`, `registerSharedReset`, `getOrCreateWorkerState`) so future unit environments can reuse the same worker/file lifecycle without Nuxt imports.
 
 By default each unit file pays for a full `setupNuxt()` boot. For large component suites, reuse one Nuxt app per Vitest worker:
 
@@ -126,7 +126,7 @@ export default defineVitestProject({
     pool: 'threads',
     environmentOptions: {
       nuxt: {
-        appIsolation: 'worker', // auto-sets isolate: false when unset
+        appIsolation: 'worker', // auto-sets isolate: false + maxConcurrency: 1 when unset
         // resetBetweenTests: true  // default in worker mode
       },
     },
@@ -138,14 +138,38 @@ export default defineVitestProject({
 |--|--|--|
 | `setupNuxt` | once per test file (remounts even with `isolate: false`) | once per Vitest worker |
 | `isolate` | Vitest default (`true`) | `false` (auto) |
+| `maxConcurrency` | Vitest default | `1` (auto) |
 | State between files | fresh window / remount | shared app — soft-reset between tests |
-| Soft reset | n/a | `resetSharedNuxtApp` (auto when `resetBetweenTests`) |
+| Soft reset | n/a | `resetSharedNuxtApp` via `onTestFinished` (scheduled from `beforeEach`; falls back to `afterEach`) |
 
-`resetSharedNuxtApp` (also run automatically after each test when `resetBetweenTests` is on) clears route/state/data/errors, VTU mounts, `registerEndpoint` handlers, **cookies**, **localStorage/sessionStorage**, **fake timers**, and **Vitest env/global stubs**. Opt out per layer: `resetSharedNuxtApp({ host: false, timers: false, stubs: false })`. Custom cleanups: `registerSharedNuxtReset(fn)`.
+`resetSharedNuxtApp` (auto when `resetBetweenTests` is on) clears route/state/data/errors, VTU mounts (including plain `mount()` via `enableAutoUnmount`), `registerEndpoint` handlers, **cookies** (tracked `document.cookie` name+path — covers path-scoped cookies set in tests; jsdom jar when present), **localStorage/sessionStorage**, **fake timers**, Vitest env/global stubs, and per-test `overrideNuxtImport` values. Opt out per layer: `resetSharedNuxtApp({ host: false, timers: false, stubs: false })`.
+
+**Custom cleanups:** `registerSharedNuxtReset(key, fn)` — keyed, replace-in-place on setupFile re-eval (prefer over unkeyed `(fn)`).
+
+**Not reset:** startup plugin state, HttpOnly / other-path cookies the jar cannot see in some envs, DOM nodes that existed at baseline capture, background work `flushPromises` does not settle.
 
 After Vite HMR / full reload in watch, call `restartSharedNuxtApp()` (or rely on `enableSharedNuxtHotRestart`, registered automatically in worker mode) to invalidate the memoized boot.
 
-Per-file `mockNuxtImport` after the shared boot is unreliable; prefer worker-level wrappers + `clearNuxtImportMocks()` when needed (`mocks` stay off in the default reset).
+#### Per-test import overrides
+
+`mockNuxtImport` after the shared boot is unreliable. Ship worker-level wrappers:
+
+```ts
+// setup file (once per worker)
+import { mockNuxtImport } from 'untestutils/runtime'
+import { overridableNuxtImport } from 'untestutils/runtime'
+mockNuxtImport('useFoo', overridableNuxtImport('useFoo', () => 'default'))
+
+// in a test
+import { overrideNuxtImport, overrideNuxtRoute } from 'untestutils/runtime'
+const restore = overrideNuxtImport('useFoo', () => 'mocked')
+// … assertions …
+restore()
+```
+
+Also: `getOrCreateWorkerState(name, create)` for registries the app captured at startup. Soft reset clears override *values*; wrappers stay.
+
+Do not call `enableAutoUnmount` yourself in Nuxt worker mode — the Nuxt runtime installs it (VTU throws on a second enable).
 
 ### Alignment with nuxt/test-utils
 

@@ -1,11 +1,14 @@
 import {
-  invalidateWorkerNuxtSetup,
   tryUseNuxtAppFromUnctx,
   disposeSharedNuxtApp,
   type SetupEntryWindow,
 } from './setup-entry';
 import { setupNuxt } from './nuxt';
-import { cleanupAll } from './cleanup';
+import {
+  awaitPendingDispose,
+  cleanupAll,
+  invalidateWorkerSetup,
+} from '@untestutils/vitest/unit-lifecycle';
 
 const HOT_ENABLED = '__UNTESTUTILS_HOT_RESTART__';
 
@@ -22,13 +25,14 @@ type HotWindow = SetupEntryWindow & {
 export async function restartSharedNuxtApp(
   win: SetupEntryWindow = globalThis.window as SetupEntryWindow,
 ): Promise<void> {
+  await awaitPendingDispose(win);
   try {
     cleanupAll();
   } catch {
     /* ignore — dispose below still runs */
   }
   await disposeSharedNuxtApp(tryUseNuxtAppFromUnctx);
-  invalidateWorkerNuxtSetup(win);
+  invalidateWorkerSetup(win);
   (
     globalThis as { __UNTESTUTILS_FORCE_NUXT_REMOUNT__?: boolean }
   ).__UNTESTUTILS_FORCE_NUXT_REMOUNT__ = true;
@@ -52,8 +56,14 @@ export function enableSharedNuxtHotRestart(
   if (!hot) return;
 
   const invalidate = (): void => {
-    invalidateWorkerNuxtSetup(w);
-    void disposeSharedNuxtApp(tryUseNuxtAppFromUnctx);
+    // Chain disposes — do not drop an in-flight promise on rapid HMR.
+    // Next boot awaits __UNTESTUTILS_PENDING_DISPOSE__ before setup.
+    const prev = w.__UNTESTUTILS_PENDING_DISPOSE__;
+    w.__UNTESTUTILS_PENDING_DISPOSE__ = Promise.resolve(prev)
+      .catch(() => undefined)
+      .then(() => disposeSharedNuxtApp(tryUseNuxtAppFromUnctx))
+      .catch(() => undefined);
+    invalidateWorkerSetup(w);
   };
 
   hot.on('vite:beforeFullReload', invalidate);

@@ -41,6 +41,7 @@ describe('resetSharedNuxtApp host layers', () => {
     (
       window as unknown as { __UNTESTUTILS_BASELINE_ROUTE__?: string }
     ).__UNTESTUTILS_BASELINE_ROUTE__ = '/';
+    delete (window as unknown as { __UNTESTUTILS_SHARED_RESETS__?: unknown }).__UNTESTUTILS_SHARED_RESETS__;
     localStorage.setItem('x', '1');
     sessionStorage.setItem('y', '2');
     document.cookie = 'tok=abc; path=/';
@@ -80,10 +81,40 @@ describe('resetSharedNuxtApp host layers', () => {
 
   test('runs registerSharedNuxtReset callbacks', async () => {
     const spy = vi.fn();
-    const dispose = registerSharedNuxtReset(spy);
+    const dispose = registerSharedNuxtReset('host-reset-spy', spy);
     await resetSharedNuxtApp({ host: false, timers: false, stubs: false });
     expect(spy).toHaveBeenCalledTimes(1);
     dispose();
+  });
+
+  test('keyed registerSharedNuxtReset replaces on re-register', async () => {
+    const first = vi.fn();
+    const second = vi.fn();
+    registerSharedNuxtReset('same-key', first);
+    registerSharedNuxtReset('same-key', second);
+    await resetSharedNuxtApp({ host: false, timers: false, stubs: false });
+    expect(first).not.toHaveBeenCalled();
+    expect(second).toHaveBeenCalledTimes(1);
+  });
+
+  test('clears path-scoped cookies via document cookie tracker', async () => {
+    const { installDocumentCookieTracker } = await import(
+      '../../packages/vitest/src/unit-dom/index'
+    );
+    installDocumentCookieTracker(window);
+    const happy = (
+      window as Window & { happyDOM?: { setURL?: (url: string) => void } }
+    ).happyDOM;
+    happy?.setURL?.('http://localhost/api/x');
+    document.cookie = 'root=1; path=/';
+    document.cookie = 'api=2; path=/api';
+    document.cookie = 'session=abc'; // no Path — happy-dom default
+    happy?.setURL?.('http://localhost/');
+    await resetSharedNuxtApp({ timers: false, stubs: false });
+    happy?.setURL?.('http://localhost/api/x');
+    expect(document.cookie.includes('api=')).toBe(false);
+    expect(document.cookie.includes('root=')).toBe(false);
+    expect(document.cookie.includes('session=')).toBe(false);
   });
 
   test('prunes body children outside baseline', async () => {
