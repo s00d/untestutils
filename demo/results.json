@@ -1,0 +1,48 @@
+{
+  "files": 10,
+  "tests": 150,
+  "kind": "browser-hydration",
+  "measuredAt": "2026-09-19T17:02:36.088Z",
+  "shared": {
+    "label": "untestutils — shared prepare",
+    "body": "One Nuxt recipe id for all files — build/start once, then 10 files hit the same live URL with Playwright.",
+    "wallSec": 28.2,
+    "durationSec": 27.35,
+    "tests": 150,
+    "files": 10,
+    "command": "pnpm test:shared",
+    "excerpt": [
+      "  + app                     cached",
+      "  + app                     cached",
+      "  + app                     cached",
+      "  + app                     cached",
+      "  + app                     cached",
+      "  + app                     cached",
+      "  + app                     cached",
+      "  + app                     cached",
+      "  + app                     cached",
+      " Test Files  10 passed (10)",
+      "      Tests  150 passed (150)",
+      "   Duration  27.35s (tests 94%, import 4%, transform 2%, setup 1%)",
+      "  teardown  stop",
+      "  = teardown"
+    ]
+  },
+  "naive": {
+    "label": "Ordinary — prepare per file",
+    "body": "Same scenarios, but each of 10 files uses its own Nuxt recipe id (own prepare/start). No shared host.",
+    "wallSec": 90.6,
+    "durationSec": 89.97,
+    "tests": 150,
+    "files": 10,
+    "command": "pnpm test:naive",
+    "excerpt": [
+      " Test Files  10 passed (10)",
+      "      Tests  150 passed (150)",
+      "   Duration  89.97s (tests 96%, import 3%, setup 1%)",
+      "  teardown  stop",
+      "  = teardown"
+    ]
+  },
+  "speedup": 3.2
+}
