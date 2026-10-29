@@ -124,7 +124,10 @@ export const remix: Driver<RemixOptions> = defineDriver((opts: RemixOptions): Re
     workspaceDeps: opts.workspaceDeps,
     prepare: async ({ outDir }) => {
       const configFile = await resolveConfigFile(root, outDir, opts.viteConfig);
+      // Programmatic vite.build() only emits build/client; the server bundle is a second
+      // `build.ssr` pass (what `remix vite:build` does).
       await runViteBuild({ root, configFile, env: opts.env });
+      await runViteBuild({ root, configFile, env: opts.env, ssr: true });
     },
     verifyAfterPrepare: () => {
       const entry = join(root, serverEntry);
