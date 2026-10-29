@@ -1,8 +1,4 @@
-import {
-  tryUseNuxtAppFromUnctx,
-  disposeSharedNuxtApp,
-  type SetupEntryWindow,
-} from './setup-entry';
+import { tryUseNuxtAppFromUnctx, disposeSharedNuxtApp, type SetupEntryWindow } from './setup-entry';
 import { setupNuxt } from './nuxt';
 import {
   awaitPendingDispose,

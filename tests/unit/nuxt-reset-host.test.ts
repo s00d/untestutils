@@ -41,7 +41,8 @@ describe('resetSharedNuxtApp host layers', () => {
     (
       window as unknown as { __UNTESTUTILS_BASELINE_ROUTE__?: string }
     ).__UNTESTUTILS_BASELINE_ROUTE__ = '/';
-    delete (window as unknown as { __UNTESTUTILS_SHARED_RESETS__?: unknown }).__UNTESTUTILS_SHARED_RESETS__;
+    delete (window as unknown as { __UNTESTUTILS_SHARED_RESETS__?: unknown })
+      .__UNTESTUTILS_SHARED_RESETS__;
     localStorage.setItem('x', '1');
     sessionStorage.setItem('y', '2');
     document.cookie = 'tok=abc; path=/';
@@ -98,13 +99,10 @@ describe('resetSharedNuxtApp host layers', () => {
   });
 
   test('clears path-scoped cookies via document cookie tracker', async () => {
-    const { installDocumentCookieTracker } = await import(
-      '../../packages/vitest/src/unit-dom/index'
-    );
+    const { installDocumentCookieTracker } =
+      await import('../../packages/vitest/src/unit-dom/index');
     installDocumentCookieTracker(window);
-    const happy = (
-      window as Window & { happyDOM?: { setURL?: (url: string) => void } }
-    ).happyDOM;
+    const happy = (window as Window & { happyDOM?: { setURL?: (url: string) => void } }).happyDOM;
     happy?.setURL?.('http://localhost/api/x');
     document.cookie = 'root=1; path=/';
     document.cookie = 'api=2; path=/api';

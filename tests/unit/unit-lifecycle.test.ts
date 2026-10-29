@@ -333,7 +333,8 @@ describe('unit-lifecycle shared resets + worker state', () => {
   afterEach(() => {
     const w = window as Window & { __UNTESTUTILS_SHARED_RESETS__?: unknown };
     delete w.__UNTESTUTILS_SHARED_RESETS__;
-    delete (window as Window & { __UNTESTUTILS_WORKER_STATE__?: unknown }).__UNTESTUTILS_WORKER_STATE__;
+    delete (window as Window & { __UNTESTUTILS_WORKER_STATE__?: unknown })
+      .__UNTESTUTILS_WORKER_STATE__;
   });
 
   test('keyed register replaces in place', async () => {

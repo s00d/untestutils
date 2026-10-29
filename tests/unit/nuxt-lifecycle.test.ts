@@ -1,10 +1,6 @@
 /** @vitest-environment happy-dom */
 import { describe, expect, test, vi } from 'vitest';
-import {
-  addCleanup,
-  cleanupAll,
-  removeCleanup,
-} from '../../packages/vitest/src/unit-lifecycle';
+import { addCleanup, cleanupAll, removeCleanup } from '../../packages/vitest/src/unit-lifecycle';
 import {
   disposeSharedNuxtApp,
   invalidateWorkerNuxtSetup,
