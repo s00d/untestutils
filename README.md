@@ -54,7 +54,8 @@ Utils (`untestutils/utils`) exist, but they are tools for **real-runtime** check
 ## What you get
 
 - 🧩 **Recipes, not preset zoos** — compose targets; Nuxt is a factory, not a special universe
-- ⚡ **Shared prepare** — warm once, reuse across workers / projects
+- ⚡ **Shared prepare** — warm once (parallel `prewarm`), reuse across workers / projects; old builds are GC'd, cache `.untestutils/builds` in CI
+- 🛡 **Stable by default** — build time is charged to a hook (`buildTimeout`), not your first test; `goto` fails loudly on broken hydration; `retryInfra` + `RetryReporter` retry only infra errors and list every flaky test
 - 🧪 **Vitest + Playwright** — same ids; fixtures `page` / `goto` / `$fetch`
 - 🌐 **Remote `host()`** — post-deploy smoke against staging/prod
 - 🧰 **Reality-oriented utils** — cookies, SEO head, domain emulation, redirect tracking, poll
