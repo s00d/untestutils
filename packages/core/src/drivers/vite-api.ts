@@ -181,6 +181,8 @@ export async function runViteBuild(opts: {
   root: string;
   configFile?: string | false;
   env?: Record<string, string>;
+  /** SSR bundle pass (Remix: `remix vite:build` = client build + `build.ssr` build). */
+  ssr?: boolean;
 }): Promise<void> {
   const restore = applyEnv(opts.env);
   const root = resolve(opts.root);
@@ -191,6 +193,7 @@ export async function runViteBuild(opts: {
         root,
         configFile: opts.configFile,
         logLevel: 'warn',
+        ...(opts.ssr ? { build: { ssr: true } } : {}),
       });
     });
   } finally {
