@@ -47,13 +47,15 @@ export class RetryReporter implements Reporter {
   }
 
   async onTestRunEnd(): Promise<void> {
+    // Drain per run — watch mode reruns must not report previous runs' retries.
+    const retried = this.retried.splice(0);
     if (this.options.outputFile) {
       await mkdir(dirname(this.options.outputFile), { recursive: true });
-      await writeFile(this.options.outputFile, JSON.stringify(this.retried, null, 2), 'utf8');
+      await writeFile(this.options.outputFile, JSON.stringify(retried, null, 2), 'utf8');
     }
-    if (!this.retried.length) return;
-    this.logger.log(`\n[untestutils] ${this.retried.length} test(s) needed a retry:`);
-    for (const t of this.retried) {
+    if (!retried.length) return;
+    this.logger.log(`\n[untestutils] ${retried.length} test(s) needed a retry:`);
+    for (const t of retried) {
       const verdict = t.flaky ? 'FLAKY, passed' : 'failed';
       this.logger.log(
         `  - ${t.name} (${verdict} after ${t.retryCount} retr${t.retryCount > 1 ? 'ies' : 'y'})`,

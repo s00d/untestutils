@@ -12,6 +12,10 @@ export {
   withHarness,
   ensurePrepared,
   stopAllTargets,
+  prewarmTargets,
+  pruneBuilds,
+  runStateDir,
+  isAddressInUseError,
   SCHEMA_VERSION,
   LOOPBACK_HOST,
   loopbackUrl,
@@ -49,6 +53,8 @@ export type {
   ManagedProcess,
   StopOpts,
   SpawnOpts,
+  PruneBuildsOptions,
+  PruneBuildsResult,
 } from '@untestutils/core';
 
 export { command, staticDir, nodeEntry, host, defineDriver, matrixRecipe } from '@untestutils/core';

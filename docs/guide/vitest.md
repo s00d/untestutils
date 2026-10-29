@@ -85,7 +85,7 @@ Ensure `useHarness` or `prewarm` started the target so `baseURL` resolves.
 
 ### `goto` hydration
 
-After `load` / `networkidle` / default navigation, `goto` waits up to 30 s for Nuxt hydration — only on Nuxt pages (`__NUXT__` / `#__nuxt` / `useNuxtApp`). If hydration never finishes it now **throws** (`goto(url): Nuxt hydration not ready … (isHydrating=true)`), usually a client error worth seeing. `hydration: 'lenient'` restores the old silent behaviour; `waitUntil: 'domcontentloaded'` skips the wait.
+After `load` / `networkidle` / default navigation, strict mode (default) waits up to 30 s for Nuxt hydration on Nuxt pages only (`__NUXT__` / `#__nuxt` / `useNuxtApp`). If hydration never finishes it **throws** (`goto(url): Nuxt hydration not ready … (isHydrating=true)`), usually a client error worth seeing. `hydration: 'lenient'` restores the old silent behaviour, including its 30 s probe on non-Nuxt pages; explicit `waitUntil: 'hydration' | 'route'` always stays strict; `waitUntil: 'domcontentloaded'` skips the wait.
 
 ### Retries
 

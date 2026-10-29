@@ -1,4 +1,5 @@
 import { type ChildProcess, execFileSync, spawn } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { platform } from 'node:os';
 import { debug } from './debug';
 
@@ -66,6 +67,7 @@ export const processIo = {
     process.kill(pid, signal)) as typeof process.kill,
   execFileSync: (cmd: string, args: string[]): string =>
     execFileSync(cmd, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }),
+  readFileSync: (path: string): string => readFileSync(path, 'utf8'),
 };
 
 function envFlagCapture(): boolean {
@@ -83,13 +85,22 @@ function probeAlive(pid: number): boolean {
 }
 
 /**
- * OS start-time of `pid` (unix `ps -o lstart=`), used as process identity so teardown
- * never signals a pid the OS recycled after a crash. `undefined` when unknown (win32,
- * process gone, no `ps`) — callers then fall back to the plain pid check.
+ * OS start time of `pid`, used as process identity so teardown never signals a pid the OS
+ * recycled after a crash. Linux: `/proc/<pid>/stat` starttime (clock ticks since boot);
+ * macOS/BSD: `ps -o lstart=`. `undefined` when unknown (win32, process gone, no `ps`) —
+ * callers then fall back to the plain pid check.
  */
 export function processStartToken(pid: number | undefined | null): string | undefined {
-  if (!pid || pid <= 1 || processPlatform.current() === 'win32') return undefined;
+  if (!pid || pid <= 1) return undefined;
+  const os = processPlatform.current();
+  if (os === 'win32') return undefined;
   try {
+    if (os === 'linux') {
+      const stat = processIo.readFileSync(`/proc/${pid}/stat`);
+      // comm (field 2) may contain spaces/parens — fields after the last ')' are fixed.
+      const fields = stat.slice(stat.lastIndexOf(')') + 2).split(' ');
+      return fields[19] ? `ticks:${fields[19]}` : undefined; // field 22 = starttime
+    }
     const out = processIo.execFileSync('ps', ['-o', 'lstart=', '-p', String(pid)]).trim();
     return out || undefined;
   } catch {

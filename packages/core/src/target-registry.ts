@@ -40,9 +40,14 @@ export class TargetRegistry {
   }
 
   async read(): Promise<TargetMap> {
-    if (!existsSync(this.filePath)) return {};
+    // Pre-0.8 registry lived at <root>/targets.json — read it until the first write
+    // migrates its entries under run/ (teardown reclaims and drops the legacy file).
+    const path = existsSync(this.filePath)
+      ? this.filePath
+      : join(this.artifactsRoot, 'targets.json');
+    if (!existsSync(path)) return {};
     try {
-      return JSON.parse(await readFile(this.filePath, 'utf8')) as TargetMap;
+      return JSON.parse(await readFile(path, 'utf8')) as TargetMap;
     } catch {
       return {};
     }
