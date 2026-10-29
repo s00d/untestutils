@@ -27,9 +27,7 @@ function bag(win?: Window): OverrideBag {
  */
 export function overridableNuxtImport<K extends keyof TestNuxtImports & string>(
   name: K,
-  fallback?: TestNuxtImports[K] extends (...args: infer A) => infer R
-    ? (...args: A) => R
-    : Impl,
+  fallback?: TestNuxtImports[K] extends (...args: infer A) => infer R ? (...args: A) => R : Impl,
 ): () => Impl {
   return () => {
     const map = bag();
