@@ -124,7 +124,11 @@ export function registerSetupEntry(options: RegisterSetupEntryOptions): void {
     vi.resetModules();
   }
 
-  if (mode === 'worker' && beforeEach) {
+  // Soft reset applies in both modes: worker always defaults it on; file mode only when
+  // `resetBetweenTests: true` (tests inside one file share the mounted app).
+  const softReset = resetBetweenTests && !!reset;
+
+  if ((mode === 'worker' || softReset) && beforeEach) {
     beforeEach(() => {
       if (win.__UNTESTUTILS_NEEDS_RESTART__) {
         throw new Error(
@@ -137,6 +141,10 @@ export function registerSetupEntry(options: RegisterSetupEntryOptions): void {
   beforeAll(async () => {
     if (mode !== 'worker') {
       await dispose(tryUseApp);
+      // Fresh mount per file — baseline from the previous file's app is stale.
+      delete win.__UNTESTUTILS_BASELINE_ROUTE__;
+      delete win.__UNTESTUTILS_BASELINE_BODY__;
+      delete win.__UNTESTUTILS_NEEDS_RESTART__;
       await setup();
       return;
     }
@@ -155,10 +163,10 @@ export function registerSetupEntry(options: RegisterSetupEntryOptions): void {
   // Re-register every setupFile eval — Vitest clears suite hooks per file.
   // Prefer onTestFinished (via beforeEach) so project afterEach failures cannot skip reset.
   // onTestFinished() may only be called inside a test — schedule it from beforeEach.
-  if (mode === 'worker' && resetBetweenTests && reset) {
+  if (softReset) {
     const runReset = async (): Promise<void> => {
       try {
-        await reset();
+        await reset!();
       } catch (error) {
         console.warn(resetFailureMessage, error);
         await dispose(tryUseApp);
