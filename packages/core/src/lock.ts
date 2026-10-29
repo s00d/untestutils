@@ -112,9 +112,16 @@ export class FileLock {
       await handle.writeFile(JSON.stringify(this.info), 'utf8');
       this.ino = (await handle.stat()).ino;
     } catch (error) {
-      // Never leave a half-initialised lock behind that nobody can release.
+      // Never leave a half-initialised lock behind — but only remove the inode this attempt
+      // created (a waiter may already have stolen it). Unknown inode → stale handling cleans up.
+      const ino = await handle.stat().then(
+        (st) => st.ino,
+        () => undefined,
+      );
       await handle.close().catch(() => {});
-      await unlink(this.lockPath).catch(() => {});
+      if (ino !== undefined) {
+        await removeLockIf(this.lockPath, async (tmp) => (await stat(tmp)).ino === ino);
+      }
       throw error;
     }
     this.handle = handle;

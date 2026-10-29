@@ -1,6 +1,6 @@
-import { afterAll, afterEach, describe, expect, test as vtest } from 'vitest';
+import { afterAll, afterEach, describe, expect, test as vtest, vi } from 'vitest';
 import { existsSync } from 'node:fs';
-import { mkdir, mkdtemp, readFile, rm, unlink, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, open, readFile, rm, unlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'pathe';
 import {
@@ -611,5 +611,25 @@ describe('lock keys', () => {
     }
     expect(lockPathFor(root, 'site-abcdef012345')).toBe(join(locks, 'site-abcdef012345.lock'));
     expect(lockPathFor(root, 'a/b')).not.toBe(lockPathFor(root, 'a_b'));
+  });
+});
+
+describe('lock init failure', () => {
+  vtest('failed init removes only its own lock file', async () => {
+    const dir = await tmp('lockinit');
+    const path = join(dir, 'i.lock');
+    const lock = new FileLock(path, 'i');
+    // First write after open(wx) fails — simulate a full disk (FileHandle is a class).
+    const probe = await open(join(dir, 'probe'), 'w');
+    const proto = Object.getPrototypeOf(probe) as { writeFile: () => Promise<void> };
+    await probe.close();
+    const spy = vi.spyOn(proto, 'writeFile').mockRejectedValueOnce(new Error('ENOSPC'));
+    try {
+      await expect(lock.tryAcquire()).rejects.toThrow('ENOSPC');
+      expect(existsSync(path)).toBe(false);
+    } finally {
+      spy.mockRestore();
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 });
