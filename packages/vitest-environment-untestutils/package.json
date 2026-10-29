@@ -29,13 +29,13 @@
     "@untestutils/vitest": "workspace:*"
   },
   "peerDependencies": {
-    "@untestutils/astro": "0.7.2",
-    "@untestutils/next": "0.7.2",
-    "@untestutils/nuxt": "0.7.2",
-    "@untestutils/remix": "0.7.2",
-    "@untestutils/solidstart": "0.7.2",
-    "@untestutils/sveltekit": "0.7.2",
-    "@untestutils/vite": "0.7.2"
+    "@untestutils/astro": "workspace:*",
+    "@untestutils/next": "workspace:*",
+    "@untestutils/nuxt": "workspace:*",
+    "@untestutils/remix": "workspace:*",
+    "@untestutils/solidstart": "workspace:*",
+    "@untestutils/sveltekit": "workspace:*",
+    "@untestutils/vite": "workspace:*"
   },
   "peerDependenciesMeta": {
     "@untestutils/astro": {
