@@ -35,9 +35,15 @@ export {
   stopAllTargets,
   resolveRecipe,
   detachLiveTargetsForTests,
+  prewarmTargets,
+  pruneAfterRun,
+  resolvePrewarmConcurrency,
+  resolveGcKeep,
+  isAddressInUseError,
 } from './orchestrator';
 export { TargetRegistry, envKey, envDirKey } from './target-registry';
-export { ArtifactStore } from './artifact-store';
+export { ArtifactStore, pruneBuilds } from './artifact-store';
+export type { PruneBuildsOptions, PruneBuildsResult } from './artifact-store';
 export { FileLock, atomicWriteJson, atomicWriteText, lockPathFor } from './lock';
 export { contentHash, sha1, hashString, collectFileHashes } from './hash';
 export { getFreePort, waitForPort } from './ports';
@@ -49,6 +55,7 @@ export {
   resolveBindHost,
   resolveProbeHost,
   findRepoRoot,
+  runStateDir,
 } from './paths';
 export { waitForHttpReady, defaultReady } from './ready';
 export { scrubTestEnv, spawnManaged, runCommand } from './process';

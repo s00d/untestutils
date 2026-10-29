@@ -1,7 +1,8 @@
-import { readdir, readFile, access } from 'node:fs/promises';
+import { readdir, readFile, access, unlink } from 'node:fs/promises';
+import { availableParallelism } from 'node:os';
 import { join } from 'pathe';
-import { ArtifactStore } from './artifact-store';
-import { debug, envFlag } from './debug';
+import { ArtifactStore, pruneBuilds } from './artifact-store';
+import { debug, envFlag, log } from './debug';
 import { assertUniqueRecipeBinding, computeIdentity } from './identity';
 import { FileLock, lockPathFor } from './lock';
 import { loopbackUrl, resolveArtifactsRoot, resolveBindHost } from './paths';
@@ -12,7 +13,7 @@ import { createRunHelper } from './run-helper';
 import { TargetRegistry, type TargetEntry } from './target-registry';
 import type { HarnessHandle, Recipe, Running, SharePolicy } from './types';
 import { getRegisteredRecipe, listRegisteredRecipes } from './recipes';
-import { adoptProcess, scrubTestEnv, type StopOpts } from './process';
+import { adoptProcess, processStartToken, scrubTestEnv, type StopOpts } from './process';
 import { ofetch } from 'ofetch';
 import { constants } from 'node:fs';
 
@@ -79,6 +80,18 @@ export async function resolveRecipe(input: string | Recipe): Promise<Recipe> {
 export async function ensurePrepared(
   recipeInput: string | Recipe,
   opts: OrchestratorOptions = {},
+): Promise<PreparedTarget> {
+  const prepared = await ensurePreparedInner(recipeInput, opts);
+  // Mark the build as used by this run — pruneBuilds keeps it.
+  await new ArtifactStore(opts.artifactsRoot ?? resolveArtifactsRoot(opts.cwd)).touch(
+    prepared.identity,
+  );
+  return prepared;
+}
+
+async function ensurePreparedInner(
+  recipeInput: string | Recipe,
+  opts: OrchestratorOptions,
 ): Promise<PreparedTarget> {
   const recipe = await resolveRecipe(recipeInput);
   const artifactsRoot = opts.artifactsRoot ?? resolveArtifactsRoot(opts.cwd);
@@ -207,65 +220,174 @@ export async function ensurePrepared(
     }
 
     const bindHost = resolveBindHost();
-    const port = await getFreePort(bindHost);
-    const startCtx = {
-      root,
-      outDir,
-      artifactsRoot,
-      port,
-      host: bindHost,
-      env: scrubTestEnv(),
-      run: createRunHelper({
-        cwd: root,
-        env: { ...scrubTestEnv(), PORT: String(port), HOST: bindHost },
-      }),
-    };
-
-    progress.start(id, loopbackUrl(port, '/', bindHost));
-    try {
-      const running = await recipe.start(startCtx);
-      // Fail-closed: share always/never need a reclaimable child pid (mirror shouldSkipPid),
-      // except remote `host` attach (kind:url, no local process / stop).
-      const pid = running.pid;
-      if (
-        (share === 'always' || share === 'never') &&
-        (pid === null || pid === undefined || pid <= 1 || pid === process.pid)
-      ) {
-        const remoteAttach = running.kind === 'url' && !running.stop;
-        if (!remoteAttach) {
-          if (running.stop) {
-            try {
-              await running.stop();
-            } catch {
-              /* best-effort */
-            }
-          }
-          throw new Error(
-            `[untestutils] recipe "${id}" (share:${share}) started without a reclaimable child pid — ` +
-              'registry orphan reclaim requires a child-process server',
-          );
+    // getFreePort closes its probe socket before the server binds — another process can
+    // grab the port in between. Retry with a fresh port when the start hit EADDRINUSE.
+    for (let attempt = 1; ; attempt++) {
+      const port = await getFreePort(bindHost);
+      try {
+        return await startOnPort(port, bindHost, {
+          id,
+          identity,
+          hash,
+          outDir,
+          root,
+          artifactsRoot,
+          share,
+          recipe,
+          registry,
+        });
+      } catch (err) {
+        if (attempt < START_PORT_ATTEMPTS && isAddressInUseError(err)) {
+          debug('prepare', `port ${port} taken while starting ${id}, retrying (${attempt})`);
+          continue;
         }
+        progress.fail(id, err);
+        throw err;
       }
-      if (recipe.ready) await recipe.ready(running);
-      else await defaultReady(running);
-
-      rememberLive(id, running, { identity, hash, outDir }, stopForLive(running));
-
-      await replaceRegistryEntry(registry, {
-        id,
-        identity,
-        url: 'url' in running ? running.url : undefined,
-        dir: 'dir' in running ? running.dir : outDir,
-        pid: running.pid,
-      });
-
-      return { id, identity, hash, outDir, running, recipe };
-    } catch (err) {
-      progress.fail(id, err);
-      throw err;
     }
   } finally {
     await lock.release();
+  }
+}
+
+const START_PORT_ATTEMPTS = 3;
+
+/** `EADDRINUSE` anywhere in the error chain or in captured server logs. */
+export function isAddressInUseError(err: unknown): boolean {
+  for (let e = err, depth = 0; e && depth < 5; depth++) {
+    const code = (e as NodeJS.ErrnoException).code;
+    const msg = e instanceof Error ? e.message : String(e);
+    if (code === 'EADDRINUSE' || /EADDRINUSE|address already in use/i.test(msg)) return true;
+    e = (e as { cause?: unknown }).cause;
+  }
+  return false;
+}
+
+async function startOnPort(
+  port: number,
+  bindHost: string,
+  t: {
+    id: string;
+    identity: string;
+    hash: string;
+    outDir: string;
+    root: string | undefined;
+    artifactsRoot: string;
+    share: SharePolicy;
+    recipe: Recipe;
+    registry: TargetRegistry;
+  },
+): Promise<PreparedTarget> {
+  const { id, identity, hash, outDir, root, artifactsRoot, share, recipe, registry } = t;
+  const startCtx = {
+    root,
+    outDir,
+    artifactsRoot,
+    port,
+    host: bindHost,
+    env: scrubTestEnv(),
+    run: createRunHelper({
+      cwd: root,
+      env: { ...scrubTestEnv(), PORT: String(port), HOST: bindHost },
+    }),
+  };
+
+  progress.start(id, loopbackUrl(port, '/', bindHost));
+  const running = await recipe.start(startCtx);
+  try {
+    // Fail-closed: share always/never need a reclaimable child pid (mirror shouldSkipPid),
+    // except remote `host` attach (kind:url, no local process / stop).
+    const pid = running.pid;
+    if (
+      (share === 'always' || share === 'never') &&
+      (pid === null || pid === undefined || pid <= 1 || pid === process.pid)
+    ) {
+      const remoteAttach = running.kind === 'url' && !running.stop;
+      if (!remoteAttach) {
+        throw new Error(
+          `[untestutils] recipe "${id}" (share:${share}) started without a reclaimable child pid — ` +
+            'registry orphan reclaim requires a child-process server',
+        );
+      }
+    }
+    if (recipe.ready) await recipe.ready(running);
+    else await defaultReady(running);
+  } catch (err) {
+    if (running.stop) {
+      try {
+        await running.stop();
+      } catch {
+        /* best-effort */
+      }
+    }
+    throw err;
+  }
+
+  rememberLive(id, running, { identity, hash, outDir }, stopForLive(running));
+
+  await replaceRegistryEntry(registry, {
+    id,
+    identity,
+    url: 'url' in running ? running.url : undefined,
+    dir: 'dir' in running ? running.dir : outDir,
+    pid: running.pid,
+    pidStart: processStartToken(running.pid),
+  });
+
+  return { id, identity, hash, outDir, running, recipe };
+}
+
+/** `UNTESTUTILS_PREWARM_CONCURRENCY`, default half the cores (min 1). */
+export function resolvePrewarmConcurrency(): number {
+  const n = Number(process.env.UNTESTUTILS_PREWARM_CONCURRENCY);
+  if (Number.isFinite(n) && n >= 1) return Math.floor(n);
+  return Math.max(1, Math.floor(availableParallelism() / 2));
+}
+
+/**
+ * Prepare + start recipes in parallel (at most `concurrency` at once). After the first
+ * failure no new recipe starts; in-flight ones finish (no orphan builds), then it rethrows.
+ */
+export async function prewarmTargets(
+  recipes: Array<string | Recipe>,
+  opts: OrchestratorOptions & { concurrency?: number } = {},
+): Promise<void> {
+  const limit = Math.max(1, opts.concurrency ?? resolvePrewarmConcurrency());
+  let next = 0;
+  let failed = false;
+  let firstError: unknown;
+  const lane = async () => {
+    while (!failed && next < recipes.length) {
+      const recipe = recipes[next++]!;
+      try {
+        await ensurePrepared(recipe, opts);
+      } catch (err) {
+        if (!failed) firstError = err;
+        failed = true;
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, recipes.length) }, lane));
+  if (failed) throw firstError;
+}
+
+/** `UNTESTUTILS_GC`: `0`/`false` off, a number = keep N per recipe; default keep 2. */
+export function resolveGcKeep(): number | undefined {
+  const raw = process.env.UNTESTUTILS_GC?.trim();
+  if (raw === '0' || raw === 'false') return undefined;
+  const n = Number(raw);
+  return raw && Number.isFinite(n) && n >= 1 ? Math.floor(n) : 2;
+}
+
+/** Global-teardown GC: prune stale builds, keeping everything this run (since `runStartedAt`) used. */
+export async function pruneAfterRun(artifactsRoot: string, runStartedAt: number): Promise<void> {
+  const keep = resolveGcKeep();
+  if (keep === undefined) return;
+  try {
+    const { removed } = await pruneBuilds(artifactsRoot, { keep, usedSince: runStartedAt });
+    if (removed.length) log('gc', `pruned ${removed.length} stale build(s), keep ${keep}/recipe`);
+  } catch (e) {
+    debug('gc', 'prune failed', e);
   }
 }
 
@@ -273,7 +395,7 @@ export async function ensurePrepared(
 async function replaceRegistryEntry(registry: TargetRegistry, entry: TargetEntry): Promise<void> {
   const prev = await registry.set(entry);
   if (prev?.pid && prev.pid !== entry.pid) {
-    const orphan = adoptProcess(prev.pid, 'server');
+    const orphan = adoptProcess(prev.pid, 'server', prev.pidStart);
     if (orphan.alive()) {
       debug('teardown', `replacing ${entry.id} — stop old server`);
       await orphan.stop();
@@ -296,7 +418,11 @@ async function tryReuseRegistry(
   if (!warmOk) return undefined;
 
   // Stale registry after a crashed worker: process gone → must not reuse the URL.
-  if (existing.pid !== null && existing.pid !== undefined && !adoptProcess(existing.pid).alive()) {
+  if (
+    existing.pid !== null &&
+    existing.pid !== undefined &&
+    !adoptProcess(existing.pid, 'server', existing.pidStart).alive()
+  ) {
     debug('registry', `stale pid ${existing.pid} for ${id}`);
     return undefined;
   }
@@ -323,7 +449,7 @@ async function tryReuseRegistry(
   // Adopt so any process that remembered this target can tear it down (honor stopOpts).
   const stop =
     existing.pid !== null && existing.pid !== undefined
-      ? (opts?: StopOpts) => adoptProcess(existing.pid!, 'server').stop(opts)
+      ? (opts?: StopOpts) => adoptProcess(existing.pid!, 'server', existing.pidStart).stop(opts)
       : undefined;
   rememberLive(id, running, { identity, hash, outDir }, stop);
   // Ensure this process sees UNTESTUTILS_HOST_* after cross-worker reuse.
@@ -375,20 +501,30 @@ export async function stopAllTargets(
   // Drain targets.json under lock so concurrent set() cannot drop pids mid-teardown.
   const root = artifactsRoot ?? resolveArtifactsRoot();
   const registry = new TargetRegistry(root);
-  const map = await registry.drain();
-  const pids = Object.values(map)
-    .map((e) => e.pid)
-    .filter((p): p is number => typeof p === 'number' && p > 1);
+  const entries = [...Object.values(await registry.drain()), ...(await drainLegacyRegistry(root))];
+  const targets = entries.filter((e) => typeof e.pid === 'number' && e.pid > 1);
   await Promise.all(
-    pids.map(async (pid) => {
+    targets.map(async ({ pid, pidStart }) => {
       try {
-        await adoptProcess(pid, 'server').stop(stopOpts);
+        await adoptProcess(pid!, 'server', pidStart).stop(stopOpts);
         debug('teardown', `stopped registry orphan ${pid}`);
       } catch (e) {
         debug('teardown', `failed registry orphan ${pid}`, e);
       }
     }),
   );
+}
+
+/** Pre-0.8 `<artifactsRoot>/targets.json` (now under `run/`) — reclaim its pids once, then drop it. */
+async function drainLegacyRegistry(root: string): Promise<TargetEntry[]> {
+  const legacy = join(root, 'targets.json');
+  try {
+    const map = JSON.parse(await readFile(legacy, 'utf8')) as Record<string, TargetEntry>;
+    await unlink(legacy);
+    return Object.values(map);
+  } catch {
+    return [];
+  }
 }
 
 /** @internal clear in-process maps without stopping servers (coverage of registry reuse). */

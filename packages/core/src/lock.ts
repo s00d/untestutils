@@ -1,17 +1,23 @@
+import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, open, readFile, rename, rm, stat, unlink, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'pathe';
 import { debug } from './debug';
+import { runStateDir } from './paths';
 
 export interface LockInfo {
   pid: number;
   startedAt: number;
   heartbeatAt: number;
   identity: string;
+  /** Per-instance owner token — guards heartbeat/release against a stolen lock (same pid). */
+  token?: string;
 }
 
 const DEFAULT_STALE_MS = 10 * 60 * 1000;
 const HEARTBEAT_MS = 5_000;
+/** Holder counts as alive-and-working while its heartbeat is younger than this. */
+const FRESH_HEARTBEAT_MS = HEARTBEAT_MS * 6;
 
 function isPidAlive(pid: number): boolean {
   try {
@@ -25,6 +31,7 @@ function isPidAlive(pid: number): boolean {
 export class FileLock {
   private heartbeat?: ReturnType<typeof setInterval>;
   private held = false;
+  private readonly token = randomUUID();
 
   constructor(
     private readonly lockPath: string,
@@ -32,33 +39,59 @@ export class FileLock {
     private readonly staleMs: number = DEFAULT_STALE_MS,
   ) {}
 
+  /**
+   * Wait for the lock. `timeoutMs` only runs while the holder looks hung: a live holder
+   * with a fresh heartbeat (e.g. a long build) keeps the wait going indefinitely. A dead
+   * pid or a heartbeat older than `staleMs` is stolen.
+   */
   async acquire(timeoutMs: number = 120_000): Promise<void> {
     await mkdir(dirname(this.lockPath), { recursive: true });
-    const deadline = Date.now() + timeoutMs;
+    const waitStart = Date.now();
+    let deadline = waitStart + timeoutMs;
+    let holder: LockInfo | undefined;
     while (Date.now() < deadline) {
-      try {
-        const handle = await open(this.lockPath, 'wx');
-        const info: LockInfo = {
-          pid: process.pid,
-          startedAt: Date.now(),
-          heartbeatAt: Date.now(),
-          identity: this.identity,
-        };
-        await handle.writeFile(JSON.stringify(info), 'utf8');
-        await handle.close();
-        this.held = true;
-        this.startHeartbeat();
-        debug('lock', `acquired ${this.lockPath}`);
-        return;
-      } catch (error: unknown) {
-        const code = (error as NodeJS.ErrnoException).code;
-        if (code !== 'EEXIST') throw error;
-        /* v8 ignore next */
-        if (await this.tryStealStale()) continue;
-        await sleep(200);
+      if (await this.tryCreate()) return;
+      /* v8 ignore next */
+      if (await this.tryStealStale()) continue;
+      holder = await this.readInfo();
+      if (holder && isHolderFresh(holder)) {
+        deadline = Math.max(deadline, Date.now() + timeoutMs);
       }
+      await sleep(200);
     }
-    throw new Error(`[untestutils] timed out waiting for lock: ${this.lockPath}`);
+    throw new Error(lockTimeoutMessage(this.lockPath, timeoutMs, Date.now() - waitStart, holder));
+  }
+
+  /** Single non-blocking attempt (steals a stale lock). `false` when someone else holds it. */
+  async tryAcquire(): Promise<boolean> {
+    await mkdir(dirname(this.lockPath), { recursive: true });
+    if (await this.tryCreate()) return true;
+    return (await this.tryStealStale()) && this.tryCreate();
+  }
+
+  /** `open(wx)` the lock file; `false` on EEXIST. */
+  private async tryCreate(): Promise<boolean> {
+    let handle;
+    try {
+      handle = await open(this.lockPath, 'wx');
+    } catch (error: unknown) {
+      if ((error as NodeJS.ErrnoException).code === 'EEXIST') return false;
+      throw error;
+    }
+    const now = Date.now();
+    const info: LockInfo = {
+      pid: process.pid,
+      startedAt: now,
+      heartbeatAt: now,
+      identity: this.identity,
+      token: this.token,
+    };
+    await handle.writeFile(JSON.stringify(info), 'utf8');
+    await handle.close();
+    this.held = true;
+    this.startHeartbeat();
+    debug('lock', `acquired ${this.lockPath}`);
+    return true;
   }
 
   async release(): Promise<void> {
@@ -67,7 +100,7 @@ export class FileLock {
     try {
       const raw = await readFile(this.lockPath, 'utf8');
       const info = JSON.parse(raw) as LockInfo;
-      if (info.pid === process.pid) {
+      if (info.pid === process.pid && (!info.token || info.token === this.token)) {
         await unlink(this.lockPath);
       }
     } catch {
@@ -91,22 +124,23 @@ export class FileLock {
 
   private async beat(): Promise<void> {
     try {
-      const info: LockInfo = {
-        pid: process.pid,
-        startedAt: Date.now(),
-        heartbeatAt: Date.now(),
-        identity: this.identity,
-      };
-      // preserve startedAt if possible
-      try {
-        const prev = JSON.parse(await readFile(this.lockPath, 'utf8')) as LockInfo;
-        info.startedAt = prev.startedAt;
-      } catch {
-        /* */
+      const prev = await this.readInfo();
+      // Lock was stolen (or released) — never overwrite another holder's file.
+      if (!prev || prev.token !== this.token) {
+        this.stopHeartbeat();
+        return;
       }
-      await writeFile(this.lockPath, JSON.stringify(info), 'utf8');
+      await writeFile(this.lockPath, JSON.stringify({ ...prev, heartbeatAt: Date.now() }), 'utf8');
     } catch {
       /* lock lost */
+    }
+  }
+
+  private async readInfo(): Promise<LockInfo | undefined> {
+    try {
+      return JSON.parse(await readFile(this.lockPath, 'utf8')) as LockInfo;
+    } catch {
+      return undefined;
     }
   }
 
@@ -134,6 +168,31 @@ export class FileLock {
     }
     return false;
   }
+}
+
+function isHolderFresh(info: LockInfo): boolean {
+  return (
+    isPidAlive(info.pid) && Date.now() - (info.heartbeatAt || info.startedAt) < FRESH_HEARTBEAT_MS
+  );
+}
+
+function lockTimeoutMessage(
+  lockPath: string,
+  timeoutMs: number,
+  waitedMs: number,
+  holder: LockInfo | undefined,
+): string {
+  const head = `[untestutils] timed out after ${Math.round(waitedMs / 1000)}s waiting for lock ${lockPath}`;
+  if (!holder) return `${head} (holder unknown — lock file unreadable)`;
+  const now = Date.now();
+  const beat = Math.round((now - (holder.heartbeatAt || holder.startedAt)) / 1000);
+  const held = Math.round((now - holder.startedAt) / 1000);
+  return (
+    `${head}: holder pid=${holder.pid} (${isPidAlive(holder.pid) ? 'alive' : 'dead'}) ` +
+    `identity=${holder.identity}, held ${held}s, last heartbeat ${beat}s ago ` +
+    `(no fresh heartbeat for ${Math.round(timeoutMs / 1000)}s). ` +
+    `If that process is hung, kill it or delete the lock file.`
+  );
 }
 
 export async function atomicWriteJson(path: string, data: unknown): Promise<void> {
@@ -167,5 +226,5 @@ function sleep(ms: number): Promise<void> {
 }
 
 export function lockPathFor(artifactsRoot: string, identity: string): string {
-  return join(artifactsRoot, 'locks', `${identity}.lock`);
+  return join(runStateDir(artifactsRoot), 'locks', `${identity}.lock`);
 }

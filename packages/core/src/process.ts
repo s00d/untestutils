@@ -1,4 +1,4 @@
-import { type ChildProcess, spawn } from 'node:child_process';
+import { type ChildProcess, execFileSync, spawn } from 'node:child_process';
 import { platform } from 'node:os';
 import { debug } from './debug';
 
@@ -64,6 +64,8 @@ export const processIo = {
   spawn: ((...args: Parameters<typeof spawn>) => spawn(...args)) as typeof spawn,
   kill: ((pid: number, signal?: NodeJS.Signals | number) =>
     process.kill(pid, signal)) as typeof process.kill,
+  execFileSync: (cmd: string, args: string[]): string =>
+    execFileSync(cmd, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }),
 };
 
 function envFlagCapture(): boolean {
@@ -77,6 +79,21 @@ function probeAlive(pid: number): boolean {
     return true;
   } catch {
     return false;
+  }
+}
+
+/**
+ * OS start-time of `pid` (unix `ps -o lstart=`), used as process identity so teardown
+ * never signals a pid the OS recycled after a crash. `undefined` when unknown (win32,
+ * process gone, no `ps`) — callers then fall back to the plain pid check.
+ */
+export function processStartToken(pid: number | undefined | null): string | undefined {
+  if (!pid || pid <= 1 || processPlatform.current() === 'win32') return undefined;
+  try {
+    const out = processIo.execFileSync('ps', ['-o', 'lstart=', '-p', String(pid)]).trim();
+    return out || undefined;
+  } catch {
+    return undefined;
   }
 }
 
@@ -230,16 +247,25 @@ function createHandle(opts: {
   kind: 'server' | 'process';
   child?: ChildProcess;
   logs?: () => string;
+  /** Expected {@link processStartToken} — mismatch means the pid now belongs to someone else. */
+  startToken?: string;
 }): ManagedProcess {
   const kind = opts.kind;
   let stopInflight: Promise<void> | undefined;
+  const sameProcess = (pid: number) => {
+    if (!opts.startToken) return true;
+    const now = processStartToken(pid);
+    if (now === undefined || now === opts.startToken) return true;
+    debug('process', `pid ${pid} was reused (started ${now}, expected ${opts.startToken}) — skip`);
+    return false;
+  };
   return {
     get pid() {
       return opts.pid ?? opts.child?.pid;
     },
     alive: () => {
       const pid = opts.pid ?? opts.child?.pid;
-      return typeof pid === 'number' ? probeAlive(pid) : false;
+      return typeof pid === 'number' ? probeAlive(pid) && sameProcess(pid) : false;
     },
     logs: opts.logs ?? (() => ''),
     stop: (stopOpts = {}) => {
@@ -251,6 +277,7 @@ function createHandle(opts: {
             return;
           }
           if (typeof opts.pid === 'number') {
+            if (!sameProcess(opts.pid)) return;
             if (kind === 'server') await stopServerPid(opts.pid, stopOpts);
             else await stopSinglePid(opts.pid, stopOpts);
           }
@@ -268,9 +295,14 @@ function createHandle(opts: {
 /**
  * Adopt a pid from the target registry (orphan reclaim after a crash).
  * Recipe servers are always `'server'` (process group / taskkill tree).
+ * Pass `startToken` (from {@link processStartToken}) to refuse a recycled pid.
  */
-export function adoptProcess(pid: number, kind: 'server' | 'process' = 'server'): ManagedProcess {
-  return createHandle({ pid, kind });
+export function adoptProcess(
+  pid: number,
+  kind: 'server' | 'process' = 'server',
+  startToken?: string,
+): ManagedProcess {
+  return createHandle({ pid, kind, startToken });
 }
 
 /**
