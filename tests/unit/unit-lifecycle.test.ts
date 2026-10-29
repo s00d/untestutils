@@ -185,6 +185,43 @@ describe('unit-lifecycle registerSetupEntry (fake adapter)', () => {
     warn.mockRestore();
   });
 
+  test('file mode honours resetBetweenTests and drops the previous file baseline', async () => {
+    const reset = vi.fn(async () => {});
+    const beforeAllFns: Array<() => void | Promise<void>> = [];
+    const afterEachFns: Array<() => void | Promise<void>> = [];
+    const win = makeWin({
+      __UNTESTUTILS_BASELINE_ROUTE__: '/stale',
+      __UNTESTUTILS_BASELINE_BODY__: new Set(),
+    });
+    const register = (resetBetweenTests: boolean) =>
+      registerSetupEntry({
+        mode: 'file',
+        resetBetweenTests,
+        window: win,
+        setup: async () => {},
+        tryUseApp: () => null,
+        reset,
+        vi: { resetModules: vi.fn() },
+        beforeAll: (fn) => {
+          beforeAllFns.push(fn);
+        },
+        afterEach: (fn) => {
+          afterEachFns.push(fn);
+        },
+      });
+
+    register(false);
+    expect(afterEachFns).toHaveLength(0);
+
+    register(true);
+    await beforeAllFns[1]!();
+    expect(win.__UNTESTUTILS_BASELINE_ROUTE__).toBeUndefined();
+    expect(win.__UNTESTUTILS_BASELINE_BODY__).toBeUndefined();
+    expect(afterEachFns).toHaveLength(1);
+    await afterEachFns[0]!();
+    expect(reset).toHaveBeenCalledTimes(1);
+  });
+
   test('file mode remounts every beforeAll', async () => {
     const setup = vi.fn(async () => {});
     const dispose = vi.fn(async () => {});

@@ -12,6 +12,8 @@ export default defineVitestProject({
         rootDir: fileURLToPath(new URL('./fixtures/unit-app', import.meta.url)),
         domEnvironment: 'happy-dom',
         appIsolation: 'file',
+        // Opt-in soft reset between tests of one file (auto-reset.spec.ts).
+        resetBetweenTests: true,
       },
     },
   },

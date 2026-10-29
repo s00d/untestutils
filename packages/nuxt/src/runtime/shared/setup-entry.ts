@@ -99,7 +99,7 @@ export function registerNuxtSetupEntry(options: RegisterNuxtSetupEntryOptions): 
     resetFailureMessage: '[untestutils] resetSharedNuxtApp failed; disposing shared app',
   });
 
-  if (enabled && mode === 'worker' && resetBetweenTests) {
+  if (enabled && resetBetweenTests && resetSharedNuxtApp) {
     enableVtuAutoUnmount({ beforeEach, afterEach, onTestFinished });
   }
 }
