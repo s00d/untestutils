@@ -68,10 +68,16 @@ export class FileLock {
       if (await this.tryCreate()) return;
       /* v8 ignore next */
       if (await this.tryStealStale()) continue;
-      holder = await this.readInfo();
-      if (holder && isHolderFresh(holder)) {
-        deadline = Math.max(deadline, Date.now() + timeoutMs);
-      }
+      const info = await this.readInfo();
+      if (info) holder = info;
+      // Unreadable = caught mid-heartbeat write; a freshly written file still counts as alive.
+      const fresh = info
+        ? isHolderFresh(info)
+        : await stat(this.lockPath).then(
+            (st) => Date.now() - st.mtimeMs < FRESH_HEARTBEAT_MS,
+            () => false,
+          );
+      if (fresh) deadline = Math.max(deadline, Date.now() + timeoutMs);
       await sleep(200);
     }
     throw new Error(lockTimeoutMessage(this.lockPath, timeoutMs, Date.now() - waitStart, holder));
