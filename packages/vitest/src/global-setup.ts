@@ -1,7 +1,8 @@
 import { pathToFileURL } from 'node:url';
 import type { TestProject } from 'vitest/node';
 import {
-  ensurePrepared,
+  prewarmTargets,
+  pruneAfterRun,
   stopAllTargets,
   getRegisteredRecipe,
   listRegisteredRecipes,
@@ -43,6 +44,7 @@ export default async function globalSetup(project: TestProject): Promise<() => P
   await loadRecipesModule();
 
   const artifactsRoot = resolveArtifactsRoot();
+  const runStartedAt = Date.now();
   // Previous vitest forks leave orphans; drain registry before reuse.
   await stopAllTargets(artifactsRoot);
   const prewarm: string[] = JSON.parse(process.env.UNTESTUTILS_PREWARM || '[]') as string[];
@@ -57,16 +59,17 @@ export default async function globalSetup(project: TestProject): Promise<() => P
   }
 
   if (prewarm.length) {
-    progress.waveStart(prewarm);
-    for (const id of prewarm) {
+    const recipes = prewarm.map((id) => {
       const recipe = recipesMap?.[id] ?? getRegisteredRecipe(id);
       if (!recipe) {
         throw new Error(
           `[untestutils] prewarm id "${id}" not found.${formatKnownIds(recipesMap)} Pass recipesModule to untestutils() and call defineRecipes() in that module.`,
         );
       }
-      await ensurePrepared(recipe, { artifactsRoot });
-    }
+      return recipe;
+    });
+    progress.waveStart(prewarm);
+    await prewarmTargets(recipes, { artifactsRoot });
     progress.waveReady();
     progress.massRun();
   }
@@ -95,5 +98,6 @@ export default async function globalSetup(project: TestProject): Promise<() => P
   return async () => {
     progress.teardown();
     await stopAllTargets(artifactsRoot);
+    await pruneAfterRun(artifactsRoot, runStartedAt);
   };
 }
