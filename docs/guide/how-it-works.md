@@ -42,7 +42,11 @@ Framework drivers default to a **built** mode (`nuxt` → `server`, Vite → `pr
 
 ## Shared prepare (speed)
 
-Prepare outputs live under `.untestutils/builds`, keyed by identity. Parallel workers take a file lock so they do not corrupt the same build. Running URLs are registered for Playwright/Vitest (`UNTESTUTILS_HOST_<ID>`).
+Prepare outputs live under `.untestutils/builds`, keyed by identity. Parallel workers take a file lock so they do not corrupt the same build; a waiter keeps waiting while the holder's heartbeat is fresh (long builds are fine) and only fails — naming the holder pid — once the heartbeat stops. Running URLs are registered for Playwright/Vitest (`UNTESTUTILS_HOST_<ID>`).
+
+Per-run state — registry `targets.json` and `locks/` — lives under `.untestutils/run/`, apart from `builds/`. Registry entries record the server's OS start time, so teardown never signals a pid the OS recycled after a crash. A server start that hits `EADDRINUSE` is retried on a fresh port.
+
+Global teardown prunes `builds/`: per recipe id it keeps the 2 most recently used identities plus everything the run used, and never removes a build whose lock is held (`gc` option / `UNTESTUTILS_GC`).
 
 | Env | Effect |
 |-----|--------|
@@ -50,8 +54,10 @@ Prepare outputs live under `.untestutils/builds`, keyed by identity. Parallel wo
 | `UNTESTUTILS_DEBUG=1` | Verbose logs |
 | `UNTESTUTILS_ARTIFACTS_DIR` | Custom artifacts root |
 | `UNTESTUTILS_SESSION` | Playwright session namespace (see [Playwright](/guide/playwright)) |
+| `UNTESTUTILS_PREWARM_CONCURRENCY` | Parallel prewarm limit |
+| `UNTESTUTILS_GC` | `0` disables build GC, a number sets keep-per-recipe |
 
-**CI:** cache `.untestutils/` when inputs are stable; use `prewarm`; always tear down.
+**CI:** cache `.untestutils/builds` (not `run/`) when inputs are stable; use `prewarm`; always tear down.
 
 ## Imports
 

@@ -43,7 +43,7 @@ await withHarness('site', async (app) => {
 
 `prepareOnce(id)` returns the prepared target without ALS bookkeeping.
 
-Also: `getCurrentHarness()`, `ensurePrepared()`, `stopAllTargets()`, `resolveArtifactsRoot()`, `resolveSessionArtifactsRoot()`, `sanitizeSession()`, `waitForHttpReady()`, `TargetRegistry`, `SCHEMA_VERSION`.
+Also: `getCurrentHarness()`, `ensurePrepared()`, `stopAllTargets()`, `resolveArtifactsRoot()`, `resolveSessionArtifactsRoot()`, `sanitizeSession()`, `waitForHttpReady()`, `TargetRegistry`, `SCHEMA_VERSION`, `prewarmTargets(recipes, { concurrency })` (parallel prepare/start), `pruneBuilds(artifactsRoot, { keep, usedSince })` (build cache GC; skips locked/in-flight builds), `runStateDir()` (`<root>/run` — registry + locks), `isAddressInUseError()`.
 
 ## Process handles
 

@@ -20,17 +20,26 @@ untestutils({
   prewarm: ['site'],
   browsers: ['chromium'],
   artifactsRoot: undefined,
+  prewarmConcurrency: 4,   // default: half the CPU cores
+  buildTimeout: 600_000,   // default: Vitest hookTimeout
+  gc: { keep: 2 },         // default
+  retryInfra: 1,           // retry only infra errors
 })
 ```
 
 | Option | Notes |
 |--------|--------|
 | `recipes` | Map from your recipes module |
-| `prewarm` | Ids to prepare/start in global setup |
+| `prewarm` | Ids to prepare/start in global setup — in parallel, up to `prewarmConcurrency` |
 | `browsers` | Engines for `page` / `goto` (default `['chromium']`) |
 | `artifactsRoot` | Sets `UNTESTUTILS_ARTIFACTS_DIR` |
+| `prewarmConcurrency` | Max parallel prewarm builds (default `cpus / 2`, min 1) |
+| `buildTimeout` | Budget for building a `test.override({ harness })` target (see below). `false` = old lazy build inside the first test |
+| `gc` | Prune old builds at teardown: keep `keep` newest per recipe + all used this run (default `{ keep: 2 }`, `false` off) |
+| `hydration` | `goto` hydration wait: `'strict'` (default) fails with a clear error, `'lenient'` = pre-0.8 silent timeout |
+| `retryInfra` | Retry up to N times **only** for infra errors (see [Retries](#retries)) |
 
-Override engine per run: `UNTESTUTILS_BROWSER=firefox`.
+Override engine per run: `UNTESTUTILS_BROWSER=firefox`. Env equivalents: `UNTESTUTILS_PREWARM_CONCURRENCY`, `UNTESTUTILS_BUILD_TIMEOUT` (`0` = off), `UNTESTUTILS_GC` (`0` = off, or keep count), `UNTESTUTILS_GOTO_HYDRATION`.
 
 ## useHarness
 
@@ -69,6 +78,32 @@ describe('ui', () => {
 ```
 
 Ensure `useHarness` or `prewarm` started the target so `baseURL` resolves.
+
+### Build time vs test time
+
+`test.override({ harness })` registers a `beforeAll` in that suite which builds/starts the target with `buildTimeout` (default: `hookTimeout`). A cold build is charged to that hook — not to the first test's `testTimeout` — so a slow build cannot time out a test and per-test timings stay honest. The `baseURL` fixture then reuses the live target. (Only the exported `test` is wrapped; for a custom `test.extend(...)` chain call `useHarness` in your own `beforeAll`.)
+
+### `goto` hydration
+
+After `load` / `networkidle` / default navigation, `goto` waits up to 30 s for Nuxt hydration — only on Nuxt pages (`__NUXT__` / `#__nuxt` / `useNuxtApp`). If hydration never finishes it now **throws** (`goto(url): Nuxt hydration not ready … (isHydrating=true)`), usually a client error worth seeing. `hydration: 'lenient'` restores the old silent behaviour; `waitUntil: 'domcontentloaded'` skips the wait.
+
+### Retries
+
+A blanket `retry: 1` hides real flakes. Retry only harness/browser failures and list what was retried:
+
+```ts
+import { untestutils, RetryReporter, infraRetry } from 'untestutils/vitest/plugin'
+
+export default defineConfig({
+  plugins: [untestutils({ recipes, retryInfra: process.env.CI ? 1 : 0 })],
+  test: {
+    // or set it yourself: retry: infraRetry(1)
+    reporters: ['default', new RetryReporter({ outputFile: 'test-results/retried.json' })],
+  },
+})
+```
+
+`INFRA_ERROR_PATTERN` matches `ECONNRESET`, `ECONNREFUSED`, `EPIPE`, `socket hang up`, `net::ERR_CONNECTION_*`, `Target page, context or browser has been closed`, browser disconnects / page crashes. Assertion failures never retry. `RetryReporter` prints every retried test (`FLAKY, passed after 1 retry` or `failed after …`) with each attempt's error. A crashed worker browser is relaunched for the next test.
 
 ## Unit environments (multi-framework)
 
