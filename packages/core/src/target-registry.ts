@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { join } from 'pathe';
 import { atomicWriteJson, FileLock } from './lock';
-import { normalizeBaseUrl } from './paths';
+import { normalizeBaseUrl, runStateDir } from './paths';
 import { debug } from './debug';
 
 export interface TargetEntry {
@@ -12,6 +12,8 @@ export interface TargetEntry {
   identity: string;
   /** Managed server pid — written by the starter worker so global teardown can kill orphans. */
   pid?: number;
+  /** OS start-time token of `pid` — teardown skips a pid reused by another process. */
+  pidStart?: string;
 }
 
 export type TargetMap = Record<string, TargetEntry>;
@@ -20,11 +22,11 @@ export class TargetRegistry {
   constructor(private readonly artifactsRoot: string) {}
 
   get filePath(): string {
-    return join(this.artifactsRoot, 'targets.json');
+    return join(runStateDir(this.artifactsRoot), 'targets.json');
   }
 
   private lockPath(): string {
-    return join(this.artifactsRoot, 'locks', 'targets.lock');
+    return join(runStateDir(this.artifactsRoot), 'locks', 'targets.lock');
   }
 
   private async withLock<T>(fn: () => Promise<T>): Promise<T> {

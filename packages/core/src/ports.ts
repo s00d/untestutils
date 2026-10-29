@@ -12,7 +12,27 @@ export const portNet: {
   ): ReturnType<typeof net.createServer> => net.createServer(...args),
 };
 
-export function getFreePort(host: string = LOOPBACK_HOST): Promise<number> {
+/** Ports handed out by this process recently — a closed probe port can come back from the OS. */
+const recentlyIssued = new Map<number, number>();
+const REISSUE_AFTER_MS = 60_000;
+
+/**
+ * Ask the OS for a free port. The probe socket is closed before the caller binds, so
+ * another process can still take it (orchestrator retries a start on EADDRINUSE); within
+ * this process the same port is never handed out twice in a row.
+ */
+export async function getFreePort(host: string = LOOPBACK_HOST): Promise<number> {
+  const now = Date.now();
+  for (const [port, at] of recentlyIssued) {
+    if (now - at > REISSUE_AFTER_MS) recentlyIssued.delete(port);
+  }
+  let port = await probeFreePort(host);
+  for (let i = 0; i < 10 && recentlyIssued.has(port); i++) port = await probeFreePort(host);
+  recentlyIssued.set(port, Date.now());
+  return port;
+}
+
+function probeFreePort(host: string): Promise<number> {
   return new Promise((resolve, reject) => {
     const server = portNet.createServer();
     server.once('error', reject);

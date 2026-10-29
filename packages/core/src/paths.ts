@@ -58,6 +58,14 @@ export function resolveArtifactsRoot(cwd: string = process.cwd()): string {
   return join(repoRoot, '.untestutils');
 }
 
+/**
+ * Per-run state (registry `targets.json`, `locks/`) — kept apart from the cacheable
+ * `builds/` dir so CI can cache `<artifactsRoot>/builds` only.
+ */
+export function runStateDir(artifactsRoot: string): string {
+  return join(artifactsRoot, 'run');
+}
+
 export function findRepoRoot(start: string = process.cwd()): string {
   let dir = resolve(start);
   for (;;) {
