@@ -131,6 +131,9 @@ const release = defineCommand({
       if (peers) {
         for (const name of Object.keys(peers)) {
           if (name.startsWith('@untestutils/') || name === 'vitest-environment-untestutils') {
+            // `workspace:*` peers stay as-is: pnpm pins them on publish, and an exact
+            // version here desyncs pnpm-lock.yaml (frozen install fails in CI).
+            if (peers[name]!.startsWith('workspace:')) continue;
             if (peers[name] !== version) {
               peers[name] = version;
               changed = true;
