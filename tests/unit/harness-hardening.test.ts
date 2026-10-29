@@ -599,3 +599,17 @@ describe('review follow-ups', () => {
     expect(lines).toEqual([]);
   });
 });
+
+describe('lock keys', () => {
+  vtest('unsafe recipe ids never escape run/locks', () => {
+    const root = '/tmp/arts';
+    const locks = join(root, 'run', 'locks');
+    for (const id of ['..', '../../etc/passwd', 'a/b', 'my app', '.hidden']) {
+      const p = lockPathFor(root, id);
+      expect(p.startsWith(`${locks}/`)).toBe(true);
+      expect(p.slice(locks.length + 1)).not.toContain('/');
+    }
+    expect(lockPathFor(root, 'site-abcdef012345')).toBe(join(locks, 'site-abcdef012345.lock'));
+    expect(lockPathFor(root, 'a/b')).not.toBe(lockPathFor(root, 'a_b'));
+  });
+});

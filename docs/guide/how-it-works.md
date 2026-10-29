@@ -44,7 +44,7 @@ Framework drivers default to a **built** mode (`nuxt` → `server`, Vite → `pr
 
 Prepare outputs live under `.untestutils/builds`, keyed by identity. Parallel workers take a file lock so they do not corrupt the same build; a waiter keeps waiting while the holder's heartbeat is fresh (long builds are fine) and only fails — naming the holder pid — once the heartbeat stops. Running URLs are registered for Playwright/Vitest (`UNTESTUTILS_HOST_<ID>`).
 
-Per-run state — registry `targets.json` and `locks/` — lives under `.untestutils/run/`, apart from `builds/`. Registry entries record the server's OS start time when available (Linux `/proc`, macOS `ps`); teardown uses it to skip a pid the OS recycled after a crash. On Windows (or without `ps`) it falls back to a plain pid check. A server start that hits `EADDRINUSE` is retried on a fresh port.
+Per-run state — registry `targets.json` and `locks/` — lives under the artifacts root's `run/` directory (default `.untestutils/run/`), apart from `builds/`. Registry entries record the server's OS start time when available (Linux `/proc`, macOS `ps`); teardown uses it to skip a pid the OS recycled after a crash. On Windows (or without `ps`) it falls back to a plain pid check. A server start that hits `EADDRINUSE` is retried on a fresh port.
 
 Global teardown prunes `builds/`: per recipe id it keeps the 2 most recently used identities plus everything the run used, and never removes a build whose lock is held (`gc` option / `UNTESTUTILS_GC`).
 
