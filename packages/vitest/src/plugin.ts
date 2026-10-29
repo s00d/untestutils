@@ -37,6 +37,7 @@ export {
   resolveHarnessBrowserName,
 } from './browsers';
 export type { UntestutilsProvidedSession } from './provided-context';
+export { RetryReporter } from './retry-reporter';
 
 export interface UntestutilsPluginOptions {
   /**
@@ -69,6 +70,49 @@ export interface UntestutilsPluginOptions {
    * `true` applies app defaults for the src tree; object passes through createCoverageConfig.
    */
   coverage?: boolean | CreateCoverageConfigOptions;
+  /**
+   * Max recipes prewarmed at once in globalSetup. Default: half the CPU cores (min 1).
+   * Env: `UNTESTUTILS_PREWARM_CONCURRENCY`.
+   */
+  prewarmConcurrency?: number;
+  /**
+   * Build cache GC at global teardown: per recipe id keep the `keep` most recently used
+   * builds plus everything this run used. Default `{ keep: 2 }`; `false` disables.
+   * Env: `UNTESTUTILS_GC` (`0` off, or a keep count).
+   */
+  gc?: boolean | { keep?: number };
+  /**
+   * Timeout (ms) for building/starting a `test.override({ harness })` target. The build runs
+   * in a `beforeAll` of that suite, so it is charged to this budget instead of the first
+   * test's `testTimeout`. Default: Vitest `hookTimeout`. `false` = old lazy build inside the
+   * first test. Env: `UNTESTUTILS_BUILD_TIMEOUT` (`0` = false).
+   */
+  buildTimeout?: number | false;
+  /**
+   * `goto()` waits for Nuxt hydration after `load`/`networkidle`. `'strict'` (default) fails
+   * with a clear error when a Nuxt page does not hydrate in time; `'lenient'` keeps the
+   * pre-0.8 behaviour (ignore the timeout). Env: `UNTESTUTILS_GOTO_HYDRATION`.
+   */
+  hydration?: 'strict' | 'lenient';
+  /**
+   * Retry a failed test up to N times **only** for infrastructure errors
+   * ({@link INFRA_ERROR_PATTERN}: connection resets, closed browser/page, …), never for
+   * assertion failures. Sets Vitest `retry: { count, condition }` unless `retry` is set.
+   * Pair with {@link RetryReporter} to list what was retried.
+   */
+  retryInfra?: number;
+}
+
+/**
+ * Errors worth a retry: the harness/browser broke, not the code under test.
+ * Use as Vitest `retry.condition` (see {@link infraRetry}).
+ */
+export const INFRA_ERROR_PATTERN: RegExp =
+  /ECONNRESET|ECONNREFUSED|EPIPE|ETIMEDOUT|socket hang up|Target page, context or browser has been closed|Browser has been closed|browser has disconnected|Navigation failed because page crashed|net::ERR_CONNECTION_(?:REFUSED|RESET|CLOSED)|net::ERR_EMPTY_RESPONSE/;
+
+/** Vitest `retry` value that retries only {@link INFRA_ERROR_PATTERN} failures. */
+export function infraRetry(count = 1): { count: number; condition: RegExp } {
+  return { count, condition: INFRA_ERROR_PATTERN };
 }
 
 type VitestConfigBag = Record<string, unknown> & {
@@ -79,6 +123,7 @@ type VitestConfigBag = Record<string, unknown> & {
   environment?: string;
   provide?: Record<string, unknown>;
   name?: string;
+  retry?: unknown;
 };
 
 interface VitestPluginContextLike {
@@ -181,7 +226,22 @@ function wireProjectConfig(
     };
   }
 
+  if (options.retryInfra && config.retry === undefined) {
+    config.retry = infraRetry(options.retryInfra);
+  }
+
   process.env.UNTESTUTILS_PREWARM = JSON.stringify(options.prewarm ?? []);
+  if (options.prewarmConcurrency !== undefined) {
+    process.env.UNTESTUTILS_PREWARM_CONCURRENCY = String(options.prewarmConcurrency);
+  }
+  if (options.gc !== undefined) {
+    process.env.UNTESTUTILS_GC =
+      options.gc === false ? '0' : String((options.gc === true ? undefined : options.gc.keep) ?? 2);
+  }
+  if (options.buildTimeout !== undefined) {
+    process.env.UNTESTUTILS_BUILD_TIMEOUT = String(options.buildTimeout || 0);
+  }
+  if (options.hydration) process.env.UNTESTUTILS_GOTO_HYDRATION = options.hydration;
   process.env.UNTESTUTILS_BROWSERS = JSON.stringify(browsers);
   if (!process.env.UNTESTUTILS_BROWSER) {
     process.env.UNTESTUTILS_BROWSER = browsers[0];

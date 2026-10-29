@@ -3,7 +3,8 @@ import {
   getRegisteredRecipe,
   listRegisteredRecipes,
   getRecipesModulePath,
-  ensurePrepared,
+  prewarmTargets,
+  pruneAfterRun,
   stopAllTargets,
   resolveArtifactsRoot,
   resolveSessionArtifactsRoot,
@@ -176,12 +177,13 @@ export async function playwrightGlobalSetup(): Promise<void> {
     recipesFromModule = loaded.recipes;
   }
   const artifactsRoot = resolveArtifactsRoot();
+  // Teardown runs in this process — it reads the run start for build GC.
+  process.env.UNTESTUTILS_RUN_STARTED_AT = String(Date.now());
   await stopAllTargets(artifactsRoot);
   const registry = new TargetRegistry(artifactsRoot);
   const prewarm: string[] = JSON.parse(process.env.UNTESTUTILS_PREWARM || '[]') as string[];
   if (prewarm.length) {
-    progress.waveStart(prewarm);
-    for (const id of prewarm) {
+    const recipes = prewarm.map((id) => {
       const recipe = recipesFromModule?.[id] ?? getRegisteredRecipe(id);
       if (!recipe) {
         const known = listRegisteredRecipes()
@@ -193,8 +195,10 @@ export async function playwrightGlobalSetup(): Promise<void> {
           `[untestutils/playwright] prewarm "${id}" missing.${hint} Import recipes via defineRecipes(..., import.meta.url)`,
         );
       }
-      await ensurePrepared(recipe, { artifactsRoot });
-    }
+      return recipe;
+    });
+    progress.waveStart(prewarm);
+    await prewarmTargets(recipes, { artifactsRoot });
     progress.waveReady();
     progress.massRun();
   }
@@ -204,7 +208,10 @@ export async function playwrightGlobalSetup(): Promise<void> {
 
 export async function playwrightGlobalTeardown(): Promise<void> {
   progress.teardown();
-  await stopAllTargets(resolveArtifactsRoot());
+  const artifactsRoot = resolveArtifactsRoot();
+  await stopAllTargets(artifactsRoot);
+  const startedAt = Number(process.env.UNTESTUTILS_RUN_STARTED_AT);
+  if (startedAt > 0) await pruneAfterRun(artifactsRoot, startedAt);
 }
 
 export {

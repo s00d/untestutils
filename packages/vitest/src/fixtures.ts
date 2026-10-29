@@ -9,7 +9,13 @@ import {
   test as base,
   type TestAPI,
 } from 'vitest';
-import { getCurrentHarness, normalizeBaseUrl, useHarness, type Recipe } from '@untestutils/core';
+import {
+  getCurrentHarness,
+  normalizeBaseUrl,
+  prepareOnce,
+  useHarness,
+  type Recipe,
+} from '@untestutils/core';
 import { type HarnessBrowserName, resolveHarnessBrowserName } from './browsers';
 import { providedContextAugmentation } from './provided-context';
 
@@ -99,40 +105,97 @@ function patchContextCookies(context: BrowserContext, baseURL: string): void {
   context.addCookies = async (cookies) => orig(normalizeHarnessCookies([...cookies], baseURL));
 }
 
+/** `goto()` hydration wait policy — plugin `hydration` / `UNTESTUTILS_GOTO_HYDRATION`. */
+export type HydrationMode = 'strict' | 'lenient';
+
 /** @internal */
-export function createGoto(page: Page, baseURL: string): GotoFixture {
+export function resolveHydrationMode(): HydrationMode {
+  return process.env.UNTESTUTILS_GOTO_HYDRATION === 'lenient' ? 'lenient' : 'strict';
+}
+
+const HYDRATION_TIMEOUT_MS = 30_000;
+
+/** @internal */
+export function createGoto(
+  page: Page,
+  baseURL: string,
+  mode: HydrationMode = resolveHydrationMode(),
+): GotoFixture {
   return async (path: string, options?: Record<string, unknown>) => {
     const url = path.startsWith('http') ? path : new URL(path, baseURL).toString();
     const waitUntil = (options as { waitUntil?: string } | undefined)?.waitUntil;
     if (waitUntil === 'hydration' || waitUntil === 'route') {
       const res = await page.goto(url, { ...(options as object), waitUntil: 'load' });
-      await waitForNuxt(page, waitUntil);
+      await waitForNuxt(page, waitUntil, url);
       return res;
     }
     const res = await page.goto(url, options as Parameters<Page['goto']>[1]);
     // Specs often use networkidle/load; Nuxt client plugins (i18n/hashMode) need hydration.
     if (waitUntil === 'networkidle' || waitUntil === 'load' || waitUntil === undefined) {
-      await waitForNuxt(page, 'hydration').catch(() => {});
+      if (mode === 'lenient') await waitForNuxt(page, 'hydration', url).catch(() => {});
+      else if (await isNuxtPage(page)) await waitForNuxt(page, 'hydration', url);
     }
     return res;
   };
 }
 
+/** @internal — non-Nuxt pages (vite/next/static/JSON) skip the implicit hydration wait. */
+export async function isNuxtPage(page: Page): Promise<boolean> {
+  try {
+    return await page.evaluate(() => {
+      const w = globalThis as typeof globalThis & { useNuxtApp?: unknown; __NUXT__?: unknown };
+      const d = (globalThis as { document?: { getElementById: (id: string) => unknown } }).document;
+      return (
+        typeof w.useNuxtApp === 'function' ||
+        w.__NUXT__ !== undefined ||
+        Boolean(d?.getElementById('__NUXT_DATA__') || d?.getElementById('__nuxt'))
+      );
+    });
+  } catch {
+    // Context replaced mid-check (client redirect) — let the hydration wait decide.
+    return true;
+  }
+}
+
 /** @internal */
-export async function waitForNuxt(page: Page, mode: 'hydration' | 'route'): Promise<void> {
-  await page.waitForFunction(
-    (m) => {
-      const w = globalThis as typeof globalThis & {
-        useNuxtApp?: () => { isHydrating?: boolean; _route?: { fullPath?: string } };
-      };
-      const app = w.useNuxtApp?.();
-      if (!app) return false;
-      if (m === 'hydration') return app.isHydrating === false;
-      return Boolean(app._route?.fullPath);
-    },
-    mode,
-    { timeout: 30_000 },
-  );
+export async function waitForNuxt(
+  page: Page,
+  mode: 'hydration' | 'route',
+  url: string = page.url(),
+): Promise<void> {
+  try {
+    await page.waitForFunction(
+      (m) => {
+        const w = globalThis as typeof globalThis & {
+          useNuxtApp?: () => { isHydrating?: boolean; _route?: { fullPath?: string } };
+        };
+        const app = w.useNuxtApp?.();
+        if (!app) return false;
+        if (m === 'hydration') return app.isHydrating === false;
+        return Boolean(app._route?.fullPath);
+      },
+      mode,
+      { timeout: HYDRATION_TIMEOUT_MS },
+    );
+  } catch (cause) {
+    const state = await page
+      .evaluate(() => {
+        const w = globalThis as typeof globalThis & {
+          useNuxtApp?: () => { isHydrating?: boolean };
+        };
+        const app = w.useNuxtApp?.();
+        if (!app) return 'useNuxtApp() is not available';
+        return `isHydrating=${String(app.isHydrating)}`;
+      })
+      .catch(() => 'page state unavailable');
+    throw new Error(
+      `[untestutils] goto(${url}): Nuxt ${mode === 'route' ? 'route' : 'hydration'} not ready ` +
+        `within ${HYDRATION_TIMEOUT_MS}ms (${state}). A client error usually blocks hydration — ` +
+        `check the page console. Use waitUntil 'domcontentloaded' to skip the wait, or ` +
+        `untestutils({ hydration: 'lenient' }) for the old silent behaviour.`,
+      { cause },
+    );
+  }
 }
 
 /** @internal — body of the page fixture (callable from unit tests) */
@@ -208,7 +271,7 @@ export const test: TestAPI<HarnessFixtures> = base
     return resolveBaseURL();
   })
   .extend('page', async ({ baseURL, browser }, { onCleanup }) => {
-    const context = await browser.newContext({ baseURL });
+    const context = await (await connectedBrowser(browser)).newContext({ baseURL });
     patchContextCookies(context, baseURL);
     const page = await context.newPage();
     onCleanup(() => context.close().catch(() => {}));
@@ -221,3 +284,63 @@ export const test: TestAPI<HarnessFixtures> = base
     onCleanup(() => ctx.dispose().catch(() => {}));
     return ctx;
   }) as unknown as TestAPI<HarnessFixtures>;
+
+let relaunched: Browser | undefined;
+
+/**
+ * Worker browser crashed / disconnected → relaunch so the next test (or its infra retry)
+ * gets a working page instead of "browser has been closed" for the rest of the worker.
+ * ponytail: the replacement is closed by Playwright's own exit handler, not a fixture cleanup.
+ */
+async function connectedBrowser(browser: Browser): Promise<Browser> {
+  if (browser.isConnected()) return browser;
+  if (!relaunched?.isConnected()) {
+    relaunched = await browserApi.launch(resolveBrowserNameFromInject());
+  }
+  return relaunched;
+}
+
+/** @internal — `false` = lazy build in the first test; `undefined` = Vitest `hookTimeout`. */
+export function resolveBuildTimeout(): number | false | undefined {
+  const raw = process.env.UNTESTUTILS_BUILD_TIMEOUT?.trim();
+  if (!raw) return undefined;
+  const n = Number(raw);
+  if (n === 0) return false;
+  return Number.isFinite(n) && n > 0 ? n : undefined;
+}
+
+/** @internal — harness value from `override({ harness })` / `override('harness', v)`. */
+export function overrideHarnessValue(args: unknown[]): string | Recipe | undefined {
+  const [first, second, third] = args;
+  let value: unknown;
+  if (typeof first === 'string') {
+    if (first !== 'harness') return undefined;
+    value = third === undefined ? second : third;
+  } else if (first && typeof first === 'object') {
+    value = (first as { harness?: unknown }).harness;
+  }
+  if (Array.isArray(value)) value = value[0];
+  if (typeof value === 'string' || (value && typeof value === 'object' && 'id' in value)) {
+    return value as string | Recipe;
+  }
+  return undefined;
+}
+
+// Build/start the overridden harness in a suite `beforeAll` (timeout = buildTimeout), so a
+// slow build is charged to the hook, not to the first test's `testTimeout`. The baseURL
+// fixture then hits the in-process live target.
+const baseOverride = (test as unknown as { override: (...args: unknown[]) => unknown }).override;
+(test as unknown as { override: (...args: unknown[]) => unknown }).override = function (
+  this: unknown,
+  ...args: unknown[]
+) {
+  const result = baseOverride.apply(this, args);
+  const harness = overrideHarnessValue(args);
+  const timeout = resolveBuildTimeout();
+  if (harness && timeout !== false) {
+    beforeAll(async () => {
+      await prepareOnce(harness);
+    }, timeout);
+  }
+  return result;
+};
