@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'pathe';
+import { version as vitestVersion } from 'vitest/node';
 import {
   ensureRecipes,
   debug,
@@ -104,11 +105,20 @@ export interface UntestutilsPluginOptions {
 }
 
 /**
- * Errors worth a retry: the harness/browser broke, not the code under test.
+ * Errors worth a retry: the harness/browser broke, not the code under test. Matches Node
+ * socket errors (`connect ECONNREFUSED …`, `read ECONNRESET`) and Playwright API errors
+ * (`page.goto: net::ERR_…`, `locator.click: Target page, context or browser has been
+ * closed`) by shape, so an assertion that merely mentions such a token is not retried.
  * Use as Vitest `retry.condition` (see {@link infraRetry}).
  */
 export const INFRA_ERROR_PATTERN: RegExp =
-  /ECONNRESET|ECONNREFUSED|EPIPE|ETIMEDOUT|socket hang up|Target page, context or browser has been closed|Browser has been closed|browser has disconnected|Navigation failed because page crashed|net::ERR_CONNECTION_(?:REFUSED|RESET|CLOSED)|net::ERR_EMPTY_RESPONSE/;
+  /\b(?:connect|read|write) (?:ECONNRESET|ECONNREFUSED|EPIPE|ETIMEDOUT)\b|\bsocket hang up\b|(?:page|context|browser|locator|frame)\.\w+: (?:Target page, context or browser has been closed|Browser has been closed|Navigation failed because page crashed|net::ERR_(?:CONNECTION_(?:REFUSED|RESET|CLOSED)|EMPTY_RESPONSE))|\bbrowser has disconnected\b/;
+
+/** @internal `retry: { condition }` landed in Vitest 4.1. */
+export function supportsRetryCondition(version: string): boolean {
+  const [major = 0, minor = 0] = version.split('.').map((n) => Number.parseInt(n, 10));
+  return major > 4 || (major === 4 && minor >= 1);
+}
 
 /** Vitest `retry` value that retries only {@link INFRA_ERROR_PATTERN} failures. */
 export function infraRetry(count = 1): { count: number; condition: RegExp } {
@@ -227,7 +237,14 @@ function wireProjectConfig(
   }
 
   if (options.retryInfra && config.retry === undefined) {
-    config.retry = infraRetry(options.retryInfra);
+    if (supportsRetryCondition(vitestVersion)) {
+      config.retry = infraRetry(options.retryInfra);
+    } else {
+      // Vitest < 4.1 has no `retry.condition` — never fall back to a blanket retry.
+      console.warn(
+        `[untestutils] retryInfra needs Vitest >= 4.1 (retry.condition); found ${vitestVersion} — retries disabled`,
+      );
+    }
   }
 
   process.env.UNTESTUTILS_PREWARM = JSON.stringify(options.prewarm ?? []);
@@ -235,8 +252,13 @@ function wireProjectConfig(
     process.env.UNTESTUTILS_PREWARM_CONCURRENCY = String(options.prewarmConcurrency);
   }
   if (options.gc !== undefined) {
-    process.env.UNTESTUTILS_GC =
-      options.gc === false ? '0' : String((options.gc === true ? undefined : options.gc.keep) ?? 2);
+    const keep = options.gc === true || options.gc === false ? 2 : (options.gc.keep ?? 2);
+    if (options.gc !== false && !(Number.isInteger(keep) && keep >= 1)) {
+      throw new Error(
+        `[untestutils] gc.keep must be an integer >= 1 (got ${keep}); use gc: false to disable GC`,
+      );
+    }
+    process.env.UNTESTUTILS_GC = options.gc === false ? '0' : String(keep);
   }
   if (options.buildTimeout !== undefined) {
     process.env.UNTESTUTILS_BUILD_TIMEOUT = String(options.buildTimeout || 0);

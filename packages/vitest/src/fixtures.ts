@@ -262,7 +262,12 @@ export const test: TestAPI<HarnessFixtures> = base
     async ({}, { onCleanup }) => {
       const browserName = resolveBrowserNameFromInject();
       const browser = await browserApi.launch(browserName);
-      onCleanup(() => browser.close().catch(() => {}));
+      onCleanup(async () => {
+        await browser.close().catch(() => {});
+        const replacement = await relaunching?.catch(() => undefined);
+        relaunching = undefined;
+        await replacement?.close().catch(() => {});
+      });
       return browser;
     },
   )
@@ -285,19 +290,23 @@ export const test: TestAPI<HarnessFixtures> = base
     return ctx;
   }) as unknown as TestAPI<HarnessFixtures>;
 
-let relaunched: Browser | undefined;
+let relaunching: Promise<Browser> | undefined;
 
 /**
  * Worker browser crashed / disconnected → relaunch so the next test (or its infra retry)
  * gets a working page instead of "browser has been closed" for the rest of the worker.
- * ponytail: the replacement is closed by Playwright's own exit handler, not a fixture cleanup.
+ * One shared in-flight launch; the worker `browser` fixture cleanup closes it.
  */
 async function connectedBrowser(browser: Browser): Promise<Browser> {
   if (browser.isConnected()) return browser;
-  if (!relaunched?.isConnected()) {
-    relaunched = await browserApi.launch(resolveBrowserNameFromInject());
-  }
-  return relaunched;
+  const launch = () => browserApi.launch(resolveBrowserNameFromInject());
+  // Assigned synchronously, so concurrent callers share one launch.
+  relaunching ??= launch();
+  const pending = relaunching;
+  const current = await pending.catch(() => undefined);
+  if (current?.isConnected()) return current;
+  if (relaunching === pending) relaunching = launch(); // replacement died too
+  return relaunching;
 }
 
 /** @internal — `false` = lazy build in the first test; `undefined` = Vitest `hookTimeout`. */
@@ -320,7 +329,10 @@ export function overrideHarnessValue(args: unknown[]): string | Recipe | undefin
     value = (first as { harness?: unknown }).harness;
   }
   if (Array.isArray(value)) value = value[0];
-  if (typeof value === 'string' || (value && typeof value === 'object' && 'id' in value)) {
+  if (
+    typeof value === 'string' ||
+    (value && typeof value === 'object' && typeof (value as Recipe).start === 'function')
+  ) {
     return value as string | Recipe;
   }
   return undefined;

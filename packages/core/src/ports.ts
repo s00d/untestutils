@@ -27,7 +27,10 @@ export async function getFreePort(host: string = LOOPBACK_HOST): Promise<number>
     if (now - at > REISSUE_AFTER_MS) recentlyIssued.delete(port);
   }
   let port = await probeFreePort(host);
-  for (let i = 0; i < 10 && recentlyIssued.has(port); i++) port = await probeFreePort(host);
+  for (let i = 0; recentlyIssued.has(port); i++) {
+    if (i >= 50) throw new Error('[untestutils] failed to allocate a port not recently issued');
+    port = await probeFreePort(host);
+  }
   recentlyIssued.set(port, Date.now());
   return port;
 }

@@ -42,7 +42,9 @@ function stopForLive(running: Running): ((opts?: StopOpts) => Promise<void>) | u
   }
   const pid = running.pid;
   if (typeof pid === 'number' && pid > 1 && pid !== process.pid) {
-    return (opts?: StopOpts) => adoptProcess(pid, 'server').stop(opts);
+    // Pin the identity now so a later stop cannot hit a recycled pid.
+    const startToken = processStartToken(pid);
+    return (opts?: StopOpts) => adoptProcess(pid, 'server', startToken).stop(opts);
   }
   return undefined;
 }
@@ -82,10 +84,10 @@ export async function ensurePrepared(
   opts: OrchestratorOptions = {},
 ): Promise<PreparedTarget> {
   const prepared = await ensurePreparedInner(recipeInput, opts);
-  // Mark the build as used by this run — pruneBuilds keeps it.
-  await new ArtifactStore(opts.artifactsRoot ?? resolveArtifactsRoot(opts.cwd)).touch(
-    prepared.identity,
-  );
+  // Mark the build actually served as used by this run — pruneBuilds keeps it.
+  // (share:'never' registry reuse can serve an older identity's dir.)
+  const store = new ArtifactStore(opts.artifactsRoot ?? resolveArtifactsRoot(opts.cwd));
+  await store.touch(store.identityOf(prepared.outDir) ?? prepared.identity);
   return prepared;
 }
 
@@ -198,14 +200,14 @@ async function ensurePreparedInner(
             run,
           });
           if (recipe.verifyArtifact) await recipe.verifyArtifact(outDir);
-          await store.commit(identity, hash);
+          await store.commit(identity, hash, id);
           progress.prepareDone(id, Date.now() - started);
         } catch (err) {
           progress.fail(id, err);
           throw err;
         }
       } else {
-        await store.commit(identity, hash);
+        await store.commit(identity, hash, id);
       }
     } else {
       progress.prepareCache(id);
@@ -313,9 +315,11 @@ async function startOnPort(
     if (recipe.ready) await recipe.ready(running);
     else await defaultReady(running);
   } catch (err) {
-    if (running.stop) {
+    // Pid-only servers (no stop()) are stopped via pid adoption too — no orphan on retry.
+    const stop = stopForLive(running);
+    if (stop) {
       try {
-        await running.stop();
+        await stop();
       } catch {
         /* best-effort */
       }
@@ -346,7 +350,9 @@ export function resolvePrewarmConcurrency(): number {
 
 /**
  * Prepare + start recipes in parallel (at most `concurrency` at once). After the first
- * failure no new recipe starts; in-flight ones finish (no orphan builds), then it rethrows.
+ * failure no new recipe starts; in-flight ones finish (no orphan builds), every target this
+ * process started is stopped (globalSetup's teardown never runs when setup throws), then it
+ * rethrows.
  */
 export async function prewarmTargets(
   recipes: Array<string | Recipe>,
@@ -368,7 +374,10 @@ export async function prewarmTargets(
     }
   };
   await Promise.all(Array.from({ length: Math.min(limit, recipes.length) }, lane));
-  if (failed) throw firstError;
+  if (failed) {
+    await stopAllTargets(opts.artifactsRoot ?? resolveArtifactsRoot(opts.cwd)).catch(() => {});
+    throw firstError;
+  }
 }
 
 /** `UNTESTUTILS_GC`: `0`/`false` off, a number = keep N per recipe; default keep 2. */

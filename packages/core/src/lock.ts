@@ -1,6 +1,17 @@
 import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { mkdir, open, readFile, rename, rm, stat, unlink, writeFile } from 'node:fs/promises';
+import {
+  type FileHandle,
+  link,
+  mkdir,
+  open,
+  readFile,
+  rename,
+  rm,
+  stat,
+  unlink,
+  writeFile,
+} from 'node:fs/promises';
 import { dirname, join } from 'pathe';
 import { debug } from './debug';
 import { runStateDir } from './paths';
@@ -10,7 +21,7 @@ export interface LockInfo {
   startedAt: number;
   heartbeatAt: number;
   identity: string;
-  /** Per-instance owner token — guards heartbeat/release against a stolen lock (same pid). */
+  /** Per-instance owner token (diagnostics; ownership is checked by inode). */
   token?: string;
 }
 
@@ -32,6 +43,10 @@ export class FileLock {
   private heartbeat?: ReturnType<typeof setInterval>;
   private held = false;
   private readonly token = randomUUID();
+  /** Open while held: heartbeats write through it, so they only ever touch our own inode. */
+  private handle?: FileHandle;
+  private info?: LockInfo;
+  private ino?: number;
 
   constructor(
     private readonly lockPath: string,
@@ -71,7 +86,7 @@ export class FileLock {
 
   /** `open(wx)` the lock file; `false` on EEXIST. */
   private async tryCreate(): Promise<boolean> {
-    let handle;
+    let handle: FileHandle;
     try {
       handle = await open(this.lockPath, 'wx');
     } catch (error: unknown) {
@@ -79,15 +94,16 @@ export class FileLock {
       throw error;
     }
     const now = Date.now();
-    const info: LockInfo = {
+    this.info = {
       pid: process.pid,
       startedAt: now,
       heartbeatAt: now,
       identity: this.identity,
       token: this.token,
     };
-    await handle.writeFile(JSON.stringify(info), 'utf8');
-    await handle.close();
+    await handle.writeFile(JSON.stringify(this.info), 'utf8');
+    this.ino = (await handle.stat()).ino;
+    this.handle = handle;
     this.held = true;
     this.startHeartbeat();
     debug('lock', `acquired ${this.lockPath}`);
@@ -97,14 +113,16 @@ export class FileLock {
   async release(): Promise<void> {
     this.stopHeartbeat();
     if (!this.held) return;
-    try {
-      const raw = await readFile(this.lockPath, 'utf8');
-      const info = JSON.parse(raw) as LockInfo;
-      if (info.pid === process.pid && (!info.token || info.token === this.token)) {
-        await unlink(this.lockPath);
-      }
-    } catch {
-      /* already gone */
+    const ino = this.ino;
+    await this.handle?.close().catch(() => {});
+    this.handle = undefined;
+    // Only remove the file if it is still our inode (a stale takeover may have replaced it).
+    // A waiter may have our file moved aside for a staleness check — retry briefly.
+    for (let i = 0; i < 20; i++) {
+      if (await removeLockIf(this.lockPath, async (tmp) => (await stat(tmp)).ino === ino)) break;
+      const now = await stat(this.lockPath).catch(() => undefined);
+      if (now && now.ino !== ino) break; // replaced by a new holder — not ours to delete
+      await sleep(10);
     }
     this.held = false;
     debug('lock', `released ${this.lockPath}`);
@@ -123,16 +141,16 @@ export class FileLock {
   }
 
   private async beat(): Promise<void> {
+    const handle = this.handle;
+    if (!handle || !this.info) return;
     try {
-      const prev = await this.readInfo();
-      // Lock was stolen (or released) — never overwrite another holder's file.
-      if (!prev || prev.token !== this.token) {
-        this.stopHeartbeat();
-        return;
-      }
-      await writeFile(this.lockPath, JSON.stringify({ ...prev, heartbeatAt: Date.now() }), 'utf8');
+      // Write through our fd: if the path was released or taken over, this updates only the
+      // orphaned inode — it can never recreate the path or clobber another holder's file.
+      const buf = Buffer.from(JSON.stringify({ ...this.info, heartbeatAt: Date.now() }));
+      await handle.write(buf, 0, buf.length, 0);
+      await handle.truncate(buf.length);
     } catch {
-      /* lock lost */
+      /* lock lost / handle closed */
     }
   }
 
@@ -145,29 +163,57 @@ export class FileLock {
   }
 
   private async tryStealStale(): Promise<boolean> {
+    // Cheap read first — only a lock that looks stale is moved aside.
+    if (!(await this.looksStale(this.lockPath))) return false;
+    // Re-check staleness on the file we actually moved away: another waiter may already
+    // have stolen it and created a fresh lock in its place.
+    return removeLockIf(this.lockPath, (tmp) => this.looksStale(tmp, true));
+  }
+
+  private async looksStale(path: string, log = false): Promise<boolean> {
     try {
-      const raw = await readFile(this.lockPath, 'utf8');
-      const info = JSON.parse(raw) as LockInfo;
+      const info = JSON.parse(await readFile(path, 'utf8')) as LockInfo;
       const staleByTime = Date.now() - (info.heartbeatAt || info.startedAt) > this.staleMs;
       const dead = !isPidAlive(info.pid);
-      if (staleByTime || dead) {
+      if (log && (staleByTime || dead)) {
         debug('lock', `stealing stale lock pid=${info.pid} dead=${dead}`);
-        await unlink(this.lockPath);
-        return true;
       }
+      return staleByTime || dead;
     } catch {
       try {
-        const s = await stat(this.lockPath);
-        if (Date.now() - s.mtimeMs > this.staleMs) {
-          await unlink(this.lockPath);
-          return true;
-        }
+        return Date.now() - (await stat(path)).mtimeMs > this.staleMs;
       } catch {
-        /* */
+        return false;
       }
     }
-    return false;
   }
+}
+
+/**
+ * Atomically move the lock aside, then delete it only if `shouldRemove(movedPath)`;
+ * otherwise put it back. The path never points at a file we did not inspect.
+ * ponytail: restoring uses link(), which fails if a new lock appeared in the tiny
+ * rename→link window — then the inspected lock is dropped (its holder keeps running).
+ */
+async function removeLockIf(
+  lockPath: string,
+  shouldRemove: (movedPath: string) => Promise<boolean>,
+): Promise<boolean> {
+  const tmp = `${lockPath}.${process.pid}.${randomUUID()}.check`;
+  try {
+    await rename(lockPath, tmp);
+  } catch {
+    return false; // already gone
+  }
+  let remove = false;
+  try {
+    remove = await shouldRemove(tmp);
+  } catch {
+    remove = false;
+  }
+  if (!remove) await link(tmp, lockPath).catch(() => {});
+  await unlink(tmp).catch(() => {});
+  return remove;
 }
 
 function isHolderFresh(info: LockInfo): boolean {

@@ -30,6 +30,7 @@ import {
   INFRA_ERROR_PATTERN,
   RetryReporter,
   infraRetry,
+  supportsRetryCondition,
   untestutils,
 } from '../../packages/vitest/src/plugin';
 
@@ -487,5 +488,114 @@ describe('buildTimeout (override → beforeAll)', () => {
     if (prevArtifacts === undefined) delete process.env.UNTESTUTILS_ARTIFACTS_DIR;
     else process.env.UNTESTUTILS_ARTIFACTS_DIR = prevArtifacts;
     await rm(buildRoot, { recursive: true, force: true });
+  });
+});
+
+describe('review follow-ups', () => {
+  let dir: string;
+  afterEach(async () => {
+    if (dir) await rm(dir, { recursive: true, force: true });
+  });
+
+  vtest('released lock is never recreated by an in-flight heartbeat', async () => {
+    dir = await tmp('lockbeat');
+    const path = join(dir, 'b.lock');
+    const lock = new FileLock(path, 'b');
+    await lock.acquire(1000);
+    const beat = (lock as unknown as { beat: () => Promise<void> }).beat();
+    await lock.release();
+    await beat;
+    await (lock as unknown as { beat: () => Promise<void> }).beat();
+    expect(existsSync(path)).toBe(false);
+  });
+
+  vtest('release does not delete a lock that a takeover replaced', async () => {
+    dir = await tmp('locktake');
+    const path = join(dir, 't.lock');
+    const a = new FileLock(path, 't');
+    await a.acquire(1000);
+    await unlink(path); // simulate a stale takeover…
+    const b = new FileLock(path, 't');
+    expect(await b.tryAcquire()).toBe(true); // …by a new holder
+    await a.release();
+    expect(existsSync(path)).toBe(true);
+    await b.release();
+    expect(existsSync(path)).toBe(false);
+  });
+
+  vtest('GC groups by recorded recipe id and honours the share:never id lock', async () => {
+    dir = await tmp('gcid');
+    const store = new ArtifactStore(dir);
+    const now = Date.now();
+    for (const [identity, at] of [
+      ['my-app-aaaaaaaaaaaa', now - 3000],
+      ['my-app-bbbbbbbbbbbb', now - 2000],
+      ['my-app-cccccccccccc', now - 1000],
+    ] as const) {
+      await store.ensureDir(identity);
+      // "my app" and "my-app" sanitize alike — meta keeps them apart.
+      await store.commit(identity, 'h', identity === 'my-app-cccccccccccc' ? 'my-app' : 'my app');
+      await writeFile(store.lastUsedFile(identity), String(at));
+    }
+    const idLock = new FileLock(lockPathFor(dir, 'my app'), 'my app');
+    await idLock.acquire(1000);
+    try {
+      const res = await pruneBuilds(dir, { keep: 1 });
+      // "my app": keep b (newest), a would go but its id lock is held → kept.
+      expect(res.removed).toEqual([]);
+    } finally {
+      await idLock.release();
+    }
+    const res = await pruneBuilds(dir, { keep: 1 });
+    expect(res.removed).toEqual(['my-app-aaaaaaaaaaaa']);
+  });
+
+  vtest('infra pattern ignores assertion text that only mentions a token', () => {
+    expect(INFRA_ERROR_PATTERN.test('expected "ECONNREFUSED" to be "ok"')).toBe(false);
+    expect(INFRA_ERROR_PATTERN.test('connect ECONNREFUSED 127.0.0.1:3000')).toBe(true);
+    expect(INFRA_ERROR_PATTERN.test('page.goto: net::ERR_CONNECTION_RESET at http://x/')).toBe(
+      true,
+    );
+  });
+
+  vtest('gc.keep < 1 is rejected; Vitest < 4.1 skips retryInfra', async () => {
+    expect(supportsRetryCondition('4.0.18')).toBe(false);
+    expect(supportsRetryCondition('4.1.0')).toBe(true);
+    expect(supportsRetryCondition('5.0.1')).toBe(true);
+    const config: any = { sequence: {}, globalSetup: [], setupFiles: [] };
+    const keys = ['PREWARM', 'ARTIFACTS_DIR', 'BROWSERS', 'BROWSER', 'GC'].map(
+      (k) => `UNTESTUTILS_${k}`,
+    );
+    const saved = keys.map((k) => process.env[k]);
+    try {
+      await expect(
+        untestutils({ gc: { keep: 0 }, artifactsRoot: '/tmp/arts' }).configureVitest!({
+          project: { name: 'd', config, provide: () => {} },
+          vitest: { config: {}, projects: [] },
+          injectTestProjects: async () => [],
+        }),
+      ).rejects.toThrow(/gc.keep must be an integer >= 1/);
+    } finally {
+      keys.forEach((k, i) => {
+        if (saved[i] === undefined) delete process.env[k];
+        else process.env[k] = saved[i];
+      });
+    }
+  });
+
+  vtest('RetryReporter drains between runs (watch mode)', async () => {
+    const lines: string[] = [];
+    const reporter = new RetryReporter();
+    reporter.onInit({ logger: { log: (m: unknown) => lines.push(String(m)) } });
+    reporter.onTestCaseResult({
+      fullName: 'once',
+      module: { moduleId: '/x.spec.ts' },
+      diagnostic: () => ({ retryCount: 1, flaky: true }),
+      result: () => ({ errors: [] }),
+    } as any);
+    await reporter.onTestRunEnd();
+    lines.length = 0;
+    await reporter.onTestRunEnd();
+    expect(lines).toEqual([]);
   });
 });

@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
-import { join } from 'pathe';
+import { basename, dirname, join, resolve } from 'pathe';
 import { SCHEMA_VERSION } from './types';
 import { FileLock, isReady, lockPathFor, markReady, removePath } from './lock';
 import { debug } from './debug';
@@ -11,6 +11,8 @@ export interface BuildMeta {
   hash: string;
   identity: string;
   createdAt: number;
+  /** Original `Recipe.id` — GC groups by it (identity prefixes are sanitized). */
+  id?: string;
 }
 
 export class ArtifactStore {
@@ -42,6 +44,12 @@ export class ArtifactStore {
     await writeFile(this.lastUsedFile(identity), String(Date.now()), 'utf8').catch(() => {});
   }
 
+  /** Identity owning `dir` when it is a `builds/<identity>` dir of this store. */
+  identityOf(dir: string): string | undefined {
+    const abs = resolve(dir);
+    return dirname(abs) === resolve(this.artifactsRoot, 'builds') ? basename(abs) : undefined;
+  }
+
   async ensureDir(identity: string): Promise<string> {
     const dir = this.buildDir(identity);
     refuseArtifactsInsidePackage(dir);
@@ -56,12 +64,13 @@ export class ArtifactStore {
     return stored === hash;
   }
 
-  async commit(identity: string, hash: string): Promise<void> {
+  async commit(identity: string, hash: string, id?: string): Promise<void> {
     const meta: BuildMeta = {
       schemaVersion: SCHEMA_VERSION,
       hash,
       identity,
       createdAt: Date.now(),
+      id,
     };
     await writeFile(this.hashFile(identity), hash, 'utf8');
     await writeFile(this.metaFile(identity), JSON.stringify(meta, null, 2), 'utf8');
@@ -116,46 +125,65 @@ export async function pruneBuilds(
     return result;
   }
 
-  const groups = new Map<string, Array<{ identity: string; usedAt: number; ready: boolean }>>();
+  type Entry = { identity: string; usedAt: number; ready: boolean; id?: string };
+  const groups = new Map<string, Entry[]>();
   for (const identity of names) {
-    const recipe = IDENTITY_RE.exec(identity)?.[1];
-    if (!recipe) continue; // not ours — never touch
+    const prefix = IDENTITY_RE.exec(identity)?.[1];
+    if (!prefix) continue; // not ours — never touch
     const ready = existsSync(store.readyFile(identity));
     const usedAt = await lastUsedAt(store, identity);
     if (!ready && Date.now() - usedAt < grace) {
       result.kept.push(identity);
       continue;
     }
-    const list = groups.get(recipe) ?? [];
-    list.push({ identity, usedAt, ready });
-    groups.set(recipe, list);
+    const id = await readMeta(store, identity).then((m) => m?.id);
+    const key = id ?? prefix;
+    const list = groups.get(key) ?? [];
+    list.push({ identity, usedAt, ready, id });
+    groups.set(key, list);
   }
 
   for (const list of groups.values()) {
     // Only finished builds count towards `keep`; abandoned partial dirs are always candidates.
     const ready = list.filter((e) => e.ready).sort((a, b) => b.usedAt - a.usedAt);
     const keepSet = new Set(ready.slice(0, keep).map((e) => e.identity));
+    const recent = (usedAt: number) => opts.usedSince !== undefined && usedAt >= opts.usedSince;
     for (const entry of list) {
-      const used = opts.usedSince !== undefined && entry.usedAt >= opts.usedSince;
-      if (keepSet.has(entry.identity) || used || protect.has(entry.identity)) {
+      if (keepSet.has(entry.identity) || recent(entry.usedAt) || protect.has(entry.identity)) {
         result.kept.push(entry.identity);
         continue;
       }
-      const lock = new FileLock(lockPathFor(artifactsRoot, entry.identity), entry.identity);
-      if (!(await lock.tryAcquire())) {
-        result.kept.push(entry.identity);
-        continue;
+      // Identity lock guards prepare/start; `share:'never'` serializes on the recipe id instead.
+      const keys = [entry.identity, ...(entry.id && entry.id !== entry.identity ? [entry.id] : [])];
+      const locks = keys.map((k) => new FileLock(lockPathFor(artifactsRoot, k), k));
+      const held: FileLock[] = [];
+      for (const lock of locks) {
+        if (!(await lock.tryAcquire())) break;
+        held.push(lock);
       }
       try {
+        // Re-check under the lock: a worker may have used it since the scan.
+        if (held.length < locks.length || recent(await lastUsedAt(store, entry.identity))) {
+          result.kept.push(entry.identity);
+          continue;
+        }
         await store.invalidate(entry.identity);
         result.removed.push(entry.identity);
         debug('artifact', `pruned ${entry.identity}`);
       } finally {
-        await lock.release();
+        for (const lock of held) await lock.release();
       }
     }
   }
   return result;
+}
+
+async function readMeta(store: ArtifactStore, identity: string): Promise<BuildMeta | undefined> {
+  try {
+    return JSON.parse(await readFile(store.metaFile(identity), 'utf8')) as BuildMeta;
+  } catch {
+    return undefined;
+  }
 }
 
 async function lastUsedAt(store: ArtifactStore, identity: string): Promise<number> {
@@ -165,12 +193,8 @@ async function lastUsedAt(store: ArtifactStore, identity: string): Promise<numbe
   } catch {
     /* pre-0.8 build — fall back to meta / mtime */
   }
-  try {
-    const meta = JSON.parse(await readFile(store.metaFile(identity), 'utf8')) as BuildMeta;
-    if (meta.createdAt) return meta.createdAt;
-  } catch {
-    /* */
-  }
+  const meta = await readMeta(store, identity);
+  if (meta?.createdAt) return meta.createdAt;
   try {
     return (await stat(store.buildDir(identity))).mtimeMs;
   } catch {

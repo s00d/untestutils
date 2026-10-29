@@ -29,11 +29,13 @@ Checks Node, peers (Vitest major 4|5), configs, and `recipes.ts`. `doctor --reci
 
 **Tempted to use `run: 'dev'` to skip builds?** Don’t — that mode is for HMR / file-watcher specs only (`share: 'never'`). Normal e2e should use `server` / `preview` / `static` so shared prepare stays warm. See [Drivers](/guide/drivers#run-modes-nuxt).
 
-**`timed out … waiting for lock`** — the holder stopped heartbeating for the whole timeout; the message names its pid and last heartbeat. Kill that process (or delete the lock under `.untestutils/run/locks/`). A live builder is waited on indefinitely.
+Paths below use the default artifacts root `.untestutils`; with `UNTESTUTILS_ARTIFACTS_DIR` / `artifactsRoot` or a `session` (`.untestutils/sessions/<session>/`) use that root instead.
 
-**`goto(...): Nuxt hydration not ready`** — the page never finished hydrating (check the browser console). Use `waitUntil: 'domcontentloaded'` for pages that legitimately never hydrate, or `hydration: 'lenient'`.
+**`timed out … waiting for lock`** — the holder stopped heartbeating for the whole timeout; the message names its pid and last heartbeat. Kill that process and confirm it exited before deleting the lock under `<root>/run/locks/` — removing a live builder's lock lets a second builder write the same artifact. A live builder is waited on indefinitely.
 
-**Orphan processes / leftover servers** — hard-killed runs can leave registry entries and ports. Clear `.untestutils/run` and retry. Global setup calls `stopAllTargets`, which stops registry orphans internally. For ad-hoc servers use handles from `@untestutils/core`:
+**`goto(...): Nuxt hydration not ready`** — the page never finished hydrating (check the browser console). Use `waitUntil: 'domcontentloaded'` for pages that legitimately never hydrate, or set `untestutils({ hydration: 'lenient' })`.
+
+**Orphan processes / leftover servers** — hard-killed runs can leave registry entries and ports. Just rerun first: global setup reclaims registry orphans from `<root>/run/targets.json`. Only delete `<root>/run` after those servers are stopped (deleting it first loses the pids). Global setup calls `stopAllTargets`, which stops registry orphans internally. For ad-hoc servers use handles from `@untestutils/core`:
 
 | API | Use |
 |-----|-----|
