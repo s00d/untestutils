@@ -53,10 +53,11 @@ const release = defineCommand({
       description: 'Preview changelog only',
       default: false,
     },
-    noPublish: {
+    // `--no-publish` is parsed as the negation of `publish` (citty/mri), not as `noPublish`.
+    publish: {
       type: 'boolean',
-      description: 'Commit + tag locally, skip publish/push/gh',
-      default: false,
+      description: 'Publish/push/gh release; --no-publish = commit + tag locally only',
+      default: true,
     },
   },
   async run({ args }) {
@@ -65,7 +66,7 @@ const release = defineCommand({
       fail('bump must be patch | minor | major');
     }
     const dryRun = Boolean(args.dryRun);
-    const noPublish = Boolean(args.noPublish);
+    const noPublish = args.publish === false;
 
     const status = out('git', ['status', '--porcelain']);
     if (status) fail(`Working tree dirty:\n${status}`);
