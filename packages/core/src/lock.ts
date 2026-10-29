@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import {
   type FileHandle,
@@ -47,6 +47,7 @@ export class FileLock {
   private handle?: FileHandle;
   private info?: LockInfo;
   private ino?: number;
+  private lostWarned = false;
 
   constructor(
     private readonly lockPath: string,
@@ -107,8 +108,15 @@ export class FileLock {
       identity: this.identity,
       token: this.token,
     };
-    await handle.writeFile(JSON.stringify(this.info), 'utf8');
-    this.ino = (await handle.stat()).ino;
+    try {
+      await handle.writeFile(JSON.stringify(this.info), 'utf8');
+      this.ino = (await handle.stat()).ino;
+    } catch (error) {
+      // Never leave a half-initialised lock behind that nobody can release.
+      await handle.close().catch(() => {});
+      await unlink(this.lockPath).catch(() => {});
+      throw error;
+    }
     this.handle = handle;
     this.held = true;
     this.startHeartbeat();
@@ -155,6 +163,15 @@ export class FileLock {
       const buf = Buffer.from(JSON.stringify({ ...this.info, heartbeatAt: Date.now() }));
       await handle.write(buf, 0, buf.length, 0);
       await handle.truncate(buf.length);
+      // Surface a takeover (e.g. after a >staleMs freeze such as laptop sleep) instead of
+      // silently continuing as if we still held the path.
+      const now = await stat(this.lockPath).catch(() => undefined);
+      if (now?.ino !== this.ino && !this.lostWarned) {
+        this.lostWarned = true;
+        console.warn(
+          `[untestutils] lock ${this.lockPath} was taken over while held by pid ${process.pid} (no heartbeat for >${Math.round(this.staleMs / 1000)}s?)`,
+        );
+      }
     } catch {
       /* lock lost / handle closed */
     }
@@ -277,6 +294,18 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+const SAFE_LOCK_KEY = /^[A-Za-z0-9_-][A-Za-z0-9._-]*$/;
+
+/**
+ * Lock file for an identity / recipe id. Keys outside `[A-Za-z0-9._-]` (raw recipe ids like
+ * `a/b` or `..`) are sanitized + hashed so the file always stays inside `run/locks/`.
+ */
 export function lockPathFor(artifactsRoot: string, identity: string): string {
-  return join(runStateDir(artifactsRoot), 'locks', `${identity}.lock`);
+  const key = SAFE_LOCK_KEY.test(identity)
+    ? identity
+    : `${identity
+        .replace(/[^A-Za-z0-9._-]+/g, '_')
+        .replace(/^\.+/, '_')
+        .slice(0, 48)}-${createHash('sha1').update(identity).digest('hex').slice(0, 12)}`;
+  return join(runStateDir(artifactsRoot), 'locks', `${key}.lock`);
 }
