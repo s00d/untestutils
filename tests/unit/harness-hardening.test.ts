@@ -1,0 +1,491 @@
+import { afterAll, afterEach, describe, expect, test as vtest } from 'vitest';
+import { existsSync } from 'node:fs';
+import { mkdir, mkdtemp, readFile, rm, unlink, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'pathe';
+import {
+  ArtifactStore,
+  FileLock,
+  TargetRegistry,
+  clearRegisteredRecipes,
+  defineRecipe,
+  ensurePrepared,
+  getFreePort,
+  isAddressInUseError,
+  lockPathFor,
+  prewarmTargets,
+  pruneBuilds,
+  resetRecipeBindings,
+  resolveGcKeep,
+  stopAllTargets,
+} from '@untestutils/core';
+import { adoptProcess, processStartToken, spawnManaged } from '../../packages/core/src/process';
+import {
+  createGoto,
+  overrideHarnessValue,
+  resolveBuildTimeout,
+  test as harnessTest,
+} from '../../packages/vitest/src/fixtures';
+import {
+  INFRA_ERROR_PATTERN,
+  RetryReporter,
+  infraRetry,
+  untestutils,
+} from '../../packages/vitest/src/plugin';
+
+const tmp = (p: string) => mkdtemp(join(tmpdir(), `untestutils-${p}-`));
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+describe('build cache GC (pruneBuilds)', () => {
+  let root: string;
+  afterEach(async () => {
+    await rm(root, { recursive: true, force: true });
+  });
+
+  async function build(identity: string, usedAt: number, ready = true) {
+    const store = new ArtifactStore(root);
+    await store.ensureDir(identity);
+    if (ready) await store.commit(identity, 'h');
+    await writeFile(store.lastUsedFile(identity), String(usedAt));
+  }
+
+  vtest('keeps newest N per recipe + this run, drops the rest', async () => {
+    root = await tmp('gc');
+    const now = Date.now();
+    await build('site-aaaaaaaaaaaa', now - 5000);
+    await build('site-bbbbbbbbbbbb', now - 4000);
+    await build('site-cccccccccccc', now - 3000);
+    await build('site-dddddddddddd', now - 2000);
+    await build('other-eeeeeeeeeeee', now - 9000);
+    await mkdir(join(root, 'builds', 'not-an-identity'), { recursive: true });
+
+    const res = await pruneBuilds(root, { keep: 2, usedSince: now + 1 });
+    expect(res.removed.sort()).toEqual(['site-aaaaaaaaaaaa', 'site-bbbbbbbbbbbb']);
+    expect(existsSync(join(root, 'builds', 'site-dddddddddddd'))).toBe(true);
+    expect(existsSync(join(root, 'builds', 'other-eeeeeeeeeeee'))).toBe(true);
+    expect(existsSync(join(root, 'builds', 'not-an-identity'))).toBe(true);
+  });
+
+  vtest('never removes a build used this run, in flight, or locked', async () => {
+    root = await tmp('gc2');
+    const now = Date.now();
+    await build('app-111111111111', now - 1000); // newest → kept by keep:1
+    await build('app-222222222222', now - 500_000); // used "this run" via usedSince
+    await build('app-333333333333', now - 900_000); // locked by a live builder
+    await build('app-444444444444', now, false); // no .ready, fresh → in-flight
+    await build('app-555555555555', now - 3_600_000, false); // abandoned partial
+    const lock = new FileLock(lockPathFor(root, 'app-333333333333'), 'app-333333333333');
+    await lock.acquire(1000);
+    try {
+      const res = await pruneBuilds(root, { keep: 1, usedSince: now - 600_000 });
+      expect(res.removed).toEqual(['app-555555555555']);
+      expect(res.kept.sort()).toEqual([
+        'app-111111111111',
+        'app-222222222222',
+        'app-333333333333',
+        'app-444444444444',
+      ]);
+    } finally {
+      await lock.release();
+    }
+  });
+
+  vtest('ensurePrepared stamps .last-used; UNTESTUTILS_GC parsing', async () => {
+    root = await tmp('gc3');
+    const recipe = defineRecipe({
+      id: 'stamp',
+      share: 'prepare-only',
+      start: async () => ({}) as never,
+    });
+    const prepared = await ensurePrepared(recipe, { artifactsRoot: root });
+    const used = Number(
+      await readFile(new ArtifactStore(root).lastUsedFile(prepared.identity), 'utf8'),
+    );
+    expect(Date.now() - used).toBeLessThan(5000);
+    resetRecipeBindings();
+
+    const prev = process.env.UNTESTUTILS_GC;
+    try {
+      delete process.env.UNTESTUTILS_GC;
+      expect(resolveGcKeep()).toBe(2);
+      process.env.UNTESTUTILS_GC = '0';
+      expect(resolveGcKeep()).toBeUndefined();
+      process.env.UNTESTUTILS_GC = '5';
+      expect(resolveGcKeep()).toBe(5);
+    } finally {
+      if (prev === undefined) delete process.env.UNTESTUTILS_GC;
+      else process.env.UNTESTUTILS_GC = prev;
+    }
+  });
+});
+
+describe('heartbeat-aware FileLock', () => {
+  let dir: string;
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  vtest('keeps waiting past timeoutMs while the holder heartbeats', async () => {
+    dir = await tmp('lockhb');
+    const path = join(dir, 'busy.lock');
+    const holder = () =>
+      writeFile(
+        path,
+        JSON.stringify({
+          pid: process.pid,
+          startedAt: Date.now() - 60_000,
+          heartbeatAt: Date.now(),
+          identity: 'busy',
+          token: 'other',
+        }),
+      );
+    await holder();
+    const beat = setInterval(() => void holder(), 100);
+    const started = Date.now();
+    const waiting = new FileLock(path, 'busy').acquire(300);
+    await sleep(900);
+    clearInterval(beat);
+    await unlink(path);
+    await waiting;
+    expect(Date.now() - started).toBeGreaterThan(800);
+  });
+
+  vtest('fails with holder details when the heartbeat stops', async () => {
+    dir = await tmp('lockhung');
+    const path = join(dir, 'hung.lock');
+    await writeFile(
+      path,
+      JSON.stringify({
+        pid: process.pid,
+        startedAt: Date.now() - 120_000,
+        heartbeatAt: Date.now() - 60_000,
+        identity: 'hung',
+        token: 'other',
+      }),
+    );
+    await expect(new FileLock(path, 'hung').acquire(300)).rejects.toThrow(
+      /holder pid=\d+ \(alive\) identity=hung.*last heartbeat 60s ago/,
+    );
+  });
+
+  vtest('tryAcquire is non-blocking', async () => {
+    dir = await tmp('locktry');
+    const path = join(dir, 't.lock');
+    const a = new FileLock(path, 't');
+    const b = new FileLock(path, 't');
+    expect(await a.tryAcquire()).toBe(true);
+    expect(await b.tryAcquire()).toBe(false);
+    await a.release();
+    expect(await b.tryAcquire()).toBe(true);
+    await b.release();
+  });
+});
+
+describe('parallel prewarm', () => {
+  let root: string;
+  afterEach(async () => {
+    clearRegisteredRecipes();
+    resetRecipeBindings();
+    await rm(root, { recursive: true, force: true });
+  });
+
+  const slow = (id: string, track: { now: number; max: number; ran: string[] }, fail = false) =>
+    defineRecipe({
+      id,
+      share: 'prepare-only',
+      prepare: async () => {
+        track.ran.push(id);
+        track.max = Math.max(track.max, ++track.now);
+        await sleep(150);
+        track.now--;
+        if (fail) throw new Error(`boom ${id}`);
+      },
+      start: async () => ({}) as never,
+    });
+
+  vtest('runs up to `concurrency` recipes at once', async () => {
+    root = await tmp('prewarm');
+    const track = { now: 0, max: 0, ran: [] as string[] };
+    const started = Date.now();
+    await prewarmTargets(
+      ['p1', 'p2', 'p3', 'p4'].map((id) => slow(id, track)),
+      { artifactsRoot: root, concurrency: 2 },
+    );
+    expect(track.max).toBe(2);
+    expect(track.ran).toHaveLength(4);
+    expect(Date.now() - started).toBeLessThan(4 * 150);
+  });
+
+  vtest('stops taking new recipes after a failure and rethrows it', async () => {
+    root = await tmp('prewarmfail');
+    const track = { now: 0, max: 0, ran: [] as string[] };
+    await expect(
+      prewarmTargets([slow('f1', track, true), slow('f2', track), slow('f3', track)], {
+        artifactsRoot: root,
+        concurrency: 1,
+      }),
+    ).rejects.toThrow('boom f1');
+    expect(track.ran).toEqual(['f1']);
+  });
+});
+
+describe('ports', () => {
+  let root: string | undefined;
+  afterEach(async () => {
+    if (root) {
+      await stopAllTargets(root);
+      await rm(root, { recursive: true, force: true });
+    }
+    root = undefined;
+    clearRegisteredRecipes();
+    resetRecipeBindings();
+  });
+
+  vtest('getFreePort never repeats a port within the process', async () => {
+    const ports = await Promise.all(Array.from({ length: 20 }, () => getFreePort()));
+    expect(new Set(ports).size).toBe(ports.length);
+  });
+
+  vtest('isAddressInUseError looks at code, message and cause', () => {
+    expect(isAddressInUseError(Object.assign(new Error('x'), { code: 'EADDRINUSE' }))).toBe(true);
+    expect(isAddressInUseError(new Error('ready failed\nError: listen EADDRINUSE: :::3000'))).toBe(
+      true,
+    );
+    expect(
+      isAddressInUseError(new Error('wrap', { cause: new Error('address already in use') })),
+    ).toBe(true);
+    expect(isAddressInUseError(new Error('ECONNREFUSED'))).toBe(false);
+  });
+
+  vtest('start is retried on a fresh port after EADDRINUSE', async () => {
+    root = await tmp('portretry');
+    const ports: number[] = [];
+    const recipe = defineRecipe({
+      id: 'retry-port',
+      start: async ({ port }) => {
+        ports.push(port);
+        if (ports.length === 1) throw new Error('listen EADDRINUSE: address already in use');
+        return { kind: 'url', url: `http://127.0.0.1:${port}/` };
+      },
+      ready: async () => {},
+    });
+    const prepared = await ensurePrepared(recipe, { artifactsRoot: root });
+    expect(ports).toHaveLength(2);
+    expect(ports[0]).not.toBe(ports[1]);
+    expect(prepared.running).toMatchObject({ url: `http://127.0.0.1:${ports[1]}/` });
+  });
+});
+
+describe.skipIf(process.platform === 'win32')('process identity + run-scoped registry', () => {
+  let root: string;
+  afterEach(async () => {
+    await rm(root, { recursive: true, force: true });
+  });
+
+  const sleeper = () =>
+    spawnManaged(process.execPath, ['-e', 'setTimeout(() => {}, 30000)'], { captureLogs: true });
+
+  vtest('adoptProcess refuses a pid whose start token changed (pid reuse)', async () => {
+    root = await tmp('pid');
+    const child = sleeper();
+    try {
+      await sleep(100);
+      const token = processStartToken(child.pid);
+      expect(token).toBeTruthy();
+      expect(adoptProcess(child.pid!, 'server', token).alive()).toBe(true);
+      const reused = adoptProcess(child.pid!, 'server', 'Thu Jan  1 00:00:00 1970');
+      expect(reused.alive()).toBe(false);
+      await reused.stop({ graceMs: 100 });
+      expect(child.alive()).toBe(true);
+    } finally {
+      await child.stop();
+    }
+  });
+
+  vtest('registry lives under run/; teardown reclaims legacy targets.json', async () => {
+    root = await tmp('legacy');
+    expect(new TargetRegistry(root).filePath).toBe(join(root, 'run', 'targets.json'));
+    expect(lockPathFor(root, 'x')).toBe(join(root, 'run', 'locks', 'x.lock'));
+
+    const child = sleeper();
+    await sleep(100);
+    await writeFile(
+      join(root, 'targets.json'),
+      JSON.stringify({ old: { id: 'old', identity: 'old', pid: child.pid } }),
+    );
+    await stopAllTargets(root, { graceMs: 200 });
+    expect(child.alive()).toBe(false);
+    expect(existsSync(join(root, 'targets.json'))).toBe(false);
+  });
+
+  vtest('teardown skips a registry pid that now belongs to another process', async () => {
+    root = await tmp('reuse');
+    const child = sleeper();
+    try {
+      await sleep(100);
+      await new TargetRegistry(root).set({
+        id: 'r',
+        identity: 'r',
+        pid: child.pid,
+        pidStart: 'Thu Jan  1 00:00:00 1970',
+      });
+      await stopAllTargets(root, { graceMs: 200 });
+      expect(child.alive()).toBe(true);
+    } finally {
+      await child.stop();
+    }
+  });
+});
+
+describe('goto hydration', () => {
+  const fakePage = (opts: { nuxt: boolean; hydrates: boolean }) => {
+    const calls = { wait: 0 };
+    const page = {
+      url: () => 'http://127.0.0.1:9/x',
+      goto: async () => null,
+      evaluate: async (fn: () => unknown) =>
+        String(fn).includes('__NUXT_DATA__') ? opts.nuxt : 'isHydrating=true',
+      waitForFunction: async () => {
+        calls.wait++;
+        if (!opts.hydrates) throw new Error('Timeout 30000ms exceeded');
+      },
+    } as any;
+    return { page, calls };
+  };
+
+  vtest('strict: a Nuxt page that never hydrates fails with a clear error', async () => {
+    const { page } = fakePage({ nuxt: true, hydrates: false });
+    await expect(createGoto(page, 'http://127.0.0.1:9/', 'strict')('/x')).rejects.toThrow(
+      /goto\(http:\/\/127\.0\.0\.1:9\/x\): Nuxt hydration not ready within 30000ms \(isHydrating=true\)/,
+    );
+  });
+
+  vtest('strict: non-Nuxt pages skip the hydration wait', async () => {
+    const { page, calls } = fakePage({ nuxt: false, hydrates: false });
+    await createGoto(page, 'http://127.0.0.1:9/', 'strict')('/x');
+    expect(calls.wait).toBe(0);
+  });
+
+  vtest('lenient keeps the old silent behaviour', async () => {
+    const { page, calls } = fakePage({ nuxt: true, hydrates: false });
+    await createGoto(page, 'http://127.0.0.1:9/', 'lenient')('/x', { waitUntil: 'load' });
+    expect(calls.wait).toBe(1);
+  });
+});
+
+describe('infra-only retry', () => {
+  vtest('pattern matches infra errors, not assertions', () => {
+    expect(INFRA_ERROR_PATTERN.test('page.goto: net::ERR_CONNECTION_REFUSED at http://x')).toBe(
+      true,
+    );
+    expect(INFRA_ERROR_PATTERN.test('read ECONNRESET')).toBe(true);
+    expect(
+      INFRA_ERROR_PATTERN.test('locator.click: Target page, context or browser has been closed'),
+    ).toBe(true);
+    expect(INFRA_ERROR_PATTERN.test('expected "a" to be "b"')).toBe(false);
+    expect(infraRetry(2)).toEqual({ count: 2, condition: INFRA_ERROR_PATTERN });
+  });
+
+  vtest('plugin retryInfra sets retry only when the user did not', async () => {
+    const run = async (retry?: unknown) => {
+      const config: any = { sequence: {}, globalSetup: [], setupFiles: [], retry };
+      await untestutils({ retryInfra: 2, artifactsRoot: '/tmp/arts' }).configureVitest!({
+        project: { name: 'd', config, provide: () => {} },
+        vitest: { config: {}, projects: [] },
+        injectTestProjects: async () => [],
+      });
+      return config.retry;
+    };
+    const keys = ['PREWARM', 'ARTIFACTS_DIR', 'BROWSERS', 'BROWSER'].map((k) => `UNTESTUTILS_${k}`);
+    const saved = keys.map((k) => process.env[k]);
+    try {
+      expect(await run()).toEqual({ count: 2, condition: INFRA_ERROR_PATTERN });
+      expect(await run(3)).toBe(3);
+    } finally {
+      keys.forEach((k, i) => {
+        if (saved[i] === undefined) delete process.env[k];
+        else process.env[k] = saved[i];
+      });
+    }
+  });
+
+  vtest('RetryReporter lists retried tests and writes JSON', async () => {
+    const dir = await tmp('retry');
+    const out = join(dir, 'retried.json');
+    const lines: string[] = [];
+    const reporter = new RetryReporter({ outputFile: out });
+    reporter.onInit({ logger: { log: (m: unknown) => lines.push(String(m)) } });
+    const tc = (name: string, retryCount: number, flaky: boolean) =>
+      ({
+        fullName: name,
+        module: { moduleId: '/x.spec.ts' },
+        diagnostic: () => ({ retryCount, flaky }),
+        result: () => ({ errors: [{ message: 'read ECONNRESET\n  at …' }] }),
+      }) as any;
+    reporter.onTestCaseResult(tc('stable', 0, false));
+    reporter.onTestCaseResult(tc('flaky one', 1, true));
+    await reporter.onTestRunEnd();
+    expect(lines.join('\n')).toMatch(
+      /1 test\(s\) needed a retry[\s\S]*flaky one \(FLAKY, passed after 1 retry\)[\s\S]*read ECONNRESET/,
+    );
+    expect(JSON.parse(await readFile(out, 'utf8'))).toEqual([
+      {
+        name: 'flaky one',
+        file: '/x.spec.ts',
+        retryCount: 1,
+        flaky: true,
+        errors: ['read ECONNRESET'],
+      },
+    ]);
+    await rm(dir, { recursive: true, force: true });
+  });
+});
+
+// buildTimeout: test.override({ harness }) builds in a suite beforeAll, so a build slower
+// than the test's own timeout no longer fails the test.
+const buildRoot = join(tmpdir(), `untestutils-build-hook-${process.pid}`);
+const prevArtifacts = process.env.UNTESTUTILS_ARTIFACTS_DIR;
+process.env.UNTESTUTILS_ARTIFACTS_DIR = buildRoot;
+let builds = 0;
+const slowBuild = defineRecipe({
+  id: 'slow-build-hook',
+  share: 'prepare-only',
+  prepare: async () => {
+    builds++;
+    await sleep(400);
+  },
+  start: async () => ({}) as never,
+});
+
+describe('buildTimeout (override → beforeAll)', () => {
+  harnessTest.override({ harness: slowBuild });
+
+  harnessTest('build ran in the hook, not in this 100ms test', { timeout: 100 }, () => {
+    expect(builds).toBe(1);
+  });
+
+  vtest('override arg parsing and env', () => {
+    expect(overrideHarnessValue([{ harness: 'site' }])).toBe('site');
+    expect(overrideHarnessValue(['harness', 'site'])).toBe('site');
+    expect(overrideHarnessValue(['harness', {}, 'site'])).toBe('site');
+    expect(overrideHarnessValue([{ page: 1 }])).toBeUndefined();
+    const prev = process.env.UNTESTUTILS_BUILD_TIMEOUT;
+    try {
+      delete process.env.UNTESTUTILS_BUILD_TIMEOUT;
+      expect(resolveBuildTimeout()).toBeUndefined();
+      process.env.UNTESTUTILS_BUILD_TIMEOUT = '0';
+      expect(resolveBuildTimeout()).toBe(false);
+      process.env.UNTESTUTILS_BUILD_TIMEOUT = '600000';
+      expect(resolveBuildTimeout()).toBe(600_000);
+    } finally {
+      if (prev === undefined) delete process.env.UNTESTUTILS_BUILD_TIMEOUT;
+      else process.env.UNTESTUTILS_BUILD_TIMEOUT = prev;
+    }
+  });
+
+  afterAll(async () => {
+    if (prevArtifacts === undefined) delete process.env.UNTESTUTILS_ARTIFACTS_DIR;
+    else process.env.UNTESTUTILS_ARTIFACTS_DIR = prevArtifacts;
+    await rm(buildRoot, { recursive: true, force: true });
+  });
+});
