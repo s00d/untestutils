@@ -152,12 +152,16 @@ const release = defineCommand({
         let md = readFileSync(p, 'utf8');
         if (!md.startsWith(`## v${version}`) && !md.includes(`## v${version}\n`)) {
           md = md.replace(/^## .+$/m, `## v${version}`);
-          writeFileSync(p, md);
         }
+        // changelogen links the compare to the branch (`v0.8.0...master`) — point it at the tag.
+        md = md.replace(`/compare/${from}...${branch})`, `/compare/${from}...${tag})`);
+        writeFileSync(p, md);
       }
     }
 
-    run('git', ['add', 'package.json', 'CHANGELOG.md', 'packages', 'pnpm-lock.yaml']);
+    // Tree was clean before the bump, so everything changed now is release output
+    // (bumpp -r also touches private playground packages).
+    run('git', ['add', '-A']);
     run('git', ['commit', '-m', `chore(release): ${tag}`]);
     run('git', ['tag', tag]);
     log(`tagged ${tag}`);
@@ -175,7 +179,9 @@ const release = defineCommand({
         '--publish-branch',
         branch,
       ]);
-      run('git', ['push', '--follow-tags']);
+      run('git', ['push']);
+      // Lightweight tag: `--follow-tags` pushes annotated tags only.
+      run('git', ['push', 'origin', tag]);
       run('gh', ['release', 'create', tag, '--title', tag, '--generate-notes', '--latest']);
     } else {
       log('skipped publish/push/gh (--no-publish)');
