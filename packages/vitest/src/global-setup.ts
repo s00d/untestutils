@@ -1,9 +1,11 @@
 import { pathToFileURL } from 'node:url';
 import type { TestProject } from 'vitest/node';
 import {
+  beginRun,
+  endRun,
+  failIfSetupDrains,
   prewarmTargets,
   pruneAfterRun,
-  stopAllTargets,
   getRegisteredRecipe,
   listRegisteredRecipes,
   resolveArtifactsRoot,
@@ -40,13 +42,17 @@ function formatKnownIds(
   return known.length ? ` Known ids: ${known.join(', ')}.` : '';
 }
 
-export default async function globalSetup(project: TestProject): Promise<() => Promise<void>> {
+export default function globalSetup(project: TestProject): Promise<() => Promise<void>> {
+  return failIfSetupDrains(() => setup(project));
+}
+
+async function setup(project: TestProject): Promise<() => Promise<void>> {
   await loadRecipesModule();
 
   const artifactsRoot = resolveArtifactsRoot();
   const runStartedAt = Date.now();
-  // Previous vitest forks leave orphans; drain registry before reuse.
-  await stopAllTargets(artifactsRoot);
+  // Own registry per run; stop only servers of runs whose vitest process is gone.
+  await beginRun(artifactsRoot);
   const prewarm: string[] = JSON.parse(process.env.UNTESTUTILS_PREWARM || '[]') as string[];
 
   // Prefer recipes export from the module (avoids dual-package Map when entries split)
@@ -97,7 +103,7 @@ export default async function globalSetup(project: TestProject): Promise<() => P
 
   return async () => {
     progress.teardown();
-    await stopAllTargets(artifactsRoot);
+    await endRun(artifactsRoot);
     await pruneAfterRun(artifactsRoot, runStartedAt);
   };
 }

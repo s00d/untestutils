@@ -5,7 +5,9 @@ import {
   getRecipesModulePath,
   prewarmTargets,
   pruneAfterRun,
-  stopAllTargets,
+  beginRun,
+  endRun,
+  failIfSetupDrains,
   resolveArtifactsRoot,
   resolveSessionArtifactsRoot,
   sanitizeSession,
@@ -166,7 +168,11 @@ export function resolvePlaywrightCompanion(name: 'pw-global-setup' | 'pw-global-
   throw new Error(`[untestutils/playwright] missing ${name}`);
 }
 
-export async function playwrightGlobalSetup(): Promise<void> {
+export function playwrightGlobalSetup(): Promise<void> {
+  return failIfSetupDrains(setup);
+}
+
+async function setup(): Promise<void> {
   const modPath = process.env.UNTESTUTILS_RECIPES_MODULE;
   let recipesFromModule: Record<string, Recipe> | undefined;
   if (modPath) {
@@ -179,7 +185,8 @@ export async function playwrightGlobalSetup(): Promise<void> {
   const artifactsRoot = resolveArtifactsRoot();
   // Teardown runs in this process — it reads the run start for build GC.
   process.env.UNTESTUTILS_RUN_STARTED_AT = String(Date.now());
-  await stopAllTargets(artifactsRoot);
+  // Run-scoped registry (workers inherit UNTESTUTILS_RUN_ID): reclaims only dead runs' servers.
+  await beginRun(artifactsRoot);
   const registry = new TargetRegistry(artifactsRoot);
   const prewarm: string[] = JSON.parse(process.env.UNTESTUTILS_PREWARM || '[]') as string[];
   if (prewarm.length) {
@@ -209,7 +216,7 @@ export async function playwrightGlobalSetup(): Promise<void> {
 export async function playwrightGlobalTeardown(): Promise<void> {
   progress.teardown();
   const artifactsRoot = resolveArtifactsRoot();
-  await stopAllTargets(artifactsRoot);
+  await endRun(artifactsRoot);
   const startedAt = Number(process.env.UNTESTUTILS_RUN_STARTED_AT);
   if (startedAt > 0) await pruneAfterRun(artifactsRoot, startedAt);
 }

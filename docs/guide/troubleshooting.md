@@ -19,7 +19,9 @@ Checks Node, peers (Vitest major 4|5), configs, and `recipes.ts`. `doctor --reci
 
 **prewarm id not found** — same: id must exist in the recipes module; message lists known ids.
 
-**no harness url** — call `useHarness` or list the id in `prewarm` before using `page` / `baseURL`.
+**no harness url** — call `useHarness` or list the id in `prewarm` before using `page` / `baseURL`. (In 0.8.0 a `test.override({ harness })` suite could also hit this on a cold build; upgrade to a release after 0.8.0, where the fixture reads the harness's own handle.)
+
+**Run exits 0 with zero tests** — in 0.8.0, global setup could drain the event loop while stopping servers, and Node exited 0 before any test ran. Releases after 0.8.0 print `global setup aborted before tests ran` and exit 1 instead (vitest and playwright).
 
 **Playwright picked up `*.test.ts`** — `createPlaywrightConfig` defaults to `testMatch: '**/*.spec.ts'`. Override via `testMatch` if needed.
 
@@ -35,7 +37,7 @@ Paths below use the default artifacts root `.untestutils`; with `UNTESTUTILS_ART
 
 **`goto(...): Nuxt hydration not ready`** — the page never finished hydrating (check the browser console). Use `waitUntil: 'domcontentloaded'` for pages that legitimately never hydrate, or set `untestutils({ hydration: 'lenient' })`.
 
-**Orphan processes / leftover servers** — hard-killed runs can leave registry entries and ports. Just rerun first: global setup reclaims registry orphans from `<root>/run/targets.json`. Only delete `<root>/run` after those servers are stopped (deleting it first loses the pids). Global setup calls `stopAllTargets`, which stops registry orphans internally. For ad-hoc servers use handles from `@untestutils/core`:
+**Orphan processes / leftover servers** — hard-killed runs can leave registry entries and ports. Just rerun first: global setup (`beginRun`) reclaims registry orphans from runs whose vitest/playwright process is gone (`<root>/run/runs/<runId>/`). It also drains the shared `<root>/run/targets.json` used without a run id, which has no owner check. A concurrent live plugin-managed run is left alone. Only delete `<root>/run` after those servers are stopped (deleting it first loses the pids). Teardown (`endRun`) calls `stopAllTargets` for this run's servers. For ad-hoc servers use handles from `@untestutils/core`:
 
 | API | Use |
 |-----|-----|

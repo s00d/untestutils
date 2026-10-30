@@ -1,4 +1,6 @@
 import { afterAll, afterEach, describe, expect, test as vtest, vi } from 'vitest';
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { mkdir, mkdtemp, open, readFile, rm, unlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -7,6 +9,10 @@ import {
   ArtifactStore,
   FileLock,
   TargetRegistry,
+  beginRun,
+  endRun,
+  ensureRunId,
+  runDir,
   clearRegisteredRecipes,
   defineRecipe,
   ensurePrepared,
@@ -458,6 +464,27 @@ const slowBuild = defineRecipe({
   start: async () => ({}) as never,
 });
 
+// Cold build: the build (here a stand-in for Nuxt's in-process build) runs its own
+// AsyncLocalStorage. After that the store `useHarness` set with enterWith did not reach the
+// baseURL fixture → "[untestutils] no harness url". The fixture now uses the returned handle.
+const alsBuild = defineRecipe({
+  id: 'als-build-hook',
+  share: 'always',
+  prepare: async () => {
+    await new AsyncLocalStorage<object>().run({}, () => sleep(20));
+  },
+  start: async ({ port }) => ({ kind: 'url', url: `http://127.0.0.1:${port}/` }),
+  ready: async () => {},
+});
+
+describe('cold build: baseURL from the harness handle', () => {
+  harnessTest.override({ harness: alsBuild });
+
+  harnessTest('baseURL is the started target after a cold build', ({ baseURL }) => {
+    expect(baseURL).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/$/);
+  });
+});
+
 describe('buildTimeout (override → beforeAll)', () => {
   harnessTest.override({ harness: slowBuild });
 
@@ -631,5 +658,189 @@ describe('lock init failure', () => {
       spy.mockRestore();
       await rm(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe.skipIf(process.platform === 'win32')('concurrent runs in one checkout', () => {
+  let root: string;
+  const prevRun = process.env.UNTESTUTILS_RUN_ID;
+  const asRun = (id: string | undefined) => {
+    if (id === undefined) delete process.env.UNTESTUTILS_RUN_ID;
+    else process.env.UNTESTUTILS_RUN_ID = id;
+  };
+  afterEach(async () => {
+    asRun(prevRun);
+    await rm(root, { recursive: true, force: true });
+  });
+
+  const sleeper = () =>
+    spawnManaged(process.execPath, ['-e', 'setTimeout(() => {}, 30000)'], { captureLogs: true });
+  const register = (id: string, pid: number | undefined) =>
+    new TargetRegistry(root).set({ id, identity: id, pid, pidStart: processStartToken(pid) });
+
+  vtest("a run's setup/teardown never stops another live run's servers", async () => {
+    root = await tmp('runs');
+    const serverA = sleeper();
+    const serverB = sleeper();
+    try {
+      await sleep(100);
+      asRun('run-a');
+      await beginRun(root);
+      await register('site', serverA.pid);
+
+      asRun('run-b'); // second `vitest run` starts while A is mid-run
+      await beginRun(root);
+      expect(serverA.alive()).toBe(true);
+      await register('site', serverB.pid); // same recipe id, own server
+      expect(serverA.alive()).toBe(true);
+      await endRun(root);
+      expect(serverB.alive()).toBe(false);
+      expect(serverA.alive()).toBe(true);
+      expect(existsSync(join(root, 'run', 'runs', 'run-b'))).toBe(false);
+
+      asRun('run-a');
+      await endRun(root);
+      expect(serverA.alive()).toBe(false);
+    } finally {
+      await serverA.stop();
+      await serverB.stop();
+    }
+  });
+
+  vtest('setup reclaims servers of a run whose owner died, and the shared registry', async () => {
+    root = await tmp('orphans');
+    const orphan = sleeper();
+    const legacy = sleeper();
+    const dead = spawnSync(process.execPath, ['-e', 'console.log(process.pid)'], {
+      encoding: 'utf8',
+    });
+    try {
+      await sleep(100);
+      const crashed = join(root, 'run', 'runs', 'crashed');
+      await mkdir(crashed, { recursive: true });
+      await writeFile(join(crashed, 'owner.json'), JSON.stringify({ pid: Number(dead.stdout) }));
+      asRun('crashed');
+      await register('site', orphan.pid);
+      asRun(undefined); // pre-run-id registry (`run/targets.json`)
+      await register('old', legacy.pid);
+
+      asRun('fresh');
+      await beginRun(root);
+      expect(orphan.alive()).toBe(false);
+      expect(legacy.alive()).toBe(false);
+      expect(existsSync(crashed)).toBe(false);
+      await endRun(root);
+    } finally {
+      await orphan.stop();
+      await legacy.stop();
+    }
+  });
+
+  vtest('a nested runner gets its own run id; dot-only ids stay inside runs/', async () => {
+    const prevOwner = process.env.UNTESTUTILS_RUN_OWNER;
+    try {
+      // Inherited from a parent runner (another pid) → fresh id, not shared.
+      process.env.UNTESTUTILS_RUN_ID = 'parent-run';
+      process.env.UNTESTUTILS_RUN_OWNER = '1';
+      const id = ensureRunId();
+      expect(id).not.toBe('parent-run');
+      expect(ensureRunId()).toBe(id); // stable within the runner
+    } finally {
+      if (prevOwner === undefined) delete process.env.UNTESTUTILS_RUN_OWNER;
+      else process.env.UNTESTUTILS_RUN_OWNER = prevOwner;
+    }
+    root = await tmp('runid');
+    expect(runDir(root, '..')).toBe(join(root, 'run', 'runs', '_'));
+    expect(runDir(root, '.')).toBe(join(root, 'run', 'runs', '_'));
+    expect(runDir(root, 'a/../b')).toBe(join(root, 'run', 'runs', 'a_.._b'));
+  });
+
+  vtest('a legacy targets.json pid is stopped once, not twice', async () => {
+    root = await tmp('legacy-dedupe');
+    const legacy = sleeper();
+    try {
+      await sleep(100);
+      // No run/targets.json yet → the shared drain falls back to this file, then the legacy
+      // drain reads it again.
+      await writeFile(
+        join(root, 'targets.json'),
+        JSON.stringify({ old: { id: 'old', identity: 'old', pid: legacy.pid } }),
+      );
+      const kill = vi.spyOn(process, 'kill');
+      asRun('dedupe');
+      await beginRun(root);
+      const sigterms = kill.mock.calls.filter(
+        ([p, sig]) => p === -legacy.pid! && sig === 'SIGTERM',
+      );
+      kill.mockRestore();
+      expect(sigterms).toHaveLength(1);
+      expect(legacy.alive()).toBe(false);
+      await endRun(root);
+    } finally {
+      await legacy.stop();
+    }
+  });
+
+  vtest('stopAllTargets keeps the event loop alive until servers are gone', () => {
+    // An unref'd wait let Node exit 0 mid-await: globalSetup "passed" having run 0 tests.
+    const script = `
+      import { spawn } from 'node:child_process';
+      import { mkdtempSync } from 'node:fs';
+      import { tmpdir } from 'node:os';
+      import { join } from 'node:path';
+      import { TargetRegistry, stopAllTargets } from ${JSON.stringify(join(import.meta.dirname, '../../packages/core/src/index.ts'))};
+      const root = mkdtempSync(join(tmpdir(), 'untestutils-loop-'));
+      const server = spawn(process.execPath, ['-e', 'process.on("SIGTERM", () => {}); setTimeout(() => {}, 30000)'], { detached: true, stdio: 'ignore' });
+      server.unref();
+      await new Promise((r) => setTimeout(r, 200));
+      await new TargetRegistry(root).set({ id: 's', identity: 's', pid: server.pid });
+      await stopAllTargets(root, { graceMs: 300 });
+      console.log('stopped');
+    `;
+    const tsx = join(import.meta.dirname, '../../node_modules/.bin/tsx');
+    const res = spawnSync(tsx, ['--input-type=module', '-e', script], { encoding: 'utf8' });
+    expect(res.stdout).toContain('stopped');
+    expect(res.status).toBe(0);
+  });
+
+  vtest('globalSetup fails the run when its event loop drains mid-setup', async () => {
+    root = await tmp('aborted');
+    const hang = join(root, 'recipes.mjs');
+    // Only an unref'd timer pending → the loop drains while setup awaits it.
+    await writeFile(hang, 'await new Promise((r) => setTimeout(r, 60000).unref());\n');
+    const setup = join(import.meta.dirname, '../../packages/vitest/src/global-setup.ts');
+    const tsx = join(import.meta.dirname, '../../node_modules/.bin/tsx');
+    const res = spawnSync(
+      tsx,
+      ['--input-type=module', '-e', `await (await import(${JSON.stringify(setup)})).default({});`],
+      {
+        encoding: 'utf8',
+        env: { ...process.env, UNTESTUTILS_RECIPES_MODULE: hang, UNTESTUTILS_ARTIFACTS_DIR: root },
+      },
+    );
+    expect(res.stderr).toContain('global setup aborted before tests ran');
+    expect(res.status).toBe(1);
+  });
+
+  vtest('playwright global setup fails the run the same way', async () => {
+    root = await tmp('aborted-pw');
+    const hang = join(root, 'recipes.mjs');
+    await writeFile(hang, 'await new Promise((r) => setTimeout(r, 60000).unref());\n');
+    const pw = join(import.meta.dirname, '../../packages/playwright/src/index.ts');
+    const tsx = join(import.meta.dirname, '../../node_modules/.bin/tsx');
+    const res = spawnSync(
+      tsx,
+      [
+        '--input-type=module',
+        '-e',
+        `await (await import(${JSON.stringify(pw)})).playwrightGlobalSetup();`,
+      ],
+      {
+        encoding: 'utf8',
+        env: { ...process.env, UNTESTUTILS_RECIPES_MODULE: hang, UNTESTUTILS_ARTIFACTS_DIR: root },
+      },
+    );
+    expect(res.stderr).toContain('global setup aborted before tests ran');
+    expect(res.status).toBe(1);
   });
 });

@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { join } from 'pathe';
 import { atomicWriteJson, FileLock } from './lock';
-import { normalizeBaseUrl, runStateDir } from './paths';
+import { normalizeBaseUrl, runDir, runStateDir } from './paths';
 import { debug } from './debug';
 
 export interface TargetEntry {
@@ -19,14 +19,26 @@ export interface TargetEntry {
 export type TargetMap = Record<string, TargetEntry>;
 
 export class TargetRegistry {
-  constructor(private readonly artifactsRoot: string) {}
+  /**
+   * `runId` (default `UNTESTUTILS_RUN_ID`, set by the vitest/playwright plugin) scopes the
+   * registry to one test run, so a concurrent run's teardown never sees — or stops — its
+   * servers. Without it the shared `run/targets.json` is used.
+   */
+  constructor(
+    private readonly artifactsRoot: string,
+    readonly runId: string | undefined = process.env.UNTESTUTILS_RUN_ID || undefined,
+  ) {}
 
   get filePath(): string {
-    return join(runStateDir(this.artifactsRoot), 'targets.json');
+    return this.runId
+      ? join(runDir(this.artifactsRoot, this.runId), 'targets.json')
+      : join(runStateDir(this.artifactsRoot), 'targets.json');
   }
 
   private lockPath(): string {
-    return join(runStateDir(this.artifactsRoot), 'locks', 'targets.lock');
+    return this.runId
+      ? join(runDir(this.artifactsRoot, this.runId), 'targets.lock')
+      : join(runStateDir(this.artifactsRoot), 'locks', 'targets.lock');
   }
 
   private async withLock<T>(fn: () => Promise<T>): Promise<T> {
@@ -42,9 +54,11 @@ export class TargetRegistry {
   async read(): Promise<TargetMap> {
     // Pre-0.8 registry lived at <root>/targets.json — read it until the first write
     // migrates its entries under run/ (teardown reclaims and drops the legacy file).
-    const path = existsSync(this.filePath)
-      ? this.filePath
-      : join(this.artifactsRoot, 'targets.json');
+    // A run-scoped registry never falls back: that file belongs to no run in particular.
+    const path =
+      existsSync(this.filePath) || this.runId
+        ? this.filePath
+        : join(this.artifactsRoot, 'targets.json');
     if (!existsSync(path)) return {};
     try {
       return JSON.parse(await readFile(path, 'utf8')) as TargetMap;
