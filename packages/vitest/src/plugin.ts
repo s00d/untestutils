@@ -5,6 +5,7 @@ import { dirname, join } from 'pathe';
 import { version as vitestVersion } from 'vitest/node';
 import {
   ensureRecipes,
+  ensureRunId,
   debug,
   getRecipesModulePath,
   resolveSessionArtifactsRoot,
@@ -269,6 +270,8 @@ function wireProjectConfig(
     process.env.UNTESTUTILS_BROWSER = browsers[0];
   }
   process.env.UNTESTUTILS_ARTIFACTS_DIR = resolvedRoot;
+  // Before any worker forks: each run gets its own target registry (concurrent runs).
+  ensureRunId();
   if (options.session) process.env.UNTESTUTILS_SESSION = sanitizeSession(options.session);
   if (recipesModule) {
     process.env.UNTESTUTILS_RECIPES_MODULE = recipesModule;

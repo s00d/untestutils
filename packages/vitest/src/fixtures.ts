@@ -14,6 +14,7 @@ import {
   normalizeBaseUrl,
   prepareOnce,
   useHarness,
+  type HarnessHandle,
   type Recipe,
 } from '@untestutils/core';
 import { type HarnessBrowserName, resolveHarnessBrowserName } from './browsers';
@@ -68,8 +69,9 @@ function resolveBrowserNameFromInject(): HarnessBrowserName {
 }
 
 /** @internal */
-export async function resolveBaseURL(): Promise<string> {
-  const h = getCurrentHarness();
+export async function resolveBaseURL(
+  h: HarnessHandle | undefined = getCurrentHarness(),
+): Promise<string> {
   if (!h?.url) throw new Error('[untestutils] no harness url — call await useHarness(...) first');
   return normalizeBaseUrl(h.url);
 }
@@ -272,8 +274,9 @@ export const test: TestAPI<HarnessFixtures> = base
     },
   )
   .extend('baseURL', async ({ harness }) => {
-    if (harness) await useHarness(harness);
-    return resolveBaseURL();
+    // Use the returned handle: `enterWith` inside the awaited lease does not reliably reach
+    // this frame (lost once anything else ran an AsyncLocalStorage — e.g. a cold Nuxt build).
+    return resolveBaseURL(harness ? await useHarness(harness) : getCurrentHarness());
   })
   .extend('page', async ({ baseURL, browser }, { onCleanup }) => {
     const context = await (await connectedBrowser(browser)).newContext({ baseURL });

@@ -1,11 +1,11 @@
-import { readdir, readFile, access, unlink } from 'node:fs/promises';
+import { readdir, readFile, access, unlink, rm, stat } from 'node:fs/promises';
 import { availableParallelism } from 'node:os';
 import { join } from 'pathe';
 import { ArtifactStore, pruneBuilds } from './artifact-store';
 import { debug, envFlag, log } from './debug';
 import { assertUniqueRecipeBinding, computeIdentity } from './identity';
-import { FileLock, lockPathFor } from './lock';
-import { loopbackUrl, resolveArtifactsRoot, resolveBindHost } from './paths';
+import { atomicWriteJson, FileLock, lockPathFor } from './lock';
+import { loopbackUrl, resolveArtifactsRoot, resolveBindHost, runDir, runStateDir } from './paths';
 import { getFreePort } from './ports';
 import { progress } from './progress';
 import { defaultReady } from './ready';
@@ -491,6 +491,9 @@ export async function stopAllTargets(
       '[untestutils] stopAllTargets(artifactsRoot?, stopOpts?) — pass artifacts root string, not an options object',
     );
   }
+  // Keep the loop alive while waiting for servers to die: with only unref'd polls pending,
+  // Node exits 0 mid-await — a globalSetup caller then "passes" having run zero tests.
+  const opts: StopOpts = { keepEventLoop: true, ...stopOpts };
   const stops = [...liveStops.entries()];
   liveStops.clear();
   liveRunning.clear();
@@ -498,7 +501,7 @@ export async function stopAllTargets(
   await Promise.all(
     stops.map(async ([id, stop]) => {
       try {
-        await stop(stopOpts);
+        await stop(opts);
         debug('teardown', `stopped ${id}`);
       } catch (e) {
         debug('teardown', `failed ${id}`, e);
@@ -508,9 +511,15 @@ export async function stopAllTargets(
 
   // Vitest forks start servers in workers; main-process liveStops is often empty.
   // Drain targets.json under lock so concurrent set() cannot drop pids mid-teardown.
+  // Run-scoped (UNTESTUTILS_RUN_ID): only this run's registry — another run's servers stay up.
   const root = artifactsRoot ?? resolveArtifactsRoot();
   const registry = new TargetRegistry(root);
-  const entries = [...Object.values(await registry.drain()), ...(await drainLegacyRegistry(root))];
+  const entries = [...Object.values(await registry.drain())];
+  if (!registry.runId) entries.push(...(await drainLegacyRegistry(root)));
+  await stopRegistryPids(entries, opts);
+}
+
+async function stopRegistryPids(entries: TargetEntry[], stopOpts: StopOpts): Promise<void> {
   const targets = entries.filter((e) => typeof e.pid === 'number' && e.pid > 1);
   await Promise.all(
     targets.map(async ({ pid, pidStart }) => {
@@ -522,6 +531,63 @@ export async function stopAllTargets(
       }
     }),
   );
+}
+
+/** `UNTESTUTILS_RUN_ID` of this test run (set once, inherited by worker processes). */
+export function ensureRunId(): string {
+  process.env.UNTESTUTILS_RUN_ID ||= `${process.pid}-${Date.now().toString(36)}`;
+  return process.env.UNTESTUTILS_RUN_ID;
+}
+
+/** A run dir whose `owner.json` is not written yet is skipped this long (mkdir→write window). */
+const OWNERLESS_GRACE_MS = 60_000;
+
+/**
+ * Global setup: claim this run (`run/runs/<id>/owner.json`), then stop servers left by runs
+ * whose owner process is gone and by the pre-run-id shared registry. A run whose owner is
+ * alive — a concurrent `vitest run` in the same checkout — is never touched.
+ */
+export async function beginRun(artifactsRoot: string): Promise<string> {
+  const runId = ensureRunId();
+  await atomicWriteJson(join(runDir(artifactsRoot, runId), 'owner.json'), {
+    pid: process.pid,
+    pidStart: processStartToken(process.pid),
+  });
+  const orphans = [
+    // `''` = the shared pre-run-id registry (runs without UNTESTUTILS_RUN_ID).
+    ...Object.values(await new TargetRegistry(artifactsRoot, '').drain()),
+    ...(await drainLegacyRegistry(artifactsRoot)),
+  ];
+  const runsRoot = join(runStateDir(artifactsRoot), 'runs');
+  const ids = await readdir(runsRoot).catch(() => [] as string[]);
+  for (const id of ids) {
+    const dir = join(runsRoot, id);
+    if (dir === runDir(artifactsRoot, runId)) continue;
+    const owner = await readFile(join(dir, 'owner.json'), 'utf8')
+      .then((t) => JSON.parse(t) as { pid?: number; pidStart?: string })
+      .catch(() => undefined);
+    if (owner?.pid) {
+      if (adoptProcess(owner.pid, 'process', owner.pidStart).alive()) continue;
+    } else {
+      const age = await stat(dir).then(
+        (st) => Date.now() - st.mtimeMs,
+        () => Infinity,
+      );
+      if (age < OWNERLESS_GRACE_MS) continue;
+    }
+    debug('teardown', `reclaiming run ${id} (owner gone)`);
+    orphans.push(...Object.values(await new TargetRegistry(artifactsRoot, id).drain()));
+    await rm(dir, { recursive: true, force: true });
+  }
+  await stopRegistryPids(orphans, { keepEventLoop: true });
+  return runId;
+}
+
+/** Global teardown: stop this run's servers and drop its run dir. */
+export async function endRun(artifactsRoot: string): Promise<void> {
+  await stopAllTargets(artifactsRoot);
+  const runId = process.env.UNTESTUTILS_RUN_ID;
+  if (runId) await rm(runDir(artifactsRoot, runId), { recursive: true, force: true });
 }
 
 /** Pre-0.8 `<artifactsRoot>/targets.json` (now under `run/`) — reclaim its pids once, then drop it. */

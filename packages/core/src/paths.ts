@@ -66,6 +66,11 @@ export function runStateDir(artifactsRoot: string): string {
   return join(artifactsRoot, 'run');
 }
 
+/** One test run's state (`targets.json`, `owner.json`) — concurrent runs never share it. */
+export function runDir(artifactsRoot: string, runId: string): string {
+  return join(runStateDir(artifactsRoot), 'runs', runId.replace(/[^\w.-]+/g, '_'));
+}
+
 export function findRepoRoot(start: string = process.cwd()): string {
   let dir = resolve(start);
   for (;;) {

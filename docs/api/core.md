@@ -43,7 +43,7 @@ await withHarness('site', async (app) => {
 
 `prepareOnce(id)` returns the prepared target without ALS bookkeeping.
 
-Also: `getCurrentHarness()`, `ensurePrepared()`, `stopAllTargets()`, `resolveArtifactsRoot()`, `resolveSessionArtifactsRoot()`, `sanitizeSession()`, `waitForHttpReady()`, `TargetRegistry`, `SCHEMA_VERSION`, `prewarmTargets(recipes, { concurrency })` (parallel prepare/start), `pruneBuilds(artifactsRoot, { keep, usedSince })` (build cache GC; skips locked/in-flight builds), `runStateDir(artifactsRoot)` (`<root>/run` — registry + locks), `isAddressInUseError(err)`.
+Also: `getCurrentHarness()`, `ensurePrepared()`, `stopAllTargets()`, `resolveArtifactsRoot()`, `resolveSessionArtifactsRoot()`, `sanitizeSession()`, `waitForHttpReady()`, `TargetRegistry`, `SCHEMA_VERSION`, `prewarmTargets(recipes, { concurrency })` (parallel prepare/start), `pruneBuilds(artifactsRoot, { keep, usedSince })` (build cache GC; skips locked/in-flight builds), `runStateDir(artifactsRoot)` (`<root>/run` — registry + locks), `runDir(artifactsRoot, runId)`, `beginRun(artifactsRoot)` / `endRun(artifactsRoot)` (global setup/teardown: run-scoped registry, reclaim only dead runs; `UNTESTUTILS_RUN_ID`, `ensureRunId()`), `isAddressInUseError(err)`.
 
 ## Process handles
 
@@ -53,7 +53,7 @@ Users manage **instances**, not PIDs / process groups:
 |--------|-----------|
 | `spawnManaged(cmd, args, opts?)` | Long-lived process → `ManagedProcess` (`stop` / `alive` / `logs`) |
 | `runCommand(cmd, args, opts?)` | Foreground one-shot (build / CLI tools) |
-| `stopAllTargets()` | Drain live handles + registry orphans |
+| `stopAllTargets()` | Drain live handles + this run's registry (keeps the event loop alive until servers exit) |
 
 `ManagedProcess.stop(opts?)`: `{ graceMs?, signal?, keepEventLoop? }` (defaults 2000 / `SIGTERM`). Servers use process-group / `taskkill /T` internally — callers never pass negative PIDs. Orphan reclaim: [Troubleshooting](/guide/troubleshooting).
 

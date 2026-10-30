@@ -40,6 +40,9 @@ export {
   resolvePrewarmConcurrency,
   resolveGcKeep,
   isAddressInUseError,
+  beginRun,
+  endRun,
+  ensureRunId,
 } from './orchestrator';
 export { TargetRegistry, envKey, envDirKey } from './target-registry';
 export { ArtifactStore, pruneBuilds } from './artifact-store';
@@ -56,6 +59,7 @@ export {
   resolveProbeHost,
   findRepoRoot,
   runStateDir,
+  runDir,
 } from './paths';
 export { waitForHttpReady, defaultReady } from './ready';
 export { scrubTestEnv, spawnManaged, runCommand } from './process';
