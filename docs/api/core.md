@@ -43,7 +43,7 @@ await withHarness('site', async (app) => {
 
 `prepareOnce(id)` returns the prepared target without ALS bookkeeping.
 
-Also: `getCurrentHarness()`, `ensurePrepared()`, `stopAllTargets()`, `resolveArtifactsRoot()`, `resolveSessionArtifactsRoot()`, `sanitizeSession()`, `waitForHttpReady()`, `TargetRegistry`, `SCHEMA_VERSION`, `prewarmTargets(recipes, { concurrency })` (parallel prepare/start), `pruneBuilds(artifactsRoot, { keep, usedSince })` (build cache GC; skips locked/in-flight builds), `runStateDir(artifactsRoot)` (`<root>/run` — registry + locks), `runDir(artifactsRoot, runId)`, `beginRun(artifactsRoot)` / `endRun(artifactsRoot)` (global setup/teardown: run-scoped registry, reclaim only dead runs; `UNTESTUTILS_RUN_ID`, `ensureRunId()`), `isAddressInUseError(err)`.
+Also: `getCurrentHarness()`, `ensurePrepared()`, `stopAllTargets()`, `resolveArtifactsRoot()`, `resolveSessionArtifactsRoot()`, `sanitizeSession()`, `waitForHttpReady()`, `TargetRegistry`, `SCHEMA_VERSION`, `prewarmTargets(recipes, { concurrency })` (parallel prepare/start), `pruneBuilds(artifactsRoot, { keep, usedSince })` (build cache GC; skips locked/in-flight builds), `runStateDir(artifactsRoot)` (`<root>/run` — registry + locks), `runDir(artifactsRoot, runId)`, `beginRun(artifactsRoot)` / `endRun(artifactsRoot)` (global setup/teardown: run-scoped registry; setup reclaims runs whose owner died plus the shared no-run-id and legacy `targets.json` registries, which have no owner check; `UNTESTUTILS_RUN_ID`, `ensureRunId()`), `failIfSetupDrains(fn)` (global-setup wrapper: exit 1 if the event loop drains mid-setup), `isAddressInUseError(err)`.
 
 ## Process handles
 

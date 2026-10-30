@@ -3,6 +3,7 @@ import type { TestProject } from 'vitest/node';
 import {
   beginRun,
   endRun,
+  failIfSetupDrains,
   prewarmTargets,
   pruneAfterRun,
   getRegisteredRecipe,
@@ -41,22 +42,8 @@ function formatKnownIds(
   return known.length ? ` Known ids: ${known.join(', ')}.` : '';
 }
 
-/**
- * If the event loop drains while setup is still awaiting (only unref'd timers left), Node
- * exits 0 before any test runs — a false green. Turn that into a failing exit instead.
- */
-function onSetupAborted(): void {
-  console.error('[untestutils] global setup aborted before tests ran (event loop drained)');
-  process.exitCode = 1;
-}
-
-export default async function globalSetup(project: TestProject): Promise<() => Promise<void>> {
-  process.once('beforeExit', onSetupAborted);
-  try {
-    return await setup(project);
-  } finally {
-    process.off('beforeExit', onSetupAborted);
-  }
+export default function globalSetup(project: TestProject): Promise<() => Promise<void>> {
+  return failIfSetupDrains(() => setup(project));
 }
 
 async function setup(project: TestProject): Promise<() => Promise<void>> {

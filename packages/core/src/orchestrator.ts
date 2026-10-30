@@ -520,7 +520,11 @@ export async function stopAllTargets(
 }
 
 async function stopRegistryPids(entries: TargetEntry[], stopOpts: StopOpts): Promise<void> {
-  const targets = entries.filter((e) => typeof e.pid === 'number' && e.pid > 1);
+  // One stop per pid: the same entry can come from two sources (legacy file read twice).
+  const byPid = new Map(
+    entries.filter((e) => typeof e.pid === 'number' && e.pid > 1).map((e) => [e.pid, e]),
+  );
+  const targets = [...byPid.values()];
   await Promise.all(
     targets.map(async ({ pid, pidStart }) => {
       try {
@@ -533,10 +537,36 @@ async function stopRegistryPids(entries: TargetEntry[], stopOpts: StopOpts): Pro
   );
 }
 
-/** `UNTESTUTILS_RUN_ID` of this test run (set once, inherited by worker processes). */
+/**
+ * `UNTESTUTILS_RUN_ID` of this test run — call only from a runner process (plugin config,
+ * global setup); workers just inherit it. A runner whose id was inherited from another
+ * runner (a nested `vitest run` spawned by a test) gets a fresh one, so the two never share
+ * a registry or run dir. `UNTESTUTILS_RUN_OWNER` records which process minted it.
+ */
 export function ensureRunId(): string {
-  process.env.UNTESTUTILS_RUN_ID ||= `${process.pid}-${Date.now().toString(36)}`;
+  const self = String(process.pid);
+  if (!process.env.UNTESTUTILS_RUN_ID || process.env.UNTESTUTILS_RUN_OWNER !== self) {
+    process.env.UNTESTUTILS_RUN_ID = `${self}-${Date.now().toString(36)}`;
+    process.env.UNTESTUTILS_RUN_OWNER = self;
+  }
   return process.env.UNTESTUTILS_RUN_ID;
+}
+
+/**
+ * Run a global setup body; if the event loop drains while it is still awaiting (only
+ * unref'd timers left), Node would exit 0 before any test runs — fail the run instead.
+ */
+export async function failIfSetupDrains<T>(fn: () => Promise<T>): Promise<T> {
+  const onDrained = () => {
+    console.error('[untestutils] global setup aborted before tests ran (event loop drained)');
+    process.exitCode = 1;
+  };
+  process.once('beforeExit', onDrained);
+  try {
+    return await fn();
+  } finally {
+    process.off('beforeExit', onDrained);
+  }
 }
 
 /** A run dir whose `owner.json` is not written yet is skipped this long (mkdir→write window). */

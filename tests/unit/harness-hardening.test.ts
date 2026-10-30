@@ -11,6 +11,8 @@ import {
   TargetRegistry,
   beginRun,
   endRun,
+  ensureRunId,
+  runDir,
   clearRegisteredRecipes,
   defineRecipe,
   ensurePrepared,
@@ -734,6 +736,51 @@ describe.skipIf(process.platform === 'win32')('concurrent runs in one checkout',
     }
   });
 
+  vtest('a nested runner gets its own run id; dot-only ids stay inside runs/', async () => {
+    const prevOwner = process.env.UNTESTUTILS_RUN_OWNER;
+    try {
+      // Inherited from a parent runner (another pid) → fresh id, not shared.
+      process.env.UNTESTUTILS_RUN_ID = 'parent-run';
+      process.env.UNTESTUTILS_RUN_OWNER = '1';
+      const id = ensureRunId();
+      expect(id).not.toBe('parent-run');
+      expect(ensureRunId()).toBe(id); // stable within the runner
+    } finally {
+      if (prevOwner === undefined) delete process.env.UNTESTUTILS_RUN_OWNER;
+      else process.env.UNTESTUTILS_RUN_OWNER = prevOwner;
+    }
+    root = await tmp('runid');
+    expect(runDir(root, '..')).toBe(join(root, 'run', 'runs', '_'));
+    expect(runDir(root, '.')).toBe(join(root, 'run', 'runs', '_'));
+    expect(runDir(root, 'a/../b')).toBe(join(root, 'run', 'runs', 'a_.._b'));
+  });
+
+  vtest('a legacy targets.json pid is stopped once, not twice', async () => {
+    root = await tmp('legacy-dedupe');
+    const legacy = sleeper();
+    try {
+      await sleep(100);
+      // No run/targets.json yet → the shared drain falls back to this file, then the legacy
+      // drain reads it again.
+      await writeFile(
+        join(root, 'targets.json'),
+        JSON.stringify({ old: { id: 'old', identity: 'old', pid: legacy.pid } }),
+      );
+      const kill = vi.spyOn(process, 'kill');
+      asRun('dedupe');
+      await beginRun(root);
+      const sigterms = kill.mock.calls.filter(
+        ([p, sig]) => p === -legacy.pid! && sig === 'SIGTERM',
+      );
+      kill.mockRestore();
+      expect(sigterms).toHaveLength(1);
+      expect(legacy.alive()).toBe(false);
+      await endRun(root);
+    } finally {
+      await legacy.stop();
+    }
+  });
+
   vtest('stopAllTargets keeps the event loop alive until servers are gone', () => {
     // An unref'd wait let Node exit 0 mid-await: globalSetup "passed" having run 0 tests.
     const script = `
@@ -766,6 +813,28 @@ describe.skipIf(process.platform === 'win32')('concurrent runs in one checkout',
     const res = spawnSync(
       tsx,
       ['--input-type=module', '-e', `await (await import(${JSON.stringify(setup)})).default({});`],
+      {
+        encoding: 'utf8',
+        env: { ...process.env, UNTESTUTILS_RECIPES_MODULE: hang, UNTESTUTILS_ARTIFACTS_DIR: root },
+      },
+    );
+    expect(res.stderr).toContain('global setup aborted before tests ran');
+    expect(res.status).toBe(1);
+  });
+
+  vtest('playwright global setup fails the run the same way', async () => {
+    root = await tmp('aborted-pw');
+    const hang = join(root, 'recipes.mjs');
+    await writeFile(hang, 'await new Promise((r) => setTimeout(r, 60000).unref());\n');
+    const pw = join(import.meta.dirname, '../../packages/playwright/src/index.ts');
+    const tsx = join(import.meta.dirname, '../../node_modules/.bin/tsx');
+    const res = spawnSync(
+      tsx,
+      [
+        '--input-type=module',
+        '-e',
+        `await (await import(${JSON.stringify(pw)})).playwrightGlobalSetup();`,
+      ],
       {
         encoding: 'utf8',
         env: { ...process.env, UNTESTUTILS_RECIPES_MODULE: hang, UNTESTUTILS_ARTIFACTS_DIR: root },

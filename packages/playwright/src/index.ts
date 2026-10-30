@@ -7,6 +7,7 @@ import {
   pruneAfterRun,
   beginRun,
   endRun,
+  failIfSetupDrains,
   resolveArtifactsRoot,
   resolveSessionArtifactsRoot,
   sanitizeSession,
@@ -167,7 +168,11 @@ export function resolvePlaywrightCompanion(name: 'pw-global-setup' | 'pw-global-
   throw new Error(`[untestutils/playwright] missing ${name}`);
 }
 
-export async function playwrightGlobalSetup(): Promise<void> {
+export function playwrightGlobalSetup(): Promise<void> {
+  return failIfSetupDrains(setup);
+}
+
+async function setup(): Promise<void> {
   const modPath = process.env.UNTESTUTILS_RECIPES_MODULE;
   let recipesFromModule: Record<string, Recipe> | undefined;
   if (modPath) {

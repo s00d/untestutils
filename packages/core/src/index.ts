@@ -43,6 +43,7 @@ export {
   beginRun,
   endRun,
   ensureRunId,
+  failIfSetupDrains,
 } from './orchestrator';
 export { TargetRegistry, envKey, envDirKey } from './target-registry';
 export { ArtifactStore, pruneBuilds } from './artifact-store';
